@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Pure story model — no dependencies (clean architecture: nothing inward of Domain). -->
+
+</Project>

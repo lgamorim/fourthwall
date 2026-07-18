@@ -1,0 +1,12 @@
+# Normalize all text to LF in the repository and on checkout, so Windows
+# developers and the Linux CI runner see identical files and `dotnet format`
+# is deterministic across platforms.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.db binary

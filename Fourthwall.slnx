@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fourthwall.Application/Fourthwall.Application.csproj" />
+    <Project Path="src/Fourthwall.Domain/Fourthwall.Domain.csproj" />
+    <Project Path="src/Fourthwall.Infrastructure/Fourthwall.Infrastructure.csproj" />
+    <Project Path="src/Fourthwall.Web/Fourthwall.Web.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Fourthwall.Application.UnitTests/Fourthwall.Application.UnitTests.csproj" />
+    <Project Path="test/Fourthwall.Domain.UnitTests/Fourthwall.Domain.UnitTests.csproj" />
+    <Project Path="test/Fourthwall.Infrastructure.IntegrationTests/Fourthwall.Infrastructure.IntegrationTests.csproj" />
+    <Project Path="test/Fourthwall.Infrastructure.UnitTests/Fourthwall.Infrastructure.UnitTests.csproj" />
+    <Project Path="test/Fourthwall.Web.UnitTests/Fourthwall.Web.UnitTests.csproj" />
+  </Folder>
+</Solution>
