@@ -2,8 +2,15 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [master, "feature/**"]
   pull_request:
+    branches: [master]
+
+# Cancel an in-flight run when a newer commit supersedes it, so obsolete
+# commits stop occupying runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
