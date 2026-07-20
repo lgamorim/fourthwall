@@ -1,0 +1,27 @@
+<Project>
+
+  <!-- Shared MSBuild properties for every project in the repository.
+       Individual .csproj files stay minimal and inherit from here. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Zero-warning bar: style violations and warnings fail the build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Required for IDE0005 (unused usings) to run at build time; also enables
+         CS1591 so missing XML docs on public members are enforced (coding standard).
+         Suppressed for non-API surfaces (Web components, tests) via .editorconfig. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Package version for `dotnet pack`. Prerelease suffix during a phase's
+       active development; the phase-closing commit drops it to the clean X.Y.0. -->
+  <PropertyGroup>
+    <Version>0.1.0-preview.1</Version>
+  </PropertyGroup>
+
+</Project>

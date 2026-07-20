@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- The Blazor app is the composition root, not a distributable package. -->
+    <IsPackable>false</IsPackable>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <!-- Application is the UI's only logical dependency; Infrastructure is referenced
+       solely so it can be wired into DI at the composition root (Program.cs). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Fourthwall.Application\Fourthwall.Application.csproj" />
+    <ProjectReference Include="..\Fourthwall.Infrastructure\Fourthwall.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

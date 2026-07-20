@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Central Package Management: every NuGet version is pinned here; project
+       files reference packages by name only. See Directory.Build.props for
+       shared build properties. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Test stack. First-party libraries (Graph1x, sqlbound, Dapper) are added
+       in the milestones that first reference them. -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+</Project>

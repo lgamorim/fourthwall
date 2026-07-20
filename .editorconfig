@@ -1,0 +1,113 @@
+root = true
+
+# All files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+
+[*.{xml,csproj,props,targets,slnx,razor,json,yml,yaml}]
+indent_size = 2
+
+# ---------------------------------------------------------------------------
+# C# code style — tool-enforced coding standards (.claude/rules/coding-standards.md).
+# EnforceCodeStyleInBuild=true (Directory.Build.props) surfaces these at build;
+# TreatWarningsAsErrors=true turns any 'warning' severity into a build failure.
+# ---------------------------------------------------------------------------
+[*.cs]
+
+# File-scoped namespaces are mandatory.
+csharp_style_namespace_declarations = file_scoped:error
+
+# Remove unused usings (IDE0005). Requires EnforceCodeStyleInBuild to surface in build.
+dotnet_diagnostic.IDE0005.severity = warning
+
+# 'var' when the type is apparent; keep as guidance, not a build breaker.
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Prefer modern language features (guidance).
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_prefer_braces = true:suggestion
+dotnet_style_readonly_field = true:suggestion
+
+# --- Naming rules -----------------------------------------------------------
+
+# Symbol groups
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate
+dotnet_naming_symbols.types.applicable_accessibilities = *
+
+dotnet_naming_symbols.non_field_members.applicable_kinds = property, method, event
+dotnet_naming_symbols.non_field_members.applicable_accessibilities = *
+
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_symbols.static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.static_readonly_fields.applicable_modifiers = static, readonly
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, private_protected
+
+dotnet_naming_symbols.parameters_locals.applicable_kinds = parameter
+
+# Naming styles
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+dotnet_naming_style.camel_case.capitalization = camel_case
+dotnet_naming_style.interface_style.capitalization = pascal_case
+dotnet_naming_style.interface_style.required_prefix = I
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+
+# Rules (most-specific first)
+dotnet_naming_rule.interfaces_i_prefixed.symbols = interfaces
+dotnet_naming_rule.interfaces_i_prefixed.style = interface_style
+dotnet_naming_rule.interfaces_i_prefixed.severity = warning
+
+dotnet_naming_rule.types_pascal.symbols = types
+dotnet_naming_rule.types_pascal.style = pascal_case
+dotnet_naming_rule.types_pascal.severity = warning
+
+dotnet_naming_rule.non_field_members_pascal.symbols = non_field_members
+dotnet_naming_rule.non_field_members_pascal.style = pascal_case
+dotnet_naming_rule.non_field_members_pascal.severity = warning
+
+dotnet_naming_rule.constants_pascal.symbols = constants
+dotnet_naming_rule.constants_pascal.style = pascal_case
+dotnet_naming_rule.constants_pascal.severity = warning
+
+dotnet_naming_rule.static_readonly_pascal.symbols = static_readonly_fields
+dotnet_naming_rule.static_readonly_pascal.style = pascal_case
+dotnet_naming_rule.static_readonly_pascal.severity = warning
+
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = warning
+
+dotnet_naming_rule.parameters_camel.symbols = parameters_locals
+dotnet_naming_rule.parameters_camel.style = camel_case
+dotnet_naming_rule.parameters_camel.severity = warning
+
+# ---------------------------------------------------------------------------
+# The Blazor Web app is the composition root, not a documented API surface;
+# its components and Program.cs do not require XML doc comments.
+# ---------------------------------------------------------------------------
+[src/Fourthwall.Web/**/*.cs]
+dotnet_diagnostic.CS1591.severity = none
+
+# ---------------------------------------------------------------------------
+# Test projects: public test types exist only for framework discovery, and
+# XML doc comments are not required (coding-standards.md exemption).
+# ---------------------------------------------------------------------------
+[test/**/*.cs]
+dotnet_diagnostic.CS1591.severity = none

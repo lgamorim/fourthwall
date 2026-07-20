@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fourthwall.Application\Fourthwall.Application.csproj" />
+  </ItemGroup>
+
+</Project>
