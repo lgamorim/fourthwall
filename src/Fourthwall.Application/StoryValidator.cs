@@ -75,6 +75,7 @@ public sealed class StoryValidator : IStoryValidator
         var unreachable = story.Scenes
             .Where(scene => !reachable.Contains(scene.Id))
             .Select(scene => scene.Id)
+            .OrderBy(id => id.Value)
             .ToList();
 
         if (unreachable.Count == 0)
@@ -117,6 +118,7 @@ public sealed class StoryValidator : IStoryValidator
         var offending = story.Scenes
             .Where(HasWrongDegree)
             .Select(scene => scene.Id)
+            .OrderBy(id => id.Value)
             .ToList();
 
         if (offending.Count == 0)
@@ -157,6 +159,7 @@ public sealed class StoryValidator : IStoryValidator
         var trapped = story.Scenes
             .Where(scene => !canReachAnEnding.Contains(scene.Id))
             .Select(scene => scene.Id)
+            .OrderBy(id => id.Value)
             .ToList();
 
         if (trapped.Count == 0)
