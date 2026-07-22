@@ -25,7 +25,13 @@ A finished story is a self-contained folder — a SQLite database plus its image
 
 ## Status
 
-Pre-`0.1.0` — design accepted, implementation not yet started. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
+`0.1.0` — **Phase 1 (Foundation and Domain) complete.** Implemented and tested so far:
+
+- the pure story **domain model** (`Story`, `Scene`, `Choice`, outcomes) with its invariants,
+- the **validation engine** enforcing the structural rules of the design (single start, reachability, degree-by-kind, reachable ending, no inescapable loops),
+- **reachability analysis** backed by Graph1x behind an `IStoryGraph` abstraction.
+
+Persistence (self-contained SQLite story packages) and the Blazor editor UI — the graph canvas, inspector, and live validation panel described above — arrive in later phases. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
 
 ## License
 
