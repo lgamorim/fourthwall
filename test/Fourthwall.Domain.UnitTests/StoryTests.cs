@@ -376,4 +376,86 @@ public class StoryTests
         Assert.Single(start.Choices);
         Assert.Equal("Take the bright path", start.Choices[0].Label);
     }
+
+    [Fact]
+    public void Should_PreserveChoices_When_KindIsChangedToTheSameKind()
+    {
+        // ChangeKind only discards transitions when the kind actually changes. Nothing
+        // else pins that, so a refactor hoisting the clear out of the guard would wipe a
+        // scene's authored choices silently.
+
+        // Arrange
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        var right = story.AddScene(SceneKind.Linear, "right");
+        story.WireChoice(scene.Id, "Go left", left.Id);
+        story.WireChoice(scene.Id, "Go right", right.Id);
+
+        // Act
+        scene.ChangeKind(SceneKind.Choice);
+
+        // Assert
+        Assert.Equal(2, scene.Choices.Count);
+        Assert.Equal("Go left", scene.Choices[0].Label);
+    }
+
+    [Fact]
+    public void Should_ThrowInvalidOperationException_When_ChoiceWiredFromLinearScene()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Linear, "a corridor");
+        var target = story.AddScene(SceneKind.Linear, "a hall");
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => story.WireChoice(from.Id, "Go", target.Id));
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(0, -1)]
+    [InlineData(0, 2)]
+    public void Should_ThrowArgumentOutOfRangeException_When_ChoiceMovedWithInvalidIndex(
+        int fromIndex,
+        int toIndex)
+    {
+        // Arrange
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Choice, "A fork");
+        var target = story.AddScene(SceneKind.Linear, "target");
+        story.WireChoice(scene.Id, "Go left", target.Id);
+        story.WireChoice(scene.Id, "Go right", target.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => story.MoveChoice(scene.Id, fromIndex, toIndex));
+    }
+
+    [Fact]
+    public void Should_ClearFollowUp_When_LinearSceneIsUnwired()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Linear, "a corridor");
+        var target = story.AddScene(SceneKind.Linear, "a hall");
+        story.SetFollowUp(from.Id, target.Id);
+
+        // Act
+        story.ClearFollowUp(from.Id);
+
+        // Assert
+        Assert.Null(from.FollowUpSceneId);
+        Assert.Empty(from.OutgoingSceneIds);
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_FollowUpClearedOnUnknownScene()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.ClearFollowUp(SceneId.New()));
+    }
 }

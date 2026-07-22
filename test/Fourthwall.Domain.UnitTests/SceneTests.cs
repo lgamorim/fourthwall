@@ -207,4 +207,82 @@ public class SceneTests
         // Act & Assert
         Assert.Throws<ArgumentException>(() => scene.ChangeKind((SceneKind)99));
     }
+
+    [Fact]
+    public void Should_NotExposeItsMutableList_When_ChoicesAreRead()
+    {
+        // The aggregate's guarantee rests on transitions being mutable only through the
+        // owning story. Handing out the backing list would let any caller cast back to
+        // List<Choice> and bypass that entirely.
+
+        // Arrange
+        var scene = new Scene(SceneId.New(), SceneKind.Choice, "A fork");
+
+        // Act & Assert
+        Assert.IsNotType<List<Choice>>(scene.Choices);
+    }
+
+    [Fact]
+    public void Should_ReplaceOutcome_When_EndingIsGivenANewOutcome()
+    {
+        // Re-applying the Ending kind is the only way to edit an ending's outcome.
+
+        // Arrange
+        var scene = new Scene(SceneId.New(), SceneKind.Ending, "The end.", EndingOutcome.Death());
+
+        // Act
+        scene.ChangeKind(SceneKind.Ending, EndingOutcome.Victory("Crowned at dawn"));
+
+        // Assert
+        Assert.Equal(EndingOutcome.Victory("Crowned at dawn"), scene.Outcome);
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_EndingKindIsReappliedWithoutOutcome()
+    {
+        // Arrange
+        var scene = new Scene(SceneId.New(), SceneKind.Ending, "The end.", EndingOutcome.Death());
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => scene.ChangeKind(SceneKind.Ending));
+    }
+
+    [Theory]
+    [InlineData("/etc/passwd")]
+    [InlineData("\\windows\\system32")]
+    [InlineData("C:/images/x.png")]
+    [InlineData("C:\\images\\x.png")]
+    [InlineData("../secrets.png")]
+    [InlineData("..\\secrets.png")]
+    [InlineData("assets/../../secrets.png")]
+    [InlineData("assets\\..\\..\\secrets.png")]
+    public void Should_ThrowArgumentException_When_ImagePathEscapesTheStoryFolder(string path)
+    {
+        // The path is resolved against the story folder once persistence arrives, so a
+        // rooted or traversing path would escape the package.
+
+        // Arrange
+        var scene = new Scene(SceneId.New(), SceneKind.Linear, "text");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => scene.AttachImage(path));
+    }
+
+    [Theory]
+    [InlineData("crossroads.png")]
+    [InlineData("assets/crossroads.png")]
+    [InlineData("assets\\crossroads.png")]
+    [InlineData("assets/sub/deep.png")]
+    [InlineData("assets/..hidden/x.png")]
+    public void Should_AttachImage_When_PathStaysInsideTheStoryFolder(string path)
+    {
+        // Arrange
+        var scene = new Scene(SceneId.New(), SceneKind.Linear, "text");
+
+        // Act
+        scene.AttachImage(path);
+
+        // Assert
+        Assert.Equal(path, scene.ImagePath);
+    }
 }

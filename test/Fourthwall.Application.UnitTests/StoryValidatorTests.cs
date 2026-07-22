@@ -284,6 +284,35 @@ public class StoryValidatorTests
         Assert.False(afterRemoval.IsValid);
     }
 
+    [Fact]
+    public void Should_ListSceneIdsInDeterministicOrder_When_ManyScenesViolateTheSameRule()
+    {
+        // Story.Scenes enumerates a dictionary, whose order is unspecified and diverges from
+        // insertion order once scenes are removed. Sorting keeps reports stable for the
+        // validation panel and for the golden-story assertions that arrive with the adapter.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Choice, "A fork");
+        var ending = story.AddScene(SceneKind.Ending, "The end.", EndingOutcome.Victory());
+        story.SetStartScene(start.Id);
+        story.WireChoice(start.Id, "Left", ending.Id);
+        story.WireChoice(start.Id, "Right", ending.Id);
+
+        var orphans = new List<SceneId>();
+        for (var i = 0; i < 6; i++)
+        {
+            orphans.Add(story.AddScene(SceneKind.Ending, $"orphan {i}", EndingOutcome.Death()).Id);
+        }
+
+        // Act
+        var report = CreateValidator().Validate(story);
+
+        // Assert
+        var violation = Single(report, ValidationRule.AllScenesReachable);
+        Assert.Equal(orphans.OrderBy(id => id.Value), violation.SceneIds);
+    }
+
     private static StoryValidator CreateValidator() => new(new InMemoryStoryGraphFactory());
 
     /// <summary>A start scene branching into two endings — satisfies every rule.</summary>

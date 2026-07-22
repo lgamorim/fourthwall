@@ -9,6 +9,12 @@ namespace Fourthwall.Domain;
 /// their story. Transitions are mutated only by the owning <see cref="Story"/>, which is the only
 /// place referential integrity between scenes can be enforced.
 /// <para>
+/// The constructor stays public even though a directly constructed scene cannot join a story.
+/// Making it internal would leave the identifier guard below unreachable, because
+/// <see cref="Story.AddScene"/> always supplies a freshly minted identifier — trading an unused
+/// construction path for untestable code, and costing this type its independent tests.
+/// </para>
+/// <para>
 /// This type enforces a scene's <em>shape</em> — an ending carries an outcome and has no
 /// outgoing transitions. It deliberately does not enforce <em>cardinality</em> (a choice scene
 /// having at least two choices, a linear scene having exactly one follow-up), because a scene
@@ -18,6 +24,7 @@ namespace Fourthwall.Domain;
 public sealed class Scene
 {
     private readonly List<Choice> _choices = [];
+    private readonly IReadOnlyList<Choice> _choicesView;
 
     /// <summary>
     /// Initializes a new scene.
@@ -43,6 +50,7 @@ public sealed class Scene
         ArgumentNullException.ThrowIfNull(text);
         EnsureOutcomeMatchesKind(kind, outcome, nameof(outcome));
 
+        _choicesView = _choices.AsReadOnly();
         Id = id;
         Kind = kind;
         Text = text;
@@ -77,7 +85,12 @@ public sealed class Scene
     /// <summary>
     /// Gets the choices leading out of this scene, in reader-facing order.
     /// </summary>
-    public IReadOnlyList<Choice> Choices => _choices;
+    /// <remarks>
+    /// This is a read-only view, not the backing list: handing the list out would let a caller
+    /// cast it back and mutate transitions without the owning story, defeating the guarantee
+    /// that transitions never dangle.
+    /// </remarks>
+    public IReadOnlyList<Choice> Choices => _choicesView;
 
     /// <summary>
     /// Gets the scene this one flows into, set only when it is a linear scene.
@@ -119,10 +132,13 @@ public sealed class Scene
     /// </summary>
     /// <param name="relativePath">The story-relative path of the image asset.</param>
     /// <exception cref="ArgumentNullException"><paramref name="relativePath"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="relativePath"/> is blank.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="relativePath"/> is blank, rooted, or steps outside the story folder.
+    /// </exception>
     public void AttachImage(string relativePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+        EnsureStaysInsideStoryFolder(relativePath, nameof(relativePath));
         ImagePath = relativePath;
     }
 
@@ -195,6 +211,28 @@ public sealed class Scene
         if (FollowUpSceneId == target)
         {
             FollowUpSceneId = null;
+        }
+    }
+
+    private static void EnsureStaysInsideStoryFolder(string path, string parameterName)
+    {
+        // Checked without the Path APIs so that Windows and Linux agree: Path.IsPathRooted
+        // reports "C:/x.png" as rooted only on Windows, which would let a drive-qualified
+        // path through on the Linux CI runner. The story folder resolves this path later,
+        // so anything rooted or stepping upward would escape the package.
+        if (path[0] is '/' or '\\' || (path.Length >= 2 && path[1] == ':' && char.IsLetter(path[0])))
+        {
+            throw new ArgumentException(
+                "A scene image path must be relative to the story folder.", parameterName);
+        }
+
+        foreach (var segment in path.Split('/', '\\'))
+        {
+            if (segment == "..")
+            {
+                throw new ArgumentException(
+                    "A scene image path must not step outside the story folder.", parameterName);
+            }
         }
     }
 
