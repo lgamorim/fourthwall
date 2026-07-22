@@ -190,6 +190,7 @@ Roll-up: roughly **2.5–4 weeks** of agentic development end to end, against an
 | sqlbound SQLite provider verifies columns only — type errors slip past compile time | High | Integration tests over real SQLite are mandatory per repository method (§7) |
 | Hand-rolled SVG canvas underperforms or fights Blazor's render model on large stories | Medium | Phase 3 ships a fully usable form-based editor first; canvas state isolated in testable C# classes; virtualize rendering if node counts demand it |
 | Graph1x abstraction leak — analysis needs outgrow `IStoryGraph` | Low–Med | Adapter owns all translation; extend the interface deliberately, never pass Graph1x types through |
+| Graph1x's tests are model-generated (internal consistency, not independent verification) | Low–Med | Golden-story corpus (`Infrastructure.UnitTests`) verifies traversal semantics against hand-reasoned reports; BFS and `Transpose` reviewed at adoption |
 | Scope creep toward the game runtime (state, combat, simulation) | Medium | §3 non-goals are contractual; D6 gives combat a landing zone without building it |
 | sqlbound is at `1.0.0-rc.1` — breaking changes before stable | Low | Pin the RC; the API surface used (attributes, migrations, `SqlSession`) is the stable core of the library |
 
