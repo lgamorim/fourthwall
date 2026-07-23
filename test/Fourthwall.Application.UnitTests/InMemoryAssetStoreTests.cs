@@ -40,12 +40,33 @@ public sealed class InMemoryAssetStoreTests
     }
 
     [Fact]
-    public async Task Should_ResolveIngestedPath_And_NotResolveOthers()
+    public async Task Should_NormalizeExtensionToLowercase_When_Ingested()
+    {
+        var store = new InMemoryAssetStore();
+
+        var upper = await store.IngestAsync(Content("same"), "PNG", TestContext.Current.CancellationToken);
+        var lower = await store.IngestAsync(Content("same"), "png", TestContext.Current.CancellationToken);
+        var all = await store.ListAsync(TestContext.Current.CancellationToken);
+
+        Assert.EndsWith(".png", upper);
+        Assert.Equal(lower, upper);
+        Assert.Single(all);
+    }
+
+    [Fact]
+    public async Task Should_ReturnTrue_When_AssetWasIngested()
     {
         var store = new InMemoryAssetStore();
         var path = await store.IngestAsync(Content("pixels"), "png", TestContext.Current.CancellationToken);
 
         Assert.True(await store.ExistsAsync(path, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_ReturnFalse_When_AssetWasNotIngested()
+    {
+        var store = new InMemoryAssetStore();
+
         Assert.False(await store.ExistsAsync("assets/missing.png", TestContext.Current.CancellationToken));
     }
 
@@ -60,7 +81,7 @@ public sealed class InMemoryAssetStoreTests
     }
 
     [Fact]
-    public async Task Should_ListExactlyTheIngestedPaths()
+    public async Task Should_ReturnEveryIngestedPath_When_Listed()
     {
         var store = new InMemoryAssetStore();
         var first = await store.IngestAsync(Content("one"), "png", TestContext.Current.CancellationToken);
@@ -80,10 +101,33 @@ public sealed class InMemoryAssetStoreTests
             () => store.IngestAsync(null!, "png", TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task Should_Throw_When_ExtensionIsNull()
+    {
+        var store = new InMemoryAssetStore();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => store.IngestAsync(Content("pixels"), null!, TestContext.Current.CancellationToken));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
     public async Task Should_Throw_When_ExtensionIsBlank(string extension)
+    {
+        var store = new InMemoryAssetStore();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => store.IngestAsync(Content("pixels"), extension, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(".png")]
+    [InlineData("a.b")]
+    [InlineData("png/evil")]
+    [InlineData("png\\evil")]
+    [InlineData("png/../../x")]
+    public async Task Should_Throw_When_ExtensionContainsDotOrSeparator(string extension)
     {
         var store = new InMemoryAssetStore();
 

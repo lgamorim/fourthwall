@@ -21,16 +21,23 @@ public interface IAssetStore
     /// </summary>
     /// <param name="content">The image bytes to ingest.</param>
     /// <param name="fileExtension">
-    /// The image's file extension without a leading dot, such as <c>png</c>, preserved on the
-    /// stored file so it can be served with the right type later.
+    /// The image's file extension, without a leading dot and containing no dot or path separator,
+    /// such as <c>png</c>. It is matched case-insensitively and stored lower-cased, so the name it
+    /// produces can be served with the right type later. Rejecting dots and separators keeps the
+    /// extension from widening the stored path into a traversal.
     /// </param>
     /// <param name="cancellationToken">A token that cancels the operation.</param>
     /// <returns>
     /// The story-relative path of the stored asset, such as <c>assets/&lt;hash&gt;.png</c>, to
-    /// record on the scene that references it. Ingesting identical content returns the same path.
+    /// record on the scene that references it. Ingesting identical content under an equivalent
+    /// extension returns the same path.
     /// </returns>
-    /// <exception cref="ArgumentNullException"><paramref name="content"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="fileExtension"/> is blank.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="content"/> or <paramref name="fileExtension"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="fileExtension"/> is blank, or contains a dot or a path separator.
+    /// </exception>
     /// <exception cref="OperationCanceledException">The operation was cancelled.</exception>
     Task<string> IngestAsync(Stream content, string fileExtension, CancellationToken cancellationToken = default);
 

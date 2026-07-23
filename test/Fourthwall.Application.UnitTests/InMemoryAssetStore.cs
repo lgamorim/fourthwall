@@ -20,16 +20,26 @@ internal sealed class InMemoryAssetStore : IAssetStore
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(content);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileExtension);
+        EnsureExtensionIsSafe(fileExtension);
 
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
         var bytes = buffer.ToArray();
 
         var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
-        var path = $"assets/{hash}.{fileExtension}";
+        var path = $"assets/{hash}.{fileExtension.ToLowerInvariant()}";
 
         _assets[path] = bytes;
         return path;
+    }
+
+    private static void EnsureExtensionIsSafe(string fileExtension)
+    {
+        if (fileExtension.Contains('.') || fileExtension.Contains('/') || fileExtension.Contains('\\'))
+        {
+            throw new ArgumentException(
+                "A file extension must not contain a dot or a path separator.", nameof(fileExtension));
+        }
     }
 
     public Task<bool> ExistsAsync(string relativePath, CancellationToken cancellationToken = default)
