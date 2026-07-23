@@ -13,6 +13,17 @@
     <PackageVersion Include="Graph1x" Version="1.0.1" />
   </ItemGroup>
 
+  <!-- Persistence stack (Phase 2), Infrastructure-only: SqlBound + Dapper over
+       Microsoft.Data.Sqlite, behind IStoryRepository / IAssetStore. First
+       referenced in M7; declared here now as the Phase 2 dependency baseline.
+       These versions are inert until a project references them. SqlBound is a
+       prerelease (design §3 pins 1.0.0-rc.1). -->
+  <ItemGroup>
+    <PackageVersion Include="SqlBound" Version="1.0.0-rc.1" />
+    <PackageVersion Include="Dapper" Version="2.1.79" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+  </ItemGroup>
+
   <!-- Test stack. -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
