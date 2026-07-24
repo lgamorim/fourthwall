@@ -54,7 +54,16 @@ dotnet_naming_symbols.constants.applicable_kinds = field
 dotnet_naming_symbols.constants.required_modifiers = const
 
 dotnet_naming_symbols.static_readonly_fields.applicable_kinds = field
-dotnet_naming_symbols.static_readonly_fields.applicable_modifiers = static, readonly
+dotnet_naming_symbols.static_readonly_fields.required_modifiers = static, readonly
+
+# Intersection of private_fields and static_readonly_fields. Both match a
+# 'private static readonly' field; this strictly-more-specific symbol (it
+# restricts BOTH accessibility and modifiers) wins under Roslyn's specificity
+# ordering, so such fields resolve to PascalCase (constant-like) per
+# .claude/rules/coding-standards.md rather than the _camelCase private default.
+dotnet_naming_symbols.private_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_fields.applicable_accessibilities = private, private_protected
+dotnet_naming_symbols.private_static_readonly_fields.required_modifiers = static, readonly
 
 dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private, private_protected
@@ -69,7 +78,9 @@ dotnet_naming_style.interface_style.required_prefix = I
 dotnet_naming_style.underscore_camel.capitalization = camel_case
 dotnet_naming_style.underscore_camel.required_prefix = _
 
-# Rules (most-specific first)
+# Rules (most-specific first). Roslyn ignores declaration order and applies the
+# most specific matching rule (by accessibility + modifiers + kind); listing
+# them most-specific first keeps the file readable and matches that resolution.
 dotnet_naming_rule.interfaces_i_prefixed.symbols = interfaces
 dotnet_naming_rule.interfaces_i_prefixed.style = interface_style
 dotnet_naming_rule.interfaces_i_prefixed.severity = warning
@@ -85,6 +96,10 @@ dotnet_naming_rule.non_field_members_pascal.severity = warning
 dotnet_naming_rule.constants_pascal.symbols = constants
 dotnet_naming_rule.constants_pascal.style = pascal_case
 dotnet_naming_rule.constants_pascal.severity = warning
+
+dotnet_naming_rule.private_static_readonly_pascal.symbols = private_static_readonly_fields
+dotnet_naming_rule.private_static_readonly_pascal.style = pascal_case
+dotnet_naming_rule.private_static_readonly_pascal.severity = warning
 
 dotnet_naming_rule.static_readonly_pascal.symbols = static_readonly_fields
 dotnet_naming_rule.static_readonly_pascal.style = pascal_case

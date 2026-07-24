@@ -20,6 +20,8 @@
        prerelease (design §3 pins 1.0.0-rc.1). -->
   <ItemGroup>
     <PackageVersion Include="SqlBound" Version="1.0.0-rc.1" />
+    <PackageVersion Include="SqlBound.Migrations" Version="1.0.0-rc.1" />
+    <PackageVersion Include="SqlBound.Sqlite" Version="1.0.0-rc.1" />
     <PackageVersion Include="Dapper" Version="2.1.79" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
   </ItemGroup>

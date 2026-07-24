@@ -2,10 +2,21 @@
 
   <ItemGroup>
     <PackageReference Include="Graph1x" />
+    <PackageReference Include="SqlBound.Migrations" />
+    <PackageReference Include="SqlBound.Sqlite" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Fourthwall.Application\Fourthwall.Application.csproj" />
+  </ItemGroup>
+
+  <!-- SQL-file migrations are read from a directory at runtime by SqlBound's
+       MigrationDirectory.Load. Copy them beside the assembly (and into every
+       dependent's output) so StoryDatabaseMigrator can resolve them via
+       AppContext.BaseDirectory. -->
+  <ItemGroup>
+    <Content Include="Migrations\*.sql" CopyToOutputDirectory="PreserveNewest" Pack="false" />
   </ItemGroup>
 
 </Project>
