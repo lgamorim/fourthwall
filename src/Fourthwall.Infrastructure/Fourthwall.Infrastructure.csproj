@@ -16,7 +16,7 @@
        dependent's output) so StoryDatabaseMigrator can resolve them via
        AppContext.BaseDirectory. -->
   <ItemGroup>
-    <Content Include="Migrations\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Migrations\*.sql" CopyToOutputDirectory="PreserveNewest" Pack="false" />
   </ItemGroup>
 
 </Project>

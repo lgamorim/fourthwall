@@ -120,6 +120,54 @@ public sealed class StoryDatabaseMigratorTests : IDisposable
         Assert.DoesNotContain("editor_scene_layout", tables);
     }
 
+    [Fact]
+    public async Task Should_AllowCyclicFollowUps_When_WrittenInOneTransaction()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var connection = await OpenAsync(cancellationToken);
+        await new StoryDatabaseMigrator().MigrateAsync(connection, cancellationToken);
+
+        // Two Linear scenes whose follow-ups point at each other — a legal cycle (design doc 4.2).
+        // Immediate foreign keys have no valid insert order here; the deferred declaration lets both
+        // rows be written before either target exists, with the check running at commit.
+        await using (var transaction = await connection.BeginTransactionAsync(cancellationToken))
+        {
+            await InsertLinearSceneAsync(connection, transaction, "a", followUp: "b", cancellationToken);
+            await InsertLinearSceneAsync(connection, transaction, "b", followUp: "a", cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM scenes;";
+        Assert.Equal(2, Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)));
+    }
+
+    [Fact]
+    public void Should_Throw_When_TimeProviderIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new StoryDatabaseMigrator(null!));
+    }
+
+    [Fact]
+    public async Task Should_Throw_When_ConnectionIsNull()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => new StoryDatabaseMigrator().MigrateAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_Throw_When_MigrateIsAlreadyCancelled()
+    {
+        await using var connection = await OpenAsync(TestContext.Current.CancellationToken);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        // The async ADO.NET path cancels via Task.FromCanceled, which surfaces the
+        // OperationCanceledException-derived TaskCanceledException.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => new StoryDatabaseMigrator().MigrateAsync(connection, cancelled.Token));
+    }
+
     public void Dispose()
     {
         // Release the pooled file handle so the temp database file can be deleted on Windows.
@@ -139,6 +187,30 @@ public sealed class StoryDatabaseMigratorTests : IDisposable
 
     private static string DownScriptPath() =>
         Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "Migrations"), "*.down.sql").Single();
+
+    private static async Task InsertLinearSceneAsync(
+        DbConnection connection,
+        DbTransaction transaction,
+        string id,
+        string followUp,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "INSERT INTO scenes (id, kind, text, follow_up_scene_id) VALUES (@id, 'Linear', '', @followUp);";
+        AddParameter(command, "@id", id);
+        AddParameter(command, "@followUp", followUp);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static void AddParameter(DbCommand command, string name, string value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value;
+        command.Parameters.Add(parameter);
+    }
 
     private static async Task<int> LedgerCountAsync(DbConnection connection, CancellationToken cancellationToken)
     {
