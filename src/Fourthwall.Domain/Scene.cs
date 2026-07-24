@@ -5,14 +5,15 @@ namespace Fourthwall.Domain;
 /// outgoing transitions permitted by its <see cref="SceneKind"/>.
 /// </summary>
 /// <remarks>
-/// Scenes are normally created through <see cref="Story.AddScene"/>, which registers them with
-/// their story. Transitions are mutated only by the owning <see cref="Story"/>, which is the only
-/// place referential integrity between scenes can be enforced.
+/// Scenes are normally created through <see cref="Story.AddScene(SceneKind, string, EndingOutcome?)"/>,
+/// which registers them with their story. Transitions are mutated only by the owning
+/// <see cref="Story"/>, which is the only place referential integrity between scenes can be enforced.
 /// <para>
 /// The constructor stays public even though a directly constructed scene cannot join a story.
 /// Making it internal would leave the identifier guard below unreachable, because
-/// <see cref="Story.AddScene"/> always supplies a freshly minted identifier — trading an unused
-/// construction path for untestable code, and costing this type its independent tests.
+/// <see cref="Story.AddScene(SceneKind, string, EndingOutcome?)"/> always supplies a freshly minted
+/// identifier — trading an unused construction path for untestable code, and costing this type its
+/// independent tests.
 /// </para>
 /// <para>
 /// This type enforces a scene's <em>shape</em> — an ending carries an outcome and has no
