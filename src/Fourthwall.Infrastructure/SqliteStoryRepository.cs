@@ -41,6 +41,13 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
         await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         await DeleteChoicesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
+
+        // NOTE (tracked follow-up): DELETE FROM scenes fires editor_scene_layout's immediate
+        // ON DELETE CASCADE, so any stored canvas positions are dropped here — cascade actions run
+        // at statement time, and deferral only postpones constraint *checks*, not cascades — even
+        // though the scenes are re-inserted with the same ids before commit. This is harmless while
+        // nothing writes editor_scene_layout, but once the editor persists layout, this
+        // wipe-and-reinsert must become a diff/upsert (or preserve and restore the layout rows).
         await DeleteScenesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
 
         foreach (var scene in story.Scenes)
@@ -87,15 +94,21 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
     /// <inheritdoc/>
     public async Task<Story?> LoadAsync(CancellationToken cancellationToken = default)
     {
-        var storyRows = await ReadStoryAsync(_connection, cancellationToken).ConfigureAwait(false);
+        // A single read transaction gives the three selects one consistent snapshot, so a writer on
+        // another connection can't commit a new scene between them and leave the choice or follow-up
+        // replay pointing at a scene the first read never saw. The transaction is read-only; letting
+        // it dispose rolls it back and releases the shared lock.
+        await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        var storyRows = await ReadStoryAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
         if (storyRows.Count == 0)
         {
             return null;
         }
 
         var storyRow = storyRows[0];
-        var sceneRows = await ReadScenesAsync(_connection, cancellationToken).ConfigureAwait(false);
-        var choiceRows = await ReadChoicesAsync(_connection, cancellationToken).ConfigureAwait(false);
+        var sceneRows = await ReadScenesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
+        var choiceRows = await ReadChoicesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
 
         var story = new Story(storyRow.Title);
 
@@ -201,20 +214,20 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
 
     [SqlQuery("SELECT title AS Title, start_scene_id AS StartSceneId FROM stories WHERE id = 1")]
     private static partial Task<IReadOnlyList<StoryRow>> ReadStoryAsync(
-        DbConnection connection, CancellationToken cancellationToken);
+        DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken);
 
     [SqlQuery(
         "SELECT id AS Id, kind AS Kind, text AS Text, image_path AS ImagePath, " +
         "follow_up_scene_id AS FollowUpSceneId, outcome_kind AS OutcomeKind, outcome_label AS OutcomeLabel " +
         "FROM scenes")]
     private static partial Task<IReadOnlyList<SceneRow>> ReadScenesAsync(
-        DbConnection connection, CancellationToken cancellationToken);
+        DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken);
 
     [SqlQuery(
         "SELECT scene_id AS SceneId, label AS Label, target_scene_id AS TargetSceneId " +
         "FROM choices ORDER BY scene_id, order_index")]
     private static partial Task<IReadOnlyList<ChoiceRow>> ReadChoicesAsync(
-        DbConnection connection, CancellationToken cancellationToken);
+        DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken);
 }
 
 /// <summary>The persisted <c>stories</c> row.</summary>
