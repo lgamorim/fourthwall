@@ -65,13 +65,18 @@ public sealed class FileSystemAssetStore : IAssetStore
 
             var fileName = $"{hash}.{fileExtension.ToLowerInvariant()}";
             var finalPath = Path.Combine(_assetsFolder, fileName);
-            if (File.Exists(finalPath))
-            {
-                File.Delete(tempPath);
-            }
-            else
+
+            // Content under a hashed name is identical by construction, so an existing destination —
+            // whether from an earlier ingest or one that raced this call between a check and the move
+            // — is a successful dedupe, not a conflict. Attempt the move and treat that collision as
+            // success, discarding the incoming temp; this stays idempotent under concurrency.
+            try
             {
                 File.Move(tempPath, finalPath);
+            }
+            catch (IOException) when (File.Exists(finalPath))
+            {
+                File.Delete(tempPath);
             }
 
             return $"{AssetsFolderName}/{fileName}";
@@ -130,6 +135,11 @@ public sealed class FileSystemAssetStore : IAssetStore
         var combined = Path.GetFullPath(Path.Combine(_storyFolder, relativePath.Replace('/', Path.DirectorySeparatorChar)));
         var root = _storyFolder + Path.DirectorySeparatorChar;
 
+        // Ordinal (case-sensitive) is deliberate, even on a case-insensitive filesystem: paths this
+        // store produces always match the folder's casing exactly, so legitimate lookups resolve,
+        // while a contrived escape-and-return with altered casing fails the check and is reported
+        // absent. This is a security check that must fail closed — do not relax it to
+        // OrdinalIgnoreCase.
         if (combined.StartsWith(root, StringComparison.Ordinal))
         {
             fullPath = combined;

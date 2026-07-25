@@ -72,6 +72,39 @@ public sealed class StoryPackageTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_ReleaseDatabaseFile_When_Disposed()
+    {
+        // "Disposing the package closes the story" must be literally true: the folder has to be
+        // deletable (and movable/zippable) afterwards, with no leftover pooled connection handle.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var folder = NewStoryFolder();
+        await using (await StoryPackage.CreateAsync(folder, cancellationToken))
+        {
+        }
+
+        // Deliberately no SqliteConnection.ClearAllPools() — DisposeAsync alone must free the handle.
+        var exception = Record.Exception(() => Directory.Delete(folder, recursive: true));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task Should_Throw_When_OpenIsAlreadyCancelled()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var folder = NewStoryFolder();
+        await using (await StoryPackage.CreateAsync(folder, cancellationToken))
+        {
+        }
+
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => StoryPackage.OpenAsync(folder, cancelled.Token));
+    }
+
+    [Fact]
     public async Task Should_Throw_When_CreatingWhereStoryAlreadyExists()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

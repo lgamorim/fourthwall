@@ -114,6 +114,20 @@ public sealed class FileSystemAssetStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_NotListTempArtifacts_When_InterruptedIngestLeftOne()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var ingested = await _store.IngestAsync(StreamOf(Encoding.UTF8.GetBytes("real")), "png", cancellationToken);
+        // A crash mid-ingest could leave a .tmp behind; it must never surface as an asset.
+        await File.WriteAllTextAsync(
+            Path.Combine(_storyFolder, "assets", $"{Guid.NewGuid():N}.tmp"), "partial", cancellationToken);
+
+        var listed = await _store.ListAsync(cancellationToken);
+
+        Assert.Equal([ingested], listed);
+    }
+
+    [Fact]
     public async Task Should_Throw_When_ContentIsNull()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(

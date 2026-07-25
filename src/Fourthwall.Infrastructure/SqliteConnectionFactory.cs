@@ -8,9 +8,12 @@ namespace Fourthwall.Infrastructure;
 /// </summary>
 /// <remarks>
 /// This is the one place a connection is created, so the connection string is configured
-/// consistently: <c>Foreign Keys=True</c> makes the provider enforce declared foreign keys on
-/// every open — including pooled reopens — which SQLite otherwise leaves off per connection. The
-/// returned connection is open and owned by the caller, who disposes it.
+/// consistently: <c>Foreign Keys=True</c> makes the provider enforce declared foreign keys on every
+/// open, which SQLite otherwise leaves off per connection; <c>Pooling=False</c> ensures disposing a
+/// connection actually releases the database file — a pooled connection keeps its handle open, which
+/// would stop a closed story's folder from being deleted, moved, or zipped, and pooling buys a
+/// single-story local editor nothing. The returned connection is open and owned by the caller, who
+/// disposes it.
 /// </remarks>
 public sealed class SqliteConnectionFactory
 {
@@ -32,6 +35,7 @@ public sealed class SqliteConnectionFactory
         {
             DataSource = databasePath,
             ForeignKeys = true,
+            Pooling = false,
         }.ToString();
 
         var connection = new SqliteConnection(connectionString);
