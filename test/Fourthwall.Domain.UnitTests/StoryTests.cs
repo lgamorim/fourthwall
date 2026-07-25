@@ -458,4 +458,55 @@ public class StoryTests
         // Act & Assert
         Assert.Throws<ArgumentException>(() => story.ClearFollowUp(SceneId.New()));
     }
+
+    [Fact]
+    public void Should_AddSceneWithGivenId_When_IdSupplied()
+    {
+        // The repository rebuilds a saved story with its original identifiers, so a scene
+        // must be addable with a caller-supplied id rather than a freshly minted one.
+
+        // Arrange
+        var story = new Story("Story");
+        var id = SceneId.New();
+
+        // Act
+        var scene = story.AddScene(id, SceneKind.Linear, "opening");
+
+        // Assert
+        Assert.Equal(id, scene.Id);
+        Assert.Same(scene, story.FindScene(id));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_AddingSceneWithDuplicateId()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var id = SceneId.New();
+        story.AddScene(id, SceneKind.Linear, "first");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.AddScene(id, SceneKind.Linear, "second"));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_AddingSceneWithDefaultId()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.AddScene(default, SceneKind.Linear, "scene"));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_AddingSceneWithOutcomeNotMatchingKind()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(
+            () => story.AddScene(SceneId.New(), SceneKind.Linear, "scene", EndingOutcome.Death()));
+    }
 }

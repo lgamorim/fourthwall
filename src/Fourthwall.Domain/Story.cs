@@ -68,9 +68,36 @@ public sealed class Story
     /// <exception cref="ArgumentException">
     /// <paramref name="kind"/> is not defined, or <paramref name="outcome"/> does not match the kind.
     /// </exception>
-    public Scene AddScene(SceneKind kind, string text, EndingOutcome? outcome = null)
+    public Scene AddScene(SceneKind kind, string text, EndingOutcome? outcome = null) =>
+        AddScene(SceneId.New(), kind, text, outcome);
+
+    /// <summary>
+    /// Adds a scene with a caller-supplied identifier, used to rebuild a story from persisted state.
+    /// </summary>
+    /// <param name="id">The scene's identifier; must not already belong to this story.</param>
+    /// <param name="kind">The kind of scene to create.</param>
+    /// <param name="text">The narrative text; may be empty, but not null.</param>
+    /// <param name="outcome">The ending outcome, required when <paramref name="kind"/> is
+    /// <see cref="SceneKind.Ending"/> and disallowed otherwise.</param>
+    /// <returns>The scene that was added.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="text"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is the default value or already belongs to this story,
+    /// <paramref name="kind"/> is not defined, or <paramref name="outcome"/> does not match the kind.
+    /// </exception>
+    /// <remarks>
+    /// Unlike <see cref="AddScene(SceneKind, string, EndingOutcome?)"/>, which mints a fresh
+    /// identifier for a newly authored scene, this overload preserves an existing one so a saved
+    /// story reloads with the identifiers its transitions already reference.
+    /// </remarks>
+    public Scene AddScene(SceneId id, SceneKind kind, string text, EndingOutcome? outcome = null)
     {
-        var scene = new Scene(SceneId.New(), kind, text, outcome);
+        if (_scenes.ContainsKey(id))
+        {
+            throw new ArgumentException("The story already has a scene with this identifier.", nameof(id));
+        }
+
+        var scene = new Scene(id, kind, text, outcome);
         _scenes.Add(scene.Id, scene);
         return scene;
     }

@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <PackageReference Include="Graph1x" />
+    <PackageReference Include="SqlBound" />
+    <PackageReference Include="SqlBound.Generators" PrivateAssets="all" />
     <PackageReference Include="SqlBound.Migrations" />
     <PackageReference Include="SqlBound.Sqlite" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
