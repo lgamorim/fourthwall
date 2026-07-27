@@ -9,7 +9,8 @@ namespace Fourthwall.Application;
 /// Both failure modes are computed from a single <see cref="IAssetStore.ListAsync"/> call and the
 /// story's referenced paths, as a set difference: a scene whose image is not among the stored assets
 /// is a broken reference, and a stored asset no scene references is an orphan. Each contributes at
-/// most one warning, so the report never grows with the size of the story.
+/// most one warning, so the number of violations stays bounded regardless of the story's size —
+/// though the orphan warning does list every unreferenced path in its message.
 /// </remarks>
 public sealed class AssetIntegrityValidator : IAssetIntegrityValidator
 {
@@ -23,8 +24,8 @@ public sealed class AssetIntegrityValidator : IAssetIntegrityValidator
         var existing = (await assets.ListAsync(cancellationToken).ConfigureAwait(false))
             .ToHashSet(StringComparer.Ordinal);
         var referenced = story.Scenes
-            .Where(scene => scene.ImagePath is not null)
-            .Select(scene => scene.ImagePath!)
+            .Select(scene => scene.ImagePath)
+            .OfType<string>()
             .ToHashSet(StringComparer.Ordinal);
 
         var violations = new List<ValidationViolation>();
