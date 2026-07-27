@@ -25,13 +25,14 @@ A finished story is a self-contained folder — a SQLite database plus its image
 
 ## Status
 
-`0.1.0` — **Phase 1 (Foundation and Domain) complete.** Implemented and tested so far:
+`0.2.0` — **Phase 2 (Persistence) complete.** Building on Phase 1's in-memory foundation, a story is now durable: a self-contained folder — a SQLite `story.db` plus an `assets/` directory of images — that saves and reopens with full fidelity. Implemented and tested so far:
 
 - the pure story **domain model** (`Story`, `Scene`, `Choice`, outcomes) with its invariants,
-- the **validation engine** enforcing the structural rules of the design (single start, reachability, degree-by-kind, reachable ending, no inescapable loops),
-- **reachability analysis** backed by Graph1x behind an `IStoryGraph` abstraction.
+- the **validation engine** enforcing the structural rules of the design (single start, reachability, degree-by-kind, reachable ending, no inescapable loops) plus **asset-integrity** checks (broken image references and orphan assets),
+- **reachability analysis** backed by Graph1x behind an `IStoryGraph` abstraction,
+- **persistence** — the story repository over real SQLite (sqlbound migrations and typed queries), and content-hashed image ingestion into each story's `assets/` folder.
 
-Persistence (self-contained SQLite story packages) and the Blazor editor UI — the graph canvas, inspector, and live validation panel described above — arrive in later phases. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
+The Blazor editor UI — the graph canvas, inspector, and live validation panel described above — arrives in the next phase. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
 
 ## License
 
