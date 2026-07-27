@@ -19,4 +19,10 @@ public enum ValidationRule
 
     /// <summary>Every scene should still be able to reach some ending.</summary>
     EverySceneCanReachEnding,
+
+    /// <summary>A scene's image reference should resolve to an existing asset (rule 6a).</summary>
+    BrokenImageReference,
+
+    /// <summary>Every stored asset should be referenced by some scene (rule 6b — orphan assets).</summary>
+    OrphanAsset,
 }

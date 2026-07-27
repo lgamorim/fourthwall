@@ -1,5 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Fourthwall is a locally-hosted application (the Web project is the deliverable and is not
+       packable), not a library published to nuget.org; its Infrastructure package rides the
+       first-party SqlBound release-candidate by design. So NU5104 (a stable package should not have
+       a prerelease dependency), which fires once the phase-closing version drops to a clean X.Y.0,
+       is expected here rather than a packaging bug, and stays suppressed until SqlBound ships a
+       stable release. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Graph1x" />
     <PackageReference Include="SqlBound" />
