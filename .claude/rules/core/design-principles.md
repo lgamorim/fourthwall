@@ -1,4 +1,4 @@
-﻿# Design Principles
+# Design Principles
 
 - Always apply well-established object-oriented design practices: favor composition over inheritance, encapsulate invariants inside domain types, keep classes small and cohesive, and depend on abstractions at layer boundaries.
 - Adhere to SOLID to keep the code adaptive to change:
