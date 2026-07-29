@@ -10,11 +10,11 @@ The authoritative design is [docs/design/0001-architecture-and-roadmap.md](docs/
 
 ## Current state
 
-Pre-`0.1.0`: the design doc exists; **no solution or code has been scaffolded yet**. Phase 1 (foundation and domain) starts with repository scaffolding — `.slnx` at the root, `Directory.Build.props`, `.editorconfig`, projects per the layout in design doc §9.
+`0.2.0` — **Phase 2 (Persistence) complete** (milestones M1–M10; tags `v0.1.0`, `v0.2.0`). The solution is scaffolded per design doc §9 (`Fourthwall.slnx` and `Directory.Build.props` at the root, Domain/Application/Infrastructure/Web projects under `src/`, unit and integration tests under `test/`). The domain model, validation engine, Graph1x-backed reachability, and SQLite persistence (repository, migrations, asset store) are implemented and tested — a story saves and reopens with full fidelity. Next up: **Phase 3 — Web Shell and Form-Based Editing** (`0.3.x`), starting the Blazor UI. See the README's Status section and design doc §6 for detail.
 
 ## Commands
 
-Once the solution is scaffolded, the standard loop is:
+The standard loop is:
 
 ```
 dotnet build                                   # zero warnings required (TreatWarningsAsErrors)
