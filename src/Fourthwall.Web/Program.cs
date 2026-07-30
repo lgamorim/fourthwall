@@ -7,7 +7,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddFourthwall();
+// Recently opened stories are editor state, not story data, so they live outside every story
+// folder — under the user's application data rather than anywhere the tool ships from.
+var recentStoriesPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+    "Fourthwall",
+    "recent-stories.json");
+
+builder.Services.AddFourthwall(recentStoriesPath);
 
 var app = builder.Build();
 

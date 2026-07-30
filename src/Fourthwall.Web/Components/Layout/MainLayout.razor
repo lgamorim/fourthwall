@@ -2,6 +2,12 @@
 
 <header class="app-header">
     <span class="app-name">Fourthwall</span>
+
+    @if (Workspace.Current is not null)
+    {
+        <span class="story-title">@Workspace.Current.Title</span>
+        <button id="close-story" class="app-header-action" @onclick="CloseAsync">Close story</button>
+    }
 </header>
 
 <div class="app-shell">
