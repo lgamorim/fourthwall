@@ -15,6 +15,19 @@ public class FourthwallServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void Should_ReturnSameCollection_When_FourthwallIsAdded()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        var result = services.AddFourthwall();
+
+        // Assert — the documented contract is that calls can be chained.
+        Assert.Same(services, result);
+    }
+
+    [Fact]
     public void Should_ResolveStoryGraphFactory_When_FourthwallIsAdded()
     {
         // Arrange

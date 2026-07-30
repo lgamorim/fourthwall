@@ -5,7 +5,9 @@
     --app-header-height: 3rem;
     --app-dock-width: 22rem;
     --app-rule: #d4d4d8;
-    --app-header-bg: #1f2933;
+    /* One ink: body text and the header block share it by intent. */
+    --app-ink: #1f2933;
+    --app-header-bg: var(--app-ink);
     --app-header-fg: #f4f4f5;
     --app-surface: #ffffff;
     --app-dock-bg: #fafafa;
@@ -19,7 +21,7 @@ html, body {
     height: 100%;
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    color: #1f2933;
+    color: var(--app-ink);
     background: var(--app-surface);
 }
 
