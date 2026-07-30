@@ -1,10 +1,13 @@
 using Fourthwall.Web.Components;
+using Fourthwall.Web.Composition;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddFourthwall();
 
 var app = builder.Build();
 

@@ -1,6 +1,17 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<header class="app-header">
+    <span class="app-name">Fourthwall</span>
+</header>
+
+<div class="app-shell">
+    <main class="app-main">
+        @Body
+    </main>
+
+    @* The dock holds the scene inspector (M13) and the validation panel (M16). *@
+    <aside class="app-dock" aria-label="Inspector"></aside>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

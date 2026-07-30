@@ -20,10 +20,10 @@
 
   <!-- Package version for `dotnet pack`. Prerelease suffix during a phase's
        active development; the phase-closing commit drops it to the clean X.Y.0.
-       Phase 2 (Persistence) is complete: this commit closes it at 0.2.0 and is
-       tagged v0.2.0. The next phase starts a new prerelease line (0.3.0-preview.1). -->
+       Phase 3 (Web Shell and Form-Based Editing) is under way: prerelease line
+       for 0.3.x. -->
   <PropertyGroup>
-    <Version>0.2.0</Version>
+    <Version>0.3.0-preview.1</Version>
   </PropertyGroup>
 
 </Project>
