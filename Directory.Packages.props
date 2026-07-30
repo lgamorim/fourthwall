@@ -35,4 +35,13 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 
+  <!-- Component test stack (Phase 3), Web.UnitTests-only: bUnit renders Blazor
+       components in-process so inspector and validation-panel behaviour is
+       testable without a browser (design §7). bUnit 2.x consolidated the v1
+       bunit.core / bunit.web / bunit.xunit split into this single package, so
+       there is no framework-specific companion to reference for xunit v3. -->
+  <ItemGroup>
+    <PackageVersion Include="bunit" Version="2.8.6" />
+  </ItemGroup>
+
 </Project>
