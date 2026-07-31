@@ -1,0 +1,40 @@
+<h2>Scene</h2>
+
+@if (_error is not null)
+{
+    <p class="inspector-error" role="alert">@_error</p>
+}
+
+<label for="inspector-kind">Kind</label>
+<select id="inspector-kind" @bind="_kind" @bind:after="OnKindSelectedAsync">
+    @foreach (var kind in Enum.GetValues<SceneKind>())
+    {
+        <option value="@kind">@kind</option>
+    }
+</select>
+
+@if (_pendingKindChange)
+{
+    <div class="inspector-kind-prompt" role="alert">
+        <p>Changing the kind discards this scene's outgoing transitions.</p>
+        <button class="inspector-kind-confirm" @onclick="ApplyKindAsync">Change kind and discard</button>
+        <button class="inspector-kind-cancel" @onclick="CancelKindChange">Keep @Scene.Kind</button>
+    </div>
+}
+
+@if (_kind == SceneKind.Ending)
+{
+    <label for="inspector-outcome">Outcome</label>
+    <select id="inspector-outcome" @bind="_outcome" @bind:after="OnOutcomeChangedAsync">
+        @foreach (var outcome in Enum.GetValues<OutcomeKind>())
+        {
+            <option value="@outcome">@outcome</option>
+        }
+    </select>
+
+    <label for="inspector-outcome-label">Outcome label</label>
+    <input id="inspector-outcome-label" @bind="_outcomeLabel" @bind:after="OnOutcomeChangedAsync" />
+}
+
+<label for="inspector-text">Text</label>
+<textarea id="inspector-text" rows="8" @bind="_text" @bind:after="OnTextChangedAsync"></textarea>

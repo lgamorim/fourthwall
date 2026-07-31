@@ -21,6 +21,9 @@ public partial class Home : IDisposable
     [Inject]
     private IRecentStories Recent { get; set; } = default!;
 
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
     public void Dispose()
     {
         Workspace.Changed -= OnWorkspaceChanged;
@@ -34,11 +37,6 @@ public partial class Home : IDisposable
         Workspace.Changed += OnWorkspaceChanged;
         return RefreshRecentAsync();
     }
-
-    // Everything the creator can get wrong about a folder path arrives as one of these, and all of
-    // them belong on the page rather than in the error boundary.
-    private static bool IsUserFacing(Exception exception) =>
-        exception is InvalidOperationException or IOException or UnauthorizedAccessException;
 
     private async Task CreateAsync()
     {
@@ -62,8 +60,9 @@ public partial class Home : IDisposable
             await RememberAsync(_createFolder, story.Title);
             _createFolder = string.Empty;
             _createTitle = string.Empty;
+            Navigation.NavigateTo("/story");
         }
-        catch (Exception exception) when (IsUserFacing(exception))
+        catch (Exception exception) when (UserFacingFailures.Includes(exception))
         {
             _error = exception.Message;
         }
@@ -107,9 +106,10 @@ public partial class Home : IDisposable
         {
             var story = await Workspace.OpenAsync(folderPath);
             await RememberAsync(folderPath, story.Title);
+            Navigation.NavigateTo("/story");
             return true;
         }
-        catch (Exception exception) when (IsUserFacing(exception))
+        catch (Exception exception) when (UserFacingFailures.Includes(exception))
         {
             _error = exception.Message;
             return false;

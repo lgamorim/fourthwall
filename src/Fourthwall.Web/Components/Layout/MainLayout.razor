@@ -15,8 +15,11 @@
         @Body
     </main>
 
-    @* The dock holds the scene inspector (M13) and the validation panel (M16). *@
-    <aside class="app-dock" aria-label="Inspector"></aside>
+    @* Pages fill the dock through this outlet: the scene inspector now, the validation panel in
+       M16. *@
+    <aside class="app-dock" aria-label="Inspector">
+        <SectionOutlet SectionId="LayoutSections.Dock" />
+    </aside>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>

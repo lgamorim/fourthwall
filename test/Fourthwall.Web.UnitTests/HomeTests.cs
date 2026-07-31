@@ -1,3 +1,5 @@
+using Bunit.TestDoubles;
+
 using Fourthwall.Application;
 using Fourthwall.Domain;
 using Fourthwall.Web.Components.Pages;
@@ -16,6 +18,8 @@ public class HomeTests : BunitContext
         Services.AddSingleton<IStoryWorkspace>(_workspace);
         Services.AddSingleton<IRecentStories>(_recent);
     }
+
+    private BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
 
     [Fact]
     public void Should_CreateAndOpenTheStory_When_CreateIsSubmitted()
@@ -170,6 +174,50 @@ public class HomeTests : BunitContext
         // Assert
         Assert.Empty(await _recent.ListAsync(cancellationToken));
         Assert.Empty(cut.FindAll(".recent-open"));
+    }
+
+    [Fact]
+    public void Should_OpenTheEditor_When_AStoryIsCreated()
+    {
+        // Arrange
+        var cut = Render<Home>();
+        cut.Find("#create-folder").Change(@"C:\stories\wreck");
+        cut.Find("#create-title").Change("The Wreck");
+
+        // Act
+        cut.Find("#create-submit").Click();
+
+        // Assert
+        Assert.Equal("/story", Assert.Single(Navigation.History).Uri);
+    }
+
+    [Fact]
+    public void Should_OpenTheEditor_When_AStoryIsOpened()
+    {
+        // Arrange
+        _workspace.Stories[@"C:\stories\wreck"] = new Story("The Wreck");
+        var cut = Render<Home>();
+        cut.Find("#open-folder").Change(@"C:\stories\wreck");
+
+        // Act
+        cut.Find("#open-submit").Click();
+
+        // Assert
+        Assert.Equal("/story", Assert.Single(Navigation.History).Uri);
+    }
+
+    [Fact]
+    public void Should_StayOnThePicker_When_OpeningFails()
+    {
+        // Arrange
+        var cut = Render<Home>();
+        cut.Find("#open-folder").Change(@"C:\stories\missing");
+
+        // Act
+        cut.Find("#open-submit").Click();
+
+        // Assert
+        Assert.Empty(Navigation.History);
     }
 
     [Fact]
