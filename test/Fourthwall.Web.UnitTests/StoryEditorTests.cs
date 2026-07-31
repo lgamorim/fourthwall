@@ -130,6 +130,23 @@ public class StoryEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_NotCrash_When_TheStoryClosesBeforeARenameCommits()
+    {
+        // Arrange — the browser can deliver a commit for a render that is already stale: the header
+        // in this tab, or a second tab, can close the story first.
+        await OpenStoryAsync();
+        var cut = RenderEditor();
+        var title = cut.Find("#story-title");
+        await _workspace.CloseAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        var exception = Record.Exception(() => title.Change("The Wreck of the Marianne"));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public async Task Should_ReturnToThePicker_When_TheStoryIsClosed()
     {
         // Arrange

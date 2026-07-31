@@ -31,6 +31,7 @@ else
                 @if (_pendingDelete == scene.Id)
                 {
                     <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">Confirm delete</button>
+                    <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
                 }
                 else
                 {

@@ -247,6 +247,37 @@ public class SceneListTests : BunitContext
     }
 
     [Fact]
+    public void Should_KeepTheScene_When_DeleteIsCancelled()
+    {
+        // Arrange — the kind-change prompt offers a way out, and so must this one.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+        cut.Find(".scene-delete").Click();
+
+        // Act
+        cut.Find(".scene-delete-cancel").Click();
+
+        // Assert
+        Assert.Single(story.Scenes);
+        Assert.Empty(cut.FindAll(".scene-delete-confirm"));
+    }
+
+    [Fact]
+    public void Should_NotSplitASurrogatePair_When_TheSnippetIsTruncated()
+    {
+        // Arrange — truncating mid-pair leaves half an emoji, which renders as a broken glyph.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, new string('a', 59) + "\U0001F600 and more text after it");
+
+        // Act
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+
+        // Assert
+        Assert.Equal(new string('a', 59) + "…", cut.Find(".scene-snippet").TextContent.Trim());
+    }
+
+    [Fact]
     public void Should_ClearTheSelection_When_TheSelectedSceneIsDeleted()
     {
         // Arrange

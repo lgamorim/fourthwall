@@ -14,6 +14,8 @@ public partial class SceneInspector
     private string? _error;
     private bool _pendingKindChange;
 
+    // default!: required parameters are assigned by the framework before any member of the
+    // component runs, so this is never observed null.
     [Parameter]
     [EditorRequired]
     public Scene Scene { get; set; } = default!;
@@ -115,17 +117,6 @@ public partial class SceneInspector
         await OnChanged.InvokeAsync();
     }
 
-    private bool TryBuildOutcome(out EndingOutcome outcome)
-    {
-        outcome = null!;
-
-        if (Outcomes.RequiresLabel(_outcome) && string.IsNullOrWhiteSpace(_outcomeLabel))
-        {
-            _error = "An outcome of Other needs a label.";
-            return false;
-        }
-
-        outcome = Outcomes.Build(_outcome, _outcomeLabel);
-        return true;
-    }
+    private bool TryBuildOutcome(out EndingOutcome? outcome) =>
+        Outcomes.TryBuild(_outcome, _outcomeLabel, out outcome, out _error);
 }

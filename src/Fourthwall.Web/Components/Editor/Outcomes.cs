@@ -3,35 +3,49 @@ using Fourthwall.Domain;
 namespace Fourthwall.Web.Components.Editor;
 
 /// <summary>
-/// Builds ending outcomes from the pieces an editing form collects. Shared so the create form and
-/// the inspector agree on when a label is required.
+/// Builds ending outcomes from the pieces an editing form collects.
 /// </summary>
+/// <remarks>
+/// Both the create form and the inspector build outcomes, so the rule about which kinds need a
+/// label — and the wording a creator sees when one is missing — lives here rather than in two
+/// copies that can drift apart.
+/// </remarks>
 public static class Outcomes
 {
     /// <summary>
-    /// Gets a value indicating whether the given outcome needs a label the creator must supply.
+    /// Builds an outcome from a chosen kind and the label a form collected.
     /// </summary>
     /// <param name="kind">The outcome kind.</param>
-    /// <returns><see langword="true"/> when a label is required.</returns>
-    public static bool RequiresLabel(OutcomeKind kind) => kind == OutcomeKind.Other;
-
-    /// <summary>
-    /// Builds an outcome of the given kind.
-    /// </summary>
-    /// <param name="kind">The outcome kind.</param>
-    /// <param name="label">The label; optional except when <paramref name="kind"/> requires one.</param>
-    /// <returns>The outcome.</returns>
-    /// <exception cref="ArgumentException">
-    /// <paramref name="kind"/> requires a label and <paramref name="label"/> is blank.
-    /// </exception>
-    public static EndingOutcome Build(OutcomeKind kind, string? label)
+    /// <param name="label">The label; optional except for kinds that require one.</param>
+    /// <param name="outcome">The built outcome, or <see langword="null"/> when a label is missing.</param>
+    /// <param name="error">
+    /// The message to show the creator, or <see langword="null"/> when the outcome was built.
+    /// </param>
+    /// <returns><see langword="true"/> when the outcome was built.</returns>
+    public static bool TryBuild(
+        OutcomeKind kind, string? label, out EndingOutcome? outcome, out string? error)
     {
         var trimmed = string.IsNullOrWhiteSpace(label) ? null : label.Trim();
-        return kind switch
+
+        if (RequiresLabel(kind) && trimmed is null)
+        {
+            outcome = null;
+            error = $"An outcome of {kind} needs a label.";
+            return false;
+        }
+
+        outcome = kind switch
         {
             OutcomeKind.Death => EndingOutcome.Death(trimmed),
             OutcomeKind.Victory => EndingOutcome.Victory(trimmed),
+            // trimmed is non-null here: RequiresLabel covers exactly the kinds this arm serves, and
+            // the guard above has already rejected a missing label.
             _ => EndingOutcome.Other(trimmed!),
         };
+
+        error = null;
+        return true;
     }
+
+    private static bool RequiresLabel(OutcomeKind kind) => kind == OutcomeKind.Other;
 }

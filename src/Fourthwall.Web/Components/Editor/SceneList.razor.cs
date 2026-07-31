@@ -15,6 +15,8 @@ public partial class SceneList
     private string? _createError;
     private SceneId? _pendingDelete;
 
+    // default!: required parameters are assigned by the framework before any member of the
+    // component runs, so this is never observed null.
     [Parameter]
     [EditorRequired]
     public Story Story { get; set; } = default!;
@@ -42,7 +44,15 @@ public partial class SceneList
         }
 
         var text = scene.Text.Trim();
-        return text.Length <= SnippetLength ? text : string.Concat(text.AsSpan(0, SnippetLength), "…");
+        if (text.Length <= SnippetLength)
+        {
+            return text;
+        }
+
+        // Back off a character when the cut would land inside a surrogate pair, so the snippet
+        // never ends in half an emoji.
+        var length = char.IsHighSurrogate(text[SnippetLength - 1]) ? SnippetLength - 1 : SnippetLength;
+        return string.Concat(text.AsSpan(0, length), "…");
     }
 
     // Story.Scenes comes from a dictionary and has no inherent order, so the list imposes one: the
@@ -57,6 +67,8 @@ public partial class SceneList
     private Task SelectAsync(SceneId sceneId) => SelectedSceneIdChanged.InvokeAsync(sceneId);
 
     private void AskToDelete(SceneId sceneId) => _pendingDelete = sceneId;
+
+    private void CancelDelete() => _pendingDelete = null;
 
     private async Task SetStartAsync(SceneId sceneId)
     {
@@ -85,15 +97,10 @@ public partial class SceneList
         _createError = null;
 
         EndingOutcome? outcome = null;
-        if (_createKind == SceneKind.Ending)
+        if (_createKind == SceneKind.Ending
+            && !Outcomes.TryBuild(_createOutcome, _createOutcomeLabel, out outcome, out _createError))
         {
-            if (Outcomes.RequiresLabel(_createOutcome) && string.IsNullOrWhiteSpace(_createOutcomeLabel))
-            {
-                _createError = "An outcome of Other needs a label.";
-                return;
-            }
-
-            outcome = Outcomes.Build(_createOutcome, _createOutcomeLabel);
+            return;
         }
 
         var scene = Story.AddScene(_createKind, _createText, outcome);

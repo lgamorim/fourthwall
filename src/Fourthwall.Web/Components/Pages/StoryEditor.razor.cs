@@ -48,15 +48,22 @@ public partial class StoryEditor : IDisposable
     {
         _error = null;
 
+        // The commit can arrive for a render that is already stale — the header in this tab, or a
+        // second tab sharing the workspace, may have closed the story first.
+        if (Workspace.Current is not { } story)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_title))
         {
             // Story.Rename rejects a blank title; say so rather than let it throw.
             _error = "A story needs a title.";
-            _title = Workspace.Current?.Title ?? string.Empty;
+            _title = story.Title;
             return;
         }
 
-        Workspace.Current!.Rename(_title);
+        story.Rename(_title);
         await SaveAsync();
     }
 
