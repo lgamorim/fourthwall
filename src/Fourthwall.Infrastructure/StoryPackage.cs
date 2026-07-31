@@ -74,6 +74,9 @@ public sealed class StoryPackage : IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="folderPath"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="folderPath"/> is blank.</exception>
     /// <exception cref="FileNotFoundException">No <c>story.db</c> exists at <paramref name="folderPath"/>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The <c>story.db</c> at <paramref name="folderPath"/> cannot be read as a story database.
+    /// </exception>
     /// <exception cref="OperationCanceledException">The operation was cancelled.</exception>
     public static async Task<StoryPackage> OpenAsync(
         string folderPath, CancellationToken cancellationToken = default)
@@ -87,7 +90,20 @@ public sealed class StoryPackage : IAsyncDisposable
             throw new FileNotFoundException($"No story exists at '{folderPath}'.", databasePath);
         }
 
-        return await OpenMigratedAsync(folderPath, databasePath, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await OpenMigratedAsync(folderPath, databasePath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbException exception)
+        {
+            // The file exists but is not a readable story database — truncated, corrupt, or never
+            // one to begin with. The provider only discovers that once it reads the file, and its
+            // exception must not escape this adapter (CLAUDE.md: provider types stay in
+            // Infrastructure), so it becomes a failure every caller already handles.
+            throw new InvalidOperationException(
+                $"The story at '{folderPath}' cannot be read: its database is missing or damaged.",
+                exception);
+        }
     }
 
     /// <inheritdoc/>

@@ -6,6 +6,8 @@ namespace Fourthwall.Web.Components.Layout;
 
 public partial class MainLayout : IDisposable
 {
+    // default!: the framework assigns every [Inject] property before any member of the component
+    // runs, so this is never observed null.
     [Inject]
     private IStoryWorkspace Workspace { get; set; } = default!;
 

@@ -11,12 +11,20 @@ namespace Fourthwall.Infrastructure;
 /// file under the user's application data. JSON rather than SQLite: the list is a handful of
 /// entries with no schema to evolve, and the migration machinery a database would bring costs more
 /// than it is worth here.
+/// <para>
+/// Like the workspace, this is a shared singleton, and recording is a read-modify-write over one
+/// file: every operation runs under one semaphore so two circuits cannot lose each other's updates.
+/// </para>
 /// </remarks>
 public sealed class JsonRecentStoriesStore : IRecentStories
 {
     private const int MaximumEntries = 10;
 
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
+
+    // Never disposed, and does not need to be: nothing here touches AvailableWaitHandle, so the
+    // semaphore holds no unmanaged resource.
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     private readonly string _filePath;
     private readonly TimeProvider _timeProvider;
@@ -53,8 +61,22 @@ public sealed class JsonRecentStoriesStore : IRecentStories
     /// <inheritdoc/>
     public async Task<IReadOnlyList<RecentStory>> ListAsync(CancellationToken cancellationToken = default)
     {
-        var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        return entries.Select(entry => entry.ToRecentStory()).ToList();
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
+            return entries.Select(entry => entry.ToRecentStory()).ToList();
+        }
+        catch (IOException)
+        {
+            // Listing runs as the picker initializes, with nothing above it to catch a failure. An
+            // unreadable file shows an empty list rather than breaking the page.
+            return [];
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     /// <inheritdoc/>
@@ -64,12 +86,22 @@ public sealed class JsonRecentStoriesStore : IRecentStories
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
 
-        var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        var kept = entries.Where(entry => !SameFolder(entry, folderPath));
-        var recorded = new Entry(title, folderPath, _timeProvider.GetUtcNow());
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // An IOException is deliberately not swallowed here: writing over a list we failed to
+            // read would discard it. Better to tell the creator than to silently reset.
+            var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
+            var kept = entries.Where(entry => !SameFolder(entry, folderPath));
+            var recorded = new Entry(title, folderPath, _timeProvider.GetUtcNow());
 
-        await WriteAsync([recorded, .. kept.Take(MaximumEntries - 1)], cancellationToken)
-            .ConfigureAwait(false);
+            await WriteAsync([recorded, .. kept.Take(MaximumEntries - 1)], cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     /// <inheritdoc/>
@@ -77,11 +109,19 @@ public sealed class JsonRecentStoriesStore : IRecentStories
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
 
-        var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        var kept = entries.Where(entry => !SameFolder(entry, folderPath)).ToList();
-        if (kept.Count != entries.Count)
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            await WriteAsync(kept, cancellationToken).ConfigureAwait(false);
+            var entries = await ReadAsync(cancellationToken).ConfigureAwait(false);
+            var kept = entries.Where(entry => !SameFolder(entry, folderPath)).ToList();
+            if (kept.Count != entries.Count)
+            {
+                await WriteAsync(kept, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
@@ -111,10 +151,11 @@ public sealed class JsonRecentStoriesStore : IRecentStories
                 .ConfigureAwait(false);
             return entries?.Where(IsUsable).ToList() ?? [];
         }
-        catch (Exception exception) when (exception is JsonException or IOException)
+        catch (JsonException)
         {
-            // The list is a convenience, not story data: a damaged or unreadable file starts over
-            // rather than stopping the creator from opening anything.
+            // Damaged content is unrecoverable and starts over. An IOException is different — the
+            // file may be intact and momentarily unreachable — so it is left to the caller, which
+            // knows whether it is about to overwrite what it could not read.
             return [];
         }
     }

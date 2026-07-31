@@ -114,6 +114,21 @@ public sealed class JsonRecentStoriesStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_KeepEveryStory_When_RecordedConcurrently()
+    {
+        // The store is a shared singleton, so two circuits can record at once. Recording is a
+        // read-modify-write: unsynchronized, one update overwrites the other.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var store = NewStore();
+
+        await Task.WhenAll(Enumerable.Range(1, 5).Select(i =>
+            store.RecordAsync($@"C:\stories\{i}", $"Story {i}", cancellationToken)));
+
+        var recent = await store.ListAsync(cancellationToken);
+        Assert.Equal(5, recent.Count);
+    }
+
+    [Fact]
     public async Task Should_ForgetTheStory_When_Removed()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

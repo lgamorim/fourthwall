@@ -105,6 +105,37 @@ public sealed class StoryPackageWorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_Throw_When_OpeningAnUnreadableDatabase()
+    {
+        // The picker only shows a failure it recognises; a raw provider exception would reach the
+        // error boundary instead.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var folder = NewStoryFolder();
+        Directory.CreateDirectory(folder);
+        await File.WriteAllTextAsync(Path.Combine(folder, "story.db"), "not a database", cancellationToken);
+        await using var workspace = new StoryPackageWorkspace();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => workspace.OpenAsync(folder, cancellationToken));
+
+        Assert.Null(workspace.Current);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheOpenStory_When_AnotherFailsToOpen()
+    {
+        // A failed open must leave the creator with the story they had.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var workspace = new StoryPackageWorkspace();
+        await workspace.CreateAsync(NewStoryFolder(), "The Wreck", cancellationToken);
+
+        await Assert.ThrowsAsync<FileNotFoundException>(
+            () => workspace.OpenAsync(NewStoryFolder(), cancellationToken));
+
+        Assert.Equal("The Wreck", workspace.Current!.Title);
+    }
+
+    [Fact]
     public async Task Should_ReplaceThePreviousStory_When_AnotherIsOpened()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -218,6 +249,19 @@ public sealed class StoryPackageWorkspaceTests : IDisposable
         await workspace.DisposeAsync();
 
         var exception = Record.Exception(() => Directory.Delete(folder, recursive: true));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task Should_DoNothing_When_DisposedTwice()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var workspace = new StoryPackageWorkspace();
+        await workspace.CreateAsync(NewStoryFolder(), "The Wreck", cancellationToken);
+        await workspace.DisposeAsync();
+
+        var exception = await Record.ExceptionAsync(async () => await workspace.DisposeAsync());
+
         Assert.Null(exception);
     }
 

@@ -13,6 +13,8 @@ public partial class Home : IDisposable
     private string _openFolder = string.Empty;
     private string? _error;
 
+    // default!: the framework assigns every [Inject] property before any member of the component
+    // runs, so these are never observed null.
     [Inject]
     private IStoryWorkspace Workspace { get; set; } = default!;
 

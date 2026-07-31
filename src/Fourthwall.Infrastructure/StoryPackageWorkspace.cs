@@ -10,12 +10,14 @@ namespace Fourthwall.Infrastructure;
 /// One story is open per application instance, not per browser tab: the tool is built for a single
 /// creator on a local machine, so two tabs are two views of the same story rather than two
 /// independent sessions. Every transition — create, open, save, close — runs under one semaphore so
-/// concurrent circuits cannot interleave a save with a reopen.
+/// concurrent circuits cannot interleave a save with a reopen. Disposal takes the same semaphore, so
+/// shutting the host down waits for a save in flight rather than closing the story underneath it.
 /// </remarks>
 public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private StoryPackage? _package;
+    private bool _disposed;
 
     /// <inheritdoc/>
     public event EventHandler? Changed;
@@ -125,7 +127,22 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await ReleaseAsync().ConfigureAwait(false);
+        if (_disposed)
+        {
+            return;
+        }
+
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await ReleaseAsync().ConfigureAwait(false);
+            _disposed = true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
         _gate.Dispose();
     }
 

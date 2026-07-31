@@ -59,6 +59,143 @@ html, body {
     background: var(--app-dock-bg);
 }
 
+.story-title {
+    margin-left: 1rem;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+.app-header-action {
+    margin-left: auto;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid rgba(244, 244, 245, 0.35);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.app-header-action:hover {
+    background: rgba(244, 244, 245, 0.12);
+}
+
+/* Story picker. */
+
+.picker-section {
+    max-width: 40rem;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--app-rule);
+}
+
+.picker-section h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+}
+
+.picker-section label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.picker-section input {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--app-rule);
+    border-radius: 0.25rem;
+    font: inherit;
+}
+
+.picker-section button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--app-rule);
+    border-radius: 0.25rem;
+    background: var(--app-dock-bg);
+    font: inherit;
+    cursor: pointer;
+}
+
+.picker-section button:hover {
+    background: #f0f0f2;
+}
+
+.picker-open {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--app-ink);
+    background: var(--app-dock-bg);
+}
+
+.picker-error {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid #b32121;
+    background: #fdf0f0;
+    color: #7a1717;
+}
+
+.picker-folder,
+.recent-folder {
+    opacity: 0.6;
+    font-size: 0.875rem;
+}
+
+.recent {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.recent-story {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--app-rule);
+}
+
+.recent-open {
+    border: none;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.recent-unavailable {
+    padding: 0 0.4rem;
+    border-radius: 0.25rem;
+    background: #fdf0f0;
+    color: #7a1717;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.recent-remove {
+    margin-left: auto;
+    border: none;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.recent-remove:hover {
+    opacity: 1;
+}
+
 h1:focus {
     outline: none;
 }
