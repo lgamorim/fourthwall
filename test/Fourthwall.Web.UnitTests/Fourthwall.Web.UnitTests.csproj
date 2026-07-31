@@ -21,6 +21,10 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Bunit" />
+    <!-- Bunit.TestContext and Xunit.TestContext collide once both namespaces are imported. The
+         alias keeps TestContext.Current.CancellationToken reading the same here as in every other
+         test project. -->
+    <Using Include="Xunit.TestContext" Alias="TestContext" />
   </ItemGroup>
 
 </Project>

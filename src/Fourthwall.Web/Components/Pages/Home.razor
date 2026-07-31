@@ -5,3 +5,52 @@
 <h1>Fourthwall</h1>
 
 <p>Design, visualize, and validate branching stories.</p>
+
+@if (Workspace.Current is not null)
+{
+    <p class="picker-open">
+        Open: <strong>@Workspace.Current.Title</strong> <span class="picker-folder">@Workspace.FolderPath</span>
+    </p>
+}
+
+@if (_error is not null)
+{
+    <p class="picker-error" role="alert">@_error</p>
+}
+
+<section class="picker-section">
+    <h2>New story</h2>
+    <label for="create-folder">Folder</label>
+    <input id="create-folder" @bind="_createFolder" placeholder="C:\stories\my-story" />
+    <label for="create-title">Title</label>
+    <input id="create-title" @bind="_createTitle" />
+    <button id="create-submit" @onclick="CreateAsync">Create story</button>
+</section>
+
+<section class="picker-section">
+    <h2>Open story</h2>
+    <label for="open-folder">Folder</label>
+    <input id="open-folder" @bind="_openFolder" placeholder="C:\stories\my-story" />
+    <button id="open-submit" @onclick="OpenAsync">Open story</button>
+</section>
+
+@if (_recent.Count > 0)
+{
+    <section class="picker-section">
+        <h2>Recent</h2>
+        <ul class="recent">
+            @foreach (var story in _recent)
+            {
+                <li class="recent-story">
+                    <button class="recent-open" @onclick="() => OpenRecentAsync(story)">@story.Title</button>
+                    <span class="recent-folder">@story.FolderPath</span>
+                    @if (_unavailable.Contains(story.FolderPath))
+                    {
+                        <span class="recent-unavailable">unavailable</span>
+                    }
+                    <button class="recent-remove" @onclick="() => ForgetAsync(story)">Remove</button>
+                </li>
+            }
+        </ul>
+    </section>
+}

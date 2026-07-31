@@ -126,6 +126,21 @@ public sealed class StoryPackageTests : IDisposable
             () => StoryPackage.OpenAsync(NewStoryFolder(), cancellationToken));
     }
 
+    [Fact]
+    public async Task Should_Throw_When_OpeningAnUnreadableDatabase()
+    {
+        // A file named story.db that is not a database passes the existence check and only fails
+        // once the provider reads it. That has to arrive as a failure callers can present, not as a
+        // provider exception escaping the adapter.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var folder = NewStoryFolder();
+        Directory.CreateDirectory(folder);
+        await File.WriteAllTextAsync(Path.Combine(folder, "story.db"), "not a database", cancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => StoryPackage.OpenAsync(folder, cancellationToken));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
