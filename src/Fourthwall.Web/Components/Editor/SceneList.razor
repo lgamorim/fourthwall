@@ -1,0 +1,82 @@
+@if (Story.Scenes.Count == 0)
+{
+    <p class="scene-empty">No scenes yet. Add the one the story opens with.</p>
+}
+else
+{
+    @if (Story.StartSceneId is null)
+    {
+        <p class="scene-no-start">No scene starts this story.</p>
+    }
+
+    <ul class="scene-rows">
+        @foreach (var scene in OrderedScenes())
+        {
+            <li class="scene-row @(scene.Id == SelectedSceneId ? "scene-row-selected" : null)"
+                data-scene-id="@scene.Id.Value">
+                <button class="scene-select" @onclick="() => SelectAsync(scene.Id)">
+                    <span class="scene-snippet">@Snippet(scene)</span>
+                    <span class="scene-kind">@scene.Kind</span>
+                </button>
+
+                @if (scene.Id == Story.StartSceneId)
+                {
+                    <span class="scene-start" title="The story starts here">start</span>
+                }
+                else
+                {
+                    <button class="scene-make-start" @onclick="() => SetStartAsync(scene.Id)">Make start</button>
+                }
+
+                @if (_pendingDelete == scene.Id)
+                {
+                    <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">Confirm delete</button>
+                    <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
+                }
+                else
+                {
+                    <button class="scene-delete" @onclick="() => AskToDelete(scene.Id)">Delete</button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+<div class="scene-create">
+    <h2>Add a scene</h2>
+
+    @if (_createError is not null)
+    {
+        <p class="scene-create-error" role="alert">@_createError</p>
+    }
+
+    <label for="scene-create-kind">Kind</label>
+    <select id="scene-create-kind" @bind="_createKind">
+        @foreach (var kind in Enum.GetValues<SceneKind>())
+        {
+            <option value="@kind">@kind</option>
+        }
+    </select>
+
+    @if (_createKind == SceneKind.Ending)
+    {
+        <label for="scene-create-outcome">Outcome</label>
+        <select id="scene-create-outcome" @bind="_createOutcome">
+            @foreach (var outcome in Enum.GetValues<OutcomeKind>())
+            {
+                <option value="@outcome">@outcome</option>
+            }
+        </select>
+
+        @if (_createOutcome == OutcomeKind.Other)
+        {
+            <label for="scene-create-outcome-label">Outcome label</label>
+            <input id="scene-create-outcome-label" @bind="_createOutcomeLabel" />
+        }
+    }
+
+    <label for="scene-create-text">Text</label>
+    <textarea id="scene-create-text" rows="3" @bind="_createText"></textarea>
+
+    <button id="scene-create-submit" @onclick="CreateAsync">Add scene</button>
+</div>

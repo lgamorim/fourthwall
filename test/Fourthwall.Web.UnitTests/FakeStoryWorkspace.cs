@@ -19,6 +19,11 @@ public sealed class FakeStoryWorkspace : IStoryWorkspace
 
     public int SaveCount { get; private set; }
 
+    /// <summary>
+    /// When set, the next save throws this instead of succeeding, and the failure is cleared.
+    /// </summary>
+    public Exception? FailNextSave { get; set; }
+
     public Task<Story> CreateAsync(
         string folderPath, string title, CancellationToken cancellationToken = default)
     {
@@ -52,6 +57,13 @@ public sealed class FakeStoryWorkspace : IStoryWorkspace
         if (Current is null)
         {
             throw new InvalidOperationException("No story is open.");
+        }
+
+        if (FailNextSave is not null)
+        {
+            var failure = FailNextSave;
+            FailNextSave = null;
+            throw failure;
         }
 
         SaveCount++;

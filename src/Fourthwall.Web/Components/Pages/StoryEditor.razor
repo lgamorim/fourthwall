@@ -1,0 +1,32 @@
+@page "/story"
+
+@if (Workspace.Current is { } story)
+{
+    <PageTitle>@story.Title — Fourthwall</PageTitle>
+
+    <h1 class="visually-hidden">@story.Title</h1>
+
+    @if (_error is not null)
+    {
+        <p class="editor-error" role="alert">@_error</p>
+    }
+
+    <label for="story-title">Story title</label>
+    <input id="story-title" class="story-title-input" @bind="_title" @bind:after="RenameAsync" />
+
+    <SceneList Story="story"
+               SelectedSceneId="_selectedSceneId"
+               SelectedSceneIdChanged="OnSceneSelected"
+               OnChanged="SaveAsync" />
+
+    <SectionContent SectionId="LayoutSections.Dock">
+        @if (SelectedScene is { } scene)
+        {
+            <SceneInspector Scene="scene" OnChanged="SaveAsync" />
+        }
+        else
+        {
+            <p class="inspector-empty">Select a scene to edit it.</p>
+        }
+    </SectionContent>
+}

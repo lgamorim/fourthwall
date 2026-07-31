@@ -1,0 +1,8 @@
+@using Fourthwall.Web.Components
+@using Fourthwall.Web.Components.Pages
+@using Microsoft.AspNetCore.Components.Sections
+
+@* Stands in for MainLayout: the editor projects its inspector into the dock outlet, which only
+   renders when an outlet with the same identity is present. *@
+<StoryEditor />
+<SectionOutlet SectionId="LayoutSections.Dock" />
