@@ -267,6 +267,23 @@ public class SceneListTests : BunitContext
     }
 
     [Fact]
+    public void Should_NotCountASelfLoop_When_TheSceneOnlyPointsAtItself()
+    {
+        // Arrange — the warning is about edges elsewhere that will vanish. A self-loop dies with
+        // the scene either way, so it is not collateral.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.WireChoice(fork.Id, "Go round again", fork.Id);
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+
+        // Act
+        cut.Find(".scene-delete").Click();
+
+        // Assert
+        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+    }
+
+    [Fact]
     public void Should_NotMentionTransitions_When_NothingPointsAtTheScene()
     {
         // Arrange — the same "only warn when there is something to lose" rule kind changes follow.

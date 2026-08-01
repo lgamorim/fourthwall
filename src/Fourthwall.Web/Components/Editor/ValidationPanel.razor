@@ -1,13 +1,19 @@
-@if (Workspace.Current is not null)
+@if (Workspace.Current is { } story)
 {
     <section class="validation">
         <h2>Validation</h2>
 
-        <button id="validate" @onclick="ValidateAsync">Validate story</button>
+        <button id="validate" disabled="@_validating" @onclick="ValidateAsync">
+            @(_validating ? "Validating…" : "Validate story")
+        </button>
 
         @if (_failure is not null)
         {
             <p class="validation-error-message" role="alert">@_failure</p>
+        }
+        else if (_validating)
+        {
+            <p class="validation-running">Checking the story…</p>
         }
         else if (_report is null)
         {
@@ -31,7 +37,9 @@
                             <ul class="validation-scenes">
                                 @foreach (var sceneId in violation.SceneIds)
                                 {
-                                    @if (Workspace.Current.FindScene(sceneId) is { } scene)
+                                    @* The story is bound once above: re-reading it here would let a
+                                       close on another circuit null it mid-render. *@
+                                    @if (story.FindScene(sceneId) is { } scene)
                                     {
                                         <li>
                                             <button class="validation-scene" @onclick="() => SelectAsync(scene.Id)">

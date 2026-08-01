@@ -9,6 +9,11 @@ public partial class ValidationPanel : IDisposable
 {
     private ValidationReport? _report;
     private string? _failure;
+    private bool _validating;
+
+    // Bumped whenever the story changes. A validation that started before the change is stale by
+    // the time it finishes, however quickly it finished.
+    private int _storyRevision;
 
     /// <summary>
     /// Raised when a creator picks one of the scenes a violation names.
@@ -45,14 +50,32 @@ public partial class ValidationPanel : IDisposable
             return;
         }
 
+        var revision = _storyRevision;
+        _validating = true;
+
         try
         {
-            _report = await Validation.ValidateAsync(story, assets);
+            var report = await Validation.ValidateAsync(story, assets);
+
+            // The story may have been edited while this ran. Installing the result now would show
+            // a report of the story as it used to be — the quiet kind of wrong this panel exists
+            // to avoid.
+            if (revision == _storyRevision)
+            {
+                _report = report;
+            }
         }
         catch (Exception exception) when (UserFacingFailures.Includes(exception))
         {
             // The asset half reads the story folder, which can be gone or unreadable.
-            _failure = exception.Message;
+            if (revision == _storyRevision)
+            {
+                _failure = exception.Message;
+            }
+        }
+        finally
+        {
+            _validating = false;
         }
     }
 
@@ -61,7 +84,9 @@ public partial class ValidationPanel : IDisposable
     private void OnWorkspaceChanged(object? sender, EventArgs e) => InvokeAsync(() =>
     {
         // The story has been edited or replaced: a report describing what it used to be would
-        // quietly mislead, so it goes rather than lingering as though it still applied.
+        // quietly mislead, so it goes rather than lingering as though it still applied. The
+        // revision bump also disowns any validation still in flight.
+        _storyRevision++;
         _report = null;
         _failure = null;
         StateHasChanged();

@@ -6,10 +6,11 @@
 
 <p>Design, visualize, and validate branching stories.</p>
 
-@if (Workspace.Current is not null)
+@* Bound once, for the same reason as the layout: another circuit can close the story mid-render. *@
+@if (Workspace.Current is { } openStory)
 {
     <p class="picker-open">
-        Open: <strong>@Workspace.Current.Title</strong> <span class="picker-folder">@Workspace.FolderPath</span>
+        Open: <strong>@openStory.Title</strong> <span class="picker-folder">@Workspace.FolderPath</span>
     </p>
 }
 

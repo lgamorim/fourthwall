@@ -37,7 +37,11 @@ public partial class SceneList
     // kind-change prompt follows.
     private string DeleteConfirmation(SceneId sceneId)
     {
-        var inbound = Story.Scenes.Sum(scene => scene.OutgoingSceneIds.Count(id => id == sceneId));
+        // Only edges from other scenes count: a self-loop dies with the scene either way, so it is
+        // not something the creator loses elsewhere.
+        var inbound = Story.Scenes
+            .Where(scene => scene.Id != sceneId)
+            .Sum(scene => scene.OutgoingSceneIds.Count(id => id == sceneId));
 
         return inbound == 0
             ? "Confirm delete"

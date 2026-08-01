@@ -158,6 +158,52 @@ public class ValidationPanelTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_DiscardTheReport_When_TheStoryChangesWhileValidating()
+    {
+        // Arrange — the gate holds validation open so the edit lands mid-flight, deterministically.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = await OpenStoryAsync();
+        var scene = story.AddScene(SceneKind.Linear, "A storm gathers");
+        _validation.Report = new ValidationReport(
+            [Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, "1 scene cannot be reached.", scene.Id)]);
+        _validation.Gate = new TaskCompletionSource();
+        var cut = Render<ValidationPanel>();
+        cut.Find("#validate").Click();
+
+        // Act — the story changes, and only then does the in-flight validation finish.
+        await _workspace.SaveAsync(cancellationToken);
+        _validation.Gate.SetResult();
+
+        // Assert — a report computed before the edit must not land afterwards.
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find(".validation-idle"));
+            Assert.Empty(cut.FindAll(".validation-violation"));
+        });
+    }
+
+    [Fact]
+    public async Task Should_SayItIsWorking_When_ValidationIsInFlight()
+    {
+        // Arrange
+        await OpenStoryAsync();
+        _validation.Gate = new TaskCompletionSource();
+        var cut = Render<ValidationPanel>();
+
+        // Act
+        cut.Find("#validate").Click();
+
+        // Assert — "Not validated yet" would be untrue while it runs, and a second click pointless.
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find("#validate").GetAttribute("disabled"));
+            Assert.Empty(cut.FindAll(".validation-idle"));
+        });
+
+        _validation.Gate.SetResult();
+    }
+
+    [Fact]
     public async Task Should_ReportTheFailure_When_ValidationThrows()
     {
         // Arrange — the asset half reads the file system and can fail like anything else.
