@@ -1,0 +1,17 @@
+@using Fourthwall.Web.Composition
+
+<h2>Image</h2>
+
+@if (_error is not null)
+{
+    <p class="scene-image-error" role="alert">@_error</p>
+}
+
+@if (Scene.ImagePath is { } imagePath)
+{
+    <img class="scene-image-preview" src="@(StoryAssetEndpoint.UrlPrefix + imagePath)" alt="Scene image" />
+    <button class="scene-image-clear" @onclick="ClearAsync">Remove image</button>
+}
+
+<label for="scene-image-file">@(Scene.ImagePath is null ? "Attach an image" : "Replace the image")</label>
+<InputFile id="scene-image-file" accept="@ImageTypes.Accept" OnChange="AttachAsync" />

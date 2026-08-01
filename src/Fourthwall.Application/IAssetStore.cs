@@ -53,6 +53,26 @@ public interface IAssetStore
     Task<bool> ExistsAsync(string relativePath, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Opens a stored asset for reading, so its bytes can be served or copied.
+    /// </summary>
+    /// <param name="relativePath">The story-relative path to open.</param>
+    /// <param name="cancellationToken">A token that cancels the operation.</param>
+    /// <returns>
+    /// A readable stream over the asset, which the caller disposes, or <see langword="null"/> when
+    /// no such asset exists.
+    /// </returns>
+    /// <remarks>
+    /// Absence is a return value rather than an exception: a scene may legitimately reference an
+    /// asset that is gone, which asset-integrity validation reports as a warning (design doc
+    /// section 4.2 rule 6). A path that resolves outside the story folder is reported the same way
+    /// as a missing one, matching <see cref="ExistsAsync"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="relativePath"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="relativePath"/> is blank.</exception>
+    /// <exception cref="OperationCanceledException">The operation was cancelled.</exception>
+    Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists the story-relative paths of every stored asset.
     /// </summary>
     /// <param name="cancellationToken">A token that cancels the operation.</param>
