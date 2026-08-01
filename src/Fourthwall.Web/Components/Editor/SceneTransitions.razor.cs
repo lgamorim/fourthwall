@@ -6,10 +6,12 @@ namespace Fourthwall.Web.Components.Editor;
 
 public partial class SceneTransitions
 {
+    private SceneId _shownScene;
     private string _addLabel = string.Empty;
     private string _addTarget = string.Empty;
     private string? _addError;
     private string? _error;
+    private int _revision;
 
     // default!: required parameters are assigned by the framework before any member of the
     // component runs, so these are never observed null.
@@ -29,12 +31,22 @@ public partial class SceneTransitions
 
     protected override void OnParametersSet()
     {
-        // The add form defaults to the first scene a creator would pick, and never carries a
-        // half-typed label across to another scene.
-        var first = Scenes.Ordered(Story).FirstOrDefault();
-        if (_addTarget.Length == 0 && first is not null)
+        if (_shownScene != Scene.Id)
         {
-            _addTarget = first.Id.Value.ToString();
+            // A different scene is being edited: a half-typed choice and a stale error belong to
+            // the scene they were typed against, not this one.
+            _shownScene = Scene.Id;
+            _addLabel = string.Empty;
+            _addError = null;
+            _error = null;
+        }
+
+        // Re-checked on every render, not just the first: the scene this form points at can be
+        // deleted while the form is showing, and the select would still hold its identifier —
+        // wiring a choice to a scene the story no longer has.
+        if (!TryParse(_addTarget, out var target) || Story.FindScene(target) is null)
+        {
+            _addTarget = Scenes.Ordered(Story).FirstOrDefault()?.Id.Value.ToString() ?? string.Empty;
         }
     }
 
@@ -65,8 +77,11 @@ public partial class SceneTransitions
 
         if (string.IsNullOrWhiteSpace(label))
         {
-            // Story.RelabelChoice rejects a blank label; say so rather than let it throw.
+            // Story.RelabelChoice rejects a blank label; say so rather than let it throw. The
+            // rendered value is unchanged, so Blazor's diff would leave the rejected text in the
+            // field — bump the revision the row is keyed by to force it back to the real label.
             _error = "A choice needs text the reader can read.";
+            _revision++;
             return;
         }
 

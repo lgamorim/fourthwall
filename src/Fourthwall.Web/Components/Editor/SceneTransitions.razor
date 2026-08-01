@@ -18,12 +18,14 @@
             var position = index;
             var choice = Scene.Choices[position];
 
-            <li class="choice-row" data-index="@position">
+            <li class="choice-row" data-index="@position" @key="(position, _revision)">
                 <input class="choice-label"
+                       aria-label="Choice @(position + 1) text"
                        value="@choice.Label"
                        @onchange="e => RelabelAsync(position, e.Value as string)" />
 
                 <select class="choice-target"
+                        aria-label="Choice @(position + 1) target"
                         value="@choice.TargetSceneId.Value"
                         @onchange="e => RetargetAsync(position, e.Value as string)">
                     @foreach (var target in Scenes.Ordered(Story))

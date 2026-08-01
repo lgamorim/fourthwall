@@ -185,6 +185,74 @@ public class SceneTransitionsTests : BunitContext
     }
 
     [Fact]
+    public void Should_ResetTheAddForm_When_ADifferentSceneIsSelected()
+    {
+        // Arrange — a half-typed choice must not follow the creator to another scene.
+        var story = new Story("The Wreck");
+        var first = story.AddScene(SceneKind.Choice, "A fork");
+        var second = story.AddScene(SceneKind.Choice, "Another fork");
+        var cut = RenderFor(story, first);
+        cut.Find("#choice-add-label").Change("Half typed");
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Scene, second));
+
+        // Assert
+        Assert.Equal(string.Empty, cut.Find("#choice-add-label").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Should_ClearTheError_When_ADifferentSceneIsSelected()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var first = story.AddScene(SceneKind.Choice, "A fork");
+        var second = story.AddScene(SceneKind.Choice, "Another fork");
+        var cut = RenderFor(story, first);
+        cut.Find("#choice-add-submit").Click();
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Scene, second));
+
+        // Assert
+        Assert.Empty(cut.FindAll(".choice-add-error"));
+    }
+
+    [Fact]
+    public void Should_NotWireADeletedScene_When_TheDefaultTargetIsRemoved()
+    {
+        // Arrange — the add form picks a default target once; deleting that scene must not leave
+        // the form pointing at it, or adding wires a choice to a scene the story no longer has.
+        var story = new Story("The Wreck");
+        var from = story.AddScene(SceneKind.Choice, "zzz a fork");
+        var target = story.AddScene(SceneKind.Linear, "aaa the first option");
+        var cut = RenderFor(story, from);
+        story.RemoveScene(target.Id);
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+        cut.Find("#choice-add-label").Change("Go on");
+
+        // Act
+        var exception = Record.Exception(() => cut.Find("#choice-add-submit").Click());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.All(from.Choices, choice => Assert.NotNull(story.FindScene(choice.TargetSceneId)));
+    }
+
+    [Fact]
+    public void Should_LabelEveryChoiceControl_When_ChoicesAreListed()
+    {
+        // Arrange & Act
+        var story = Fork(out var from, out _, out _);
+        var cut = RenderFor(story, from);
+
+        // Assert — the per-row controls are the only ones without a visible label of their own.
+        Assert.All(
+            cut.FindAll(".choice-label").Concat(cut.FindAll(".choice-target")),
+            control => Assert.False(string.IsNullOrWhiteSpace(control.GetAttribute("aria-label"))));
+    }
+
+    [Fact]
     public void Should_HintForMoreChoices_When_TheSceneHasFewerThanTwo()
     {
         // Arrange — legal while authoring; validation reports it in M16.
