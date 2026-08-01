@@ -380,6 +380,43 @@ html, body {
     color: #7a1717;
 }
 
+/* Scene image. */
+
+.scene-image-preview {
+    display: block;
+    width: 100%;
+    max-height: 14rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--app-rule);
+    border-radius: 0.25rem;
+    object-fit: contain;
+    background: var(--app-surface);
+}
+
+.scene-image-clear {
+    margin-bottom: 0.75rem;
+    border: none;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.scene-image-clear:hover {
+    opacity: 1;
+}
+
+.scene-image-error {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid #b32121;
+    background: #fdf0f0;
+    color: #7a1717;
+    font-size: 0.875rem;
+}
+
 /* Scene transitions. */
 
 .choice-rows {

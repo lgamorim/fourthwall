@@ -1,3 +1,4 @@
+using Fourthwall.Application;
 using Fourthwall.Web.Components;
 using Fourthwall.Web.Composition;
 
@@ -31,6 +32,14 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Scene images live in the open story's folder, not under wwwroot, so they are served through the
+// asset store rather than as static files.
+app.MapGet(
+    StoryAssetEndpoint.Route,
+    (IStoryWorkspace workspace, string path, CancellationToken cancellationToken) =>
+        StoryAssetEndpoint.HandleAsync(workspace, path, cancellationToken));
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -50,6 +50,15 @@ internal sealed class InMemoryAssetStore : IAssetStore
         return Task.FromResult(_assets.ContainsKey(relativePath));
     }
 
+    public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        return Task.FromResult<Stream?>(
+            _assets.TryGetValue(relativePath, out var bytes) ? new MemoryStream(bytes) : null);
+    }
+
     public Task<IReadOnlyCollection<string>> ListAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

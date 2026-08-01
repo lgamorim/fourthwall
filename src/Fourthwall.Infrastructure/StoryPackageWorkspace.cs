@@ -29,6 +29,9 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
     public string? FolderPath { get; private set; }
 
     /// <inheritdoc/>
+    public IAssetStore? Assets => _package?.Assets;
+
+    /// <inheritdoc/>
     public async Task<Story> CreateAsync(
         string folderPath, string title, CancellationToken cancellationToken = default)
     {

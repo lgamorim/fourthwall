@@ -102,6 +102,39 @@ public sealed class FileSystemAssetStore : IAssetStore
     }
 
     /// <inheritdoc/>
+    public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        // Same containment check as every other lookup here: a path that escapes the story folder
+        // is absent, not an error, and is never opened.
+        if (!TryResolve(relativePath, out var fullPath) || !File.Exists(fullPath))
+        {
+            return Task.FromResult<Stream?>(null);
+        }
+
+        try
+        {
+            return Task.FromResult<Stream?>(new FileStream(fullPath, new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                // The only consumer copies this stream to a response, so hand the OS both facts.
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            }));
+        }
+        catch (IOException)
+        {
+            // The creator owns this folder and may delete or lock a file between the check above
+            // and this open. Honour the documented contract — absent means null — rather than let
+            // a race turn into an error the caller never expects.
+            return Task.FromResult<Stream?>(null);
+        }
+    }
+
+    /// <inheritdoc/>
     public Task<IReadOnlyCollection<string>> ListAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

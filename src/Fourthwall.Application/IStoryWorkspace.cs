@@ -34,6 +34,15 @@ public interface IStoryWorkspace
     string? FolderPath { get; }
 
     /// <summary>
+    /// Gets the open story's asset store, or <see langword="null"/> when no story is open.
+    /// </summary>
+    /// <remarks>
+    /// A story's images live in its own folder, so the store only exists while a story is open —
+    /// the same lifetime as <see cref="Current"/>.
+    /// </remarks>
+    IAssetStore? Assets { get; }
+
+    /// <summary>
     /// Creates a story in a new folder and opens it, closing whatever story was open before.
     /// </summary>
     /// <param name="folderPath">The folder to create the story in.</param>

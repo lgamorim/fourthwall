@@ -5,6 +5,44 @@ namespace Fourthwall.Application.UnitTests;
 public sealed class InMemoryAssetStoreTests
 {
     [Fact]
+    public async Task Should_ReadBackTheBytes_When_AnIngestedAssetIsOpened()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var store = new InMemoryAssetStore();
+        var bytes = Encoding.UTF8.GetBytes("pixels");
+        var path = await store.IngestAsync(new MemoryStream(bytes), "png", cancellationToken);
+
+        var stream = await store.OpenReadAsync(path, cancellationToken);
+
+        Assert.NotNull(stream);
+        var read = new MemoryStream();
+        await stream.CopyToAsync(read, cancellationToken);
+        Assert.Equal(bytes, read.ToArray());
+    }
+
+    [Fact]
+    public async Task Should_ReturnNothing_When_OpeningAnAssetThatDoesNotExist()
+    {
+        var store = new InMemoryAssetStore();
+
+        var stream = await store.OpenReadAsync(
+            "assets/missing.png", TestContext.Current.CancellationToken);
+
+        Assert.Null(stream);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Should_Throw_When_OpeningABlankPath(string relativePath)
+    {
+        var store = new InMemoryAssetStore();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => store.OpenReadAsync(relativePath, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Should_ReturnStoryRelativePathCarryingExtension_When_Ingested()
     {
         var store = new InMemoryAssetStore();

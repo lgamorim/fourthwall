@@ -17,6 +17,11 @@ public sealed class FakeStoryWorkspace : IStoryWorkspace
 
     public string? FolderPath { get; private set; }
 
+    // The store only exists while a story is open, matching the real workspace.
+    public IAssetStore? Assets => Current is null ? null : AssetStore;
+
+    public FakeAssetStore AssetStore { get; } = new();
+
     public int SaveCount { get; private set; }
 
     /// <summary>

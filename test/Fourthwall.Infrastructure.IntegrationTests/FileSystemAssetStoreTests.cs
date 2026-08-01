@@ -206,6 +206,76 @@ public sealed class FileSystemAssetStoreTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Should_ReadBackTheBytes_When_AnIngestedAssetIsOpened()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var bytes = Encoding.UTF8.GetBytes("a tiny png");
+        var path = await _store.IngestAsync(StreamOf(bytes), "png", cancellationToken);
+
+        var stream = await _store.OpenReadAsync(path, cancellationToken);
+
+        Assert.NotNull(stream);
+        await using (stream)
+        {
+            var read = new MemoryStream();
+            await stream.CopyToAsync(read, cancellationToken);
+            Assert.Equal(bytes, read.ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task Should_ReturnNothing_When_OpeningAnAssetThatDoesNotExist()
+    {
+        // A broken image reference is a documented warning, not an exceptional state.
+        var stream = await _store.OpenReadAsync(
+            "assets/missing.png", TestContext.Current.CancellationToken);
+
+        Assert.Null(stream);
+    }
+
+    [Theory]
+    [InlineData("../escape.png")]
+    [InlineData("assets/../../escape.png")]
+    public async Task Should_ReturnNothing_When_OpeningAPathOutsideTheStoryFolder(string relativePath)
+    {
+        // Containment must fail closed: an escaping path is reported absent, never opened.
+        var escape = Path.Combine(Path.GetDirectoryName(_storyFolder)!, "escape.png");
+        await File.WriteAllTextAsync(escape, "secret", TestContext.Current.CancellationToken);
+
+        try
+        {
+            var stream = await _store.OpenReadAsync(relativePath, TestContext.Current.CancellationToken);
+
+            Assert.Null(stream);
+        }
+        finally
+        {
+            File.Delete(escape);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Should_Throw_When_OpeningABlankPath(string relativePath)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _store.OpenReadAsync(relativePath, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_Throw_When_OpenIsAlreadyCancelled()
+    {
+        var path = await _store.IngestAsync(
+            StreamOf([1, 2, 3]), "png", TestContext.Current.CancellationToken);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _store.OpenReadAsync(path, cancelled.Token));
+    }
+
     private static MemoryStream StreamOf(byte[] bytes) => new(bytes);
 
     private string FullPath(string relativePath) =>
