@@ -183,6 +183,36 @@ public sealed class Story
         RequireScene(sceneId, nameof(sceneId)).RemoveChoiceAt(index);
 
     /// <summary>
+    /// Changes the text of a choice, leaving where it leads and its position untouched.
+    /// </summary>
+    /// <param name="sceneId">The scene holding the choice.</param>
+    /// <param name="index">The zero-based position of the choice.</param>
+    /// <param name="label">The new reader-facing text.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="label"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="label"/> is blank, or <paramref name="sceneId"/> is not a scene in this story.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the scene's choices.</exception>
+    public void RelabelChoice(SceneId sceneId, int index, string label) =>
+        RequireScene(sceneId, nameof(sceneId)).RelabelChoiceAt(index, label);
+
+    /// <summary>
+    /// Changes where a choice leads, leaving its text and its position untouched.
+    /// </summary>
+    /// <param name="sceneId">The scene holding the choice.</param>
+    /// <param name="index">The zero-based position of the choice.</param>
+    /// <param name="targetSceneId">The scene the choice should lead to.</param>
+    /// <exception cref="ArgumentException">Either scene is not part of this story.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the scene's choices.</exception>
+    public void RetargetChoice(SceneId sceneId, int index, SceneId targetSceneId)
+    {
+        var scene = RequireScene(sceneId, nameof(sceneId));
+        _ = RequireScene(targetSceneId, nameof(targetSceneId));
+
+        scene.RetargetChoiceAt(index, targetSceneId);
+    }
+
+    /// <summary>
     /// Moves a choice to a different position, changing the order the reader sees.
     /// </summary>
     /// <param name="sceneId">The scene holding the choice.</param>

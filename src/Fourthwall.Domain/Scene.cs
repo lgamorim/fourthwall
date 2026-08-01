@@ -181,6 +181,18 @@ public sealed class Scene
         _choices.Add(choice);
     }
 
+    internal void RelabelChoiceAt(int index, string label)
+    {
+        EnsureChoiceIndexInRange(index);
+        _choices[index] = new Choice(label, _choices[index].TargetSceneId);
+    }
+
+    internal void RetargetChoiceAt(int index, SceneId targetSceneId)
+    {
+        EnsureChoiceIndexInRange(index);
+        _choices[index] = new Choice(_choices[index].Label, targetSceneId);
+    }
+
     internal void RemoveChoiceAt(int index)
     {
         EnsureChoiceIndexInRange(index);

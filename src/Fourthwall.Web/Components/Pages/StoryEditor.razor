@@ -23,6 +23,7 @@
         @if (SelectedScene is { } scene)
         {
             <SceneInspector Scene="scene" OnChanged="SaveAsync" />
+            <SceneTransitions Story="story" Scene="scene" OnChanged="SaveAsync" />
         }
         else
         {

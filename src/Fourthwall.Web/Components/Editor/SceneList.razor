@@ -10,12 +10,12 @@ else
     }
 
     <ul class="scene-rows">
-        @foreach (var scene in OrderedScenes())
+        @foreach (var scene in Scenes.Ordered(Story))
         {
             <li class="scene-row @(scene.Id == SelectedSceneId ? "scene-row-selected" : null)"
                 data-scene-id="@scene.Id.Value">
                 <button class="scene-select" @onclick="() => SelectAsync(scene.Id)">
-                    <span class="scene-snippet">@Snippet(scene)</span>
+                    <span class="scene-snippet">@Scenes.Label(scene)</span>
                     <span class="scene-kind">@scene.Kind</span>
                 </button>
 

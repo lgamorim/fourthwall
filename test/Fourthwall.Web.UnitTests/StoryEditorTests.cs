@@ -101,6 +101,43 @@ public class StoryEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_ShowTheTransitionsEditor_When_AChoiceSceneIsSelected()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var scene = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "left");
+        var cut = RenderEditor();
+
+        // Act
+        cut.FindAll(".scene-row").Single(row => row.TextContent.Contains("A fork", StringComparison.Ordinal))
+            .QuerySelector(".scene-select")!.Click();
+
+        // Assert
+        Assert.NotNull(cut.Find("#choice-add-submit"));
+    }
+
+    [Fact]
+    public async Task Should_SaveTheStory_When_AChoiceIsWired()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var scene = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "left");
+        var cut = RenderEditor();
+        cut.FindAll(".scene-row").Single(row => row.TextContent.Contains("A fork", StringComparison.Ordinal))
+            .QuerySelector(".scene-select")!.Click();
+        cut.Find("#choice-add-label").Change("Go left");
+
+        // Act
+        cut.Find("#choice-add-submit").Click();
+
+        // Assert
+        Assert.Single(scene.Choices);
+        Assert.Equal(1, _workspace.SaveCount);
+    }
+
+    [Fact]
     public async Task Should_ShowNoInspector_When_NothingIsSelected()
     {
         // Arrange
