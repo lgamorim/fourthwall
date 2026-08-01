@@ -47,8 +47,18 @@ public class MainLayoutTests : BunitContext
         // Arrange & Act
         var cut = Render<MainLayout>(parameters => parameters.Add(p => p.Body, EmptyBody));
 
-        // Assert — the dock is the surface M13's inspector and M16's validation panel occupy.
+        // Assert — the dock is the surface the inspector and the validation panel occupy.
         Assert.NotNull(cut.Find("aside"));
+    }
+
+    [Fact]
+    public void Should_LabelTheDockForEverythingItHolds_When_LayoutIsRendered()
+    {
+        // Arrange & Act
+        var cut = Render<MainLayout>(parameters => parameters.Add(p => p.Body, EmptyBody));
+
+        // Assert — "Inspector" stopped being accurate once validation shared the region.
+        Assert.Equal("Story details", cut.Find("aside").GetAttribute("aria-label"));
     }
 
     [Fact]

@@ -32,6 +32,22 @@ public partial class SceneList
     [Parameter]
     public EventCallback OnChanged { get; set; }
 
+    // Deleting a scene also strips every transition pointing at it, which is invisible from the
+    // row being deleted. Say so — but only when there is something to lose, the same rule the
+    // kind-change prompt follows.
+    private string DeleteConfirmation(SceneId sceneId)
+    {
+        // Only edges from other scenes count: a self-loop dies with the scene either way, so it is
+        // not something the creator loses elsewhere.
+        var inbound = Story.Scenes
+            .Where(scene => scene.Id != sceneId)
+            .Sum(scene => scene.OutgoingSceneIds.Count(id => id == sceneId));
+
+        return inbound == 0
+            ? "Confirm delete"
+            : $"Confirm delete and remove {inbound} link{(inbound == 1 ? string.Empty : "s")} to it";
+    }
+
     private Task SelectAsync(SceneId sceneId) => SelectedSceneIdChanged.InvokeAsync(sceneId);
 
     private void AskToDelete(SceneId sceneId) => _pendingDelete = sceneId;

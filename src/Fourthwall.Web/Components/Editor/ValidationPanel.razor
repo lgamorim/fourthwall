@@ -1,0 +1,58 @@
+@if (Workspace.Current is { } story)
+{
+    <section class="validation">
+        <h2>Validation</h2>
+
+        <button id="validate" disabled="@_validating" @onclick="ValidateAsync">
+            @(_validating ? "Validating…" : "Validate story")
+        </button>
+
+        @if (_failure is not null)
+        {
+            <p class="validation-error-message" role="alert">@_failure</p>
+        }
+        else if (_validating)
+        {
+            <p class="validation-running">Checking the story…</p>
+        }
+        else if (_report is null)
+        {
+            <p class="validation-idle">Not validated yet.</p>
+        }
+        else if (_report.Violations.Count == 0)
+        {
+            <p class="validation-clean">No problems found.</p>
+        }
+        else
+        {
+            <ul class="validation-violations">
+                @foreach (var violation in _report.Violations)
+                {
+                    <li class="validation-violation @SeverityClass(violation)">
+                        <span class="validation-rule">@violation.Rule</span>
+                        <span class="validation-message">@violation.Message</span>
+
+                        @if (violation.SceneIds.Count > 0)
+                        {
+                            <ul class="validation-scenes">
+                                @foreach (var sceneId in violation.SceneIds)
+                                {
+                                    @* The story is bound once above: re-reading it here would let a
+                                       close on another circuit null it mid-render. *@
+                                    @if (story.FindScene(sceneId) is { } scene)
+                                    {
+                                        <li>
+                                            <button class="validation-scene" @onclick="() => SelectAsync(scene.Id)">
+                                                @Scenes.Label(scene)
+                                            </button>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}

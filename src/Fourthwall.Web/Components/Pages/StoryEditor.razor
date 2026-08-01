@@ -20,6 +20,9 @@
                OnChanged="SaveAsync" />
 
     <SectionContent SectionId="LayoutSections.Dock">
+        @* Story-level, so it sits above the detail of whichever scene is selected. *@
+        <ValidationPanel OnSceneSelected="OnSceneSelected" />
+
         @if (SelectedScene is { } scene)
         {
             <SceneInspector Scene="scene" OnChanged="SaveAsync" />
