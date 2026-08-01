@@ -247,6 +247,41 @@ public class SceneListTests : BunitContext
     }
 
     [Fact]
+    public void Should_NameTheInboundTransitions_When_TheSceneIsATarget()
+    {
+        // Arrange — deleting a scene silently strips every transition pointing at it, so the
+        // confirmation should say what else goes.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var target = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go left", target.Id);
+        story.WireChoice(fork.Id, "Go right", target.Id);
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+
+        // Act
+        cut.FindAll(".scene-row").Single(row => row.TextContent.Contains("Below deck", StringComparison.Ordinal))
+            .QuerySelector(".scene-delete")!.Click();
+
+        // Assert
+        Assert.Contains("2", cut.Find(".scene-delete-confirm").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_NotMentionTransitions_When_NothingPointsAtTheScene()
+    {
+        // Arrange — the same "only warn when there is something to lose" rule kind changes follow.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+
+        // Act
+        cut.Find(".scene-delete").Click();
+
+        // Assert
+        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+    }
+
+    [Fact]
     public void Should_KeepTheScene_When_DeleteIsCancelled()
     {
         // Arrange — the kind-change prompt offers a way out, and so must this one.

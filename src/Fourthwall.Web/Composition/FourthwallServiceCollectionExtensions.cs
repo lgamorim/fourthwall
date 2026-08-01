@@ -32,6 +32,7 @@ public static class FourthwallServiceCollectionExtensions
         services.AddSingleton<IStoryGraphFactory, Graph1xStoryGraphFactory>();
         services.AddSingleton<IStoryValidator, StoryValidator>();
         services.AddSingleton<IAssetIntegrityValidator, AssetIntegrityValidator>();
+        services.AddSingleton<IStoryValidation, StoryValidation>();
 
         // The workspace is stateful and deliberately shared: one story is open per application
         // instance, so two browser tabs are two views of it rather than two sessions. The container

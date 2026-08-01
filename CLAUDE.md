@@ -10,7 +10,9 @@ The authoritative design is [docs/design/0001-architecture-and-roadmap.md](docs/
 
 ## Current state
 
-`0.2.0` — **Phase 2 (Persistence) complete** (milestones M1–M10; tags `v0.1.0`, `v0.2.0`). The solution is scaffolded per design doc §9 (`Fourthwall.slnx` and `Directory.Build.props` at the root, Domain/Application/Infrastructure/Web projects under `src/`, unit and integration tests under `test/`). The domain model, validation engine, Graph1x-backed reachability, and SQLite persistence (repository, migrations, asset store) are implemented and tested — a story saves and reopens with full fidelity. Next up: **Phase 3 — Web Shell and Form-Based Editing** (`0.3.x`), starting the Blazor UI. See the README's Status section and design doc §6 for detail.
+`0.3.0` — **Phase 3 (Web Shell and Form-Based Editing) complete** (milestones M1–M16; tags `v0.1.0`, `v0.2.0`, `v0.3.0`). The solution is scaffolded per design doc §9 (`Fourthwall.slnx` and `Directory.Build.props` at the root, Domain/Application/Infrastructure/Web projects under `src/`, unit and integration tests under `test/`). On top of the domain model, validation engine, Graph1x-backed reachability, and SQLite persistence from Phases 1–2, the Blazor UI now authors a complete story end to end: a story picker over an `IStoryWorkspace` session, scene CRUD with kind and outcome editing, choice wiring and follow-ups, image attach with preview served from the story folder, and an on-demand validation panel with click-to-navigate. Editing autosaves. Next up: **Phase 4 — Interactive Canvas** (`0.4.x`), the SVG graph canvas with persisted node positions. See the README's Status section and design doc §6 for detail.
+
+Known items Phase 4 inherits: `SqliteStoryRepository.SaveAsync` rewrites the whole story on every save, which cascades away `editor_scene_layout` — it must become a diff or upsert before the canvas persists node positions.
 
 ## Commands
 

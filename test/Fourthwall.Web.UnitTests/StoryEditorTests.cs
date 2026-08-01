@@ -14,6 +14,7 @@ public class StoryEditorTests : BunitContext
     public StoryEditorTests()
     {
         Services.AddSingleton<IStoryWorkspace>(_workspace);
+        Services.AddSingleton<IStoryValidation>(new FakeStoryValidation());
     }
 
     [Fact]

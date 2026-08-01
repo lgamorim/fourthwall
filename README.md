@@ -25,14 +25,17 @@ A finished story is a self-contained folder — a SQLite database plus its image
 
 ## Status
 
-`0.2.0` — **Phase 2 (Persistence) complete.** Building on Phase 1's in-memory foundation, a story is now durable: a self-contained folder — a SQLite `story.db` plus an `assets/` directory of images — that saves and reopens with full fidelity. Implemented and tested so far:
+`0.3.0` — **Phase 3 (Web Shell and Form-Based Editing) complete.** A complete story can now be authored end to end in the browser, before any canvas exists. Run `dotnet run --project src/Fourthwall.Web` and you can:
 
-- the pure story **domain model** (`Story`, `Scene`, `Choice`, outcomes) with its invariants,
-- the **validation engine** enforcing the structural rules of the design (single start, reachability, degree-by-kind, reachable ending, no inescapable loops) plus **asset-integrity** checks (broken image references and orphan assets),
-- **reachability analysis** backed by Graph1x behind an `IStoryGraph` abstraction,
-- **persistence** — the story repository over real SQLite (sqlbound migrations and typed queries), and content-hashed image ingestion into each story's `assets/` folder.
+- **create or open a story folder**, and return to it from a list of recent ones,
+- **write its scenes** — narrative text, kind (Choice / Linear / Ending), and an ending's outcome,
+- **connect them** — wire choices with their own labels and targets, reorder them, and give linear scenes a follow-up,
+- **attach an image** to a scene and see it previewed,
+- **validate the story** and click straight through to whichever scene a rule complains about.
 
-The Blazor editor UI — the graph canvas, inspector, and live validation panel described above — arrives in the next phase. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
+Underneath, from the earlier phases: the pure story **domain model** with its invariants, the **validation engine** covering the design's structural rules plus asset integrity, **reachability analysis** backed by Graph1x behind an `IStoryGraph` abstraction, and **persistence** — a self-contained story folder of a SQLite `story.db` plus content-hashed images, saving and reopening with full fidelity.
+
+Next is the **interactive canvas** (`0.4.x`): scenes as draggable nodes and choices as labelled edges, with the forms becoming the detail view rather than the workflow. See the roadmap's [Phases and Milestones](docs/design/0001-architecture-and-roadmap.md#6-phases-and-milestones) for what lands when.
 
 ## License
 

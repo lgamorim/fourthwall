@@ -84,6 +84,19 @@ public class FourthwallServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task Should_ResolveStoryValidation_When_FourthwallIsAdded()
+    {
+        // Arrange — it composes both validators, so resolving it proves all three are registered.
+        await using var provider = BuildProvider();
+
+        // Act
+        var validation = provider.GetService<IStoryValidation>();
+
+        // Assert
+        Assert.NotNull(validation);
+    }
+
+    [Fact]
     public async Task Should_ResolveStoryWorkspace_When_FourthwallIsAdded()
     {
         // Arrange
