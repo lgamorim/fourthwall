@@ -98,6 +98,24 @@ public class SceneImageTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_ReportTheFailure_When_IngestingThrows()
+    {
+        // Arrange — writing into the story folder can fail for ordinary reasons: a read-only
+        // folder, a full disk, a folder deleted in a file manager while the story is open.
+        var scene = await OpenSceneAsync();
+        _workspace.AssetStore.FailNextIngest = new IOException("The story folder is read-only.");
+        var cut = RenderFor(scene);
+
+        // Act
+        Upload(cut, "storm.png");
+
+        // Assert
+        Assert.Null(scene.ImagePath);
+        Assert.Contains(
+            "read-only", cut.Find(".scene-image-error").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_ClearTheReference_When_ClearIsChosen()
     {
         // Arrange

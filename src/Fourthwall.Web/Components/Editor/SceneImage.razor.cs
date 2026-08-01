@@ -70,14 +70,23 @@ public partial class SceneImage
             return;
         }
 
-        var content = file.OpenReadStream(MaximumBytes);
-        await using (content.ConfigureAwait(false))
+        try
         {
-            // Replacing an image leaves the previous file in place. Content-hashed names may be
-            // shared by other scenes, so deleting here could break them; an unreferenced asset is
-            // reported as a warning by asset-integrity validation instead.
-            var path = await assets.IngestAsync(content, ImageTypes.ExtensionOf(file.Name));
-            Scene.AttachImage(path);
+            var content = file.OpenReadStream(MaximumBytes);
+            await using (content.ConfigureAwait(false))
+            {
+                // Replacing an image leaves the previous file in place. Content-hashed names may be
+                // shared by other scenes, so deleting here could break them; an unreferenced asset
+                // is reported as a warning by asset-integrity validation instead.
+                var path = await assets.IngestAsync(content, ImageTypes.ExtensionOf(file.Name));
+                Scene.AttachImage(path);
+            }
+        }
+        catch (Exception exception) when (UserFacingFailures.Includes(exception))
+        {
+            // Ingesting writes into the story folder, which can be read-only, full, or gone.
+            _error = exception.Message;
+            return;
         }
 
         await OnChanged.InvokeAsync();

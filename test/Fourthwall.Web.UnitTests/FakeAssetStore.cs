@@ -14,11 +14,23 @@ public sealed class FakeAssetStore : IAssetStore
 
     public int IngestCount { get; private set; }
 
+    /// <summary>
+    /// When set, the next ingest throws this instead of succeeding, and the failure is cleared.
+    /// </summary>
+    public Exception? FailNextIngest { get; set; }
+
     public async Task<string> IngestAsync(
         Stream content, string fileExtension, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileExtension);
+
+        if (FailNextIngest is not null)
+        {
+            var failure = FailNextIngest;
+            FailNextIngest = null;
+            throw failure;
+        }
 
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);

@@ -9,6 +9,11 @@ namespace Fourthwall.Web.Composition;
 /// The path is the story-relative path a scene recorded, handed to the asset store unchanged — the
 /// endpoint never learns where the story folder is or how it is laid out. Containment is the
 /// store's job and stays there.
+/// <para>
+/// Deliberately unauthenticated, which is sound only under the threat model the design states: one
+/// creator, one machine, no hosting (design doc section 3). While the app runs, any local process
+/// can fetch the open story's images. Revisit this before the tool is ever served beyond localhost.
+/// </para>
 /// </remarks>
 public static class StoryAssetEndpoint
 {

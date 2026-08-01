@@ -10,24 +10,32 @@ namespace Fourthwall.Web;
 /// </remarks>
 public static class ImageTypes
 {
-    private static readonly Dictionary<string, string> ContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["png"] = "image/png",
-        ["jpg"] = "image/jpeg",
-        ["jpeg"] = "image/jpeg",
-        ["gif"] = "image/gif",
-        ["webp"] = "image/webp",
-    };
+    // One ordered source: a dictionary's key order is unspecified, and these reach a creator both
+    // in the file picker and in the message naming what is accepted.
+    private static readonly (string Extension, string ContentType)[] Accepted =
+    [
+        ("png", "image/png"),
+        ("jpg", "image/jpeg"),
+        ("jpeg", "image/jpeg"),
+        ("gif", "image/gif"),
+        ("webp", "image/webp"),
+    ];
+
+    private static readonly Dictionary<string, string> ContentTypes = Accepted.ToDictionary(
+        accepted => accepted.Extension, accepted => accepted.ContentType, StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] ExtensionsInOrder =
+        [.. Accepted.Select(accepted => accepted.Extension)];
 
     /// <summary>
     /// Gets the accepted extensions, without leading dots, for showing a creator what to pick.
     /// </summary>
-    public static IReadOnlyCollection<string> Extensions => ContentTypes.Keys;
+    public static IReadOnlyList<string> Extensions => ExtensionsInOrder;
 
     /// <summary>
     /// Gets the value for a file input's <c>accept</c> attribute.
     /// </summary>
-    public static string Accept => string.Join(",", ContentTypes.Keys.Select(extension => $".{extension}"));
+    public static string Accept => string.Join(",", ExtensionsInOrder.Select(extension => $".{extension}"));
 
     /// <summary>
     /// Determines whether a file name carries an accepted image extension.

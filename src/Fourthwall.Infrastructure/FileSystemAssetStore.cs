@@ -114,8 +114,24 @@ public sealed class FileSystemAssetStore : IAssetStore
             return Task.FromResult<Stream?>(null);
         }
 
-        return Task.FromResult<Stream?>(
-            new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read));
+        try
+        {
+            return Task.FromResult<Stream?>(new FileStream(fullPath, new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                // The only consumer copies this stream to a response, so hand the OS both facts.
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            }));
+        }
+        catch (IOException)
+        {
+            // The creator owns this folder and may delete or lock a file between the check above
+            // and this open. Honour the documented contract — absent means null — rather than let
+            // a race turn into an error the caller never expects.
+            return Task.FromResult<Stream?>(null);
+        }
     }
 
     /// <inheritdoc/>
