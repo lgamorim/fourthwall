@@ -1,0 +1,91 @@
+@if (Scene.Kind is SceneKind.Choice)
+{
+    <h2>Choices</h2>
+
+    @if (_error is not null)
+    {
+        <p class="choice-error" role="alert">@_error</p>
+    }
+
+    @if (Scene.Choices.Count < 2)
+    {
+        <p class="choice-hint">A choice scene needs at least two choices.</p>
+    }
+
+    <ol class="choice-rows">
+        @for (var index = 0; index < Scene.Choices.Count; index++)
+        {
+            var position = index;
+            var choice = Scene.Choices[position];
+
+            <li class="choice-row" data-index="@position" @key="(position, _revision)">
+                <input class="choice-label"
+                       aria-label="Choice @(position + 1) text"
+                       value="@choice.Label"
+                       @onchange="e => RelabelAsync(position, e.Value as string)" />
+
+                <select class="choice-target"
+                        aria-label="Choice @(position + 1) target"
+                        value="@choice.TargetSceneId.Value"
+                        @onchange="e => RetargetAsync(position, e.Value as string)">
+                    @foreach (var target in Scenes.Ordered(Story))
+                    {
+                        <option value="@target.Id.Value">@Scenes.Label(target)</option>
+                    }
+                </select>
+
+                @if (position > 0)
+                {
+                    <button class="choice-up" title="Move up" @onclick="() => MoveAsync(position, position - 1)">↑</button>
+                }
+
+                @if (position < Scene.Choices.Count - 1)
+                {
+                    <button class="choice-down" title="Move down" @onclick="() => MoveAsync(position, position + 1)">↓</button>
+                }
+
+                <button class="choice-remove" @onclick="() => RemoveAsync(position)">Remove</button>
+            </li>
+        }
+    </ol>
+
+    <div class="choice-add">
+        @if (_addError is not null)
+        {
+            <p class="choice-add-error" role="alert">@_addError</p>
+        }
+
+        <label for="choice-add-label">New choice</label>
+        <input id="choice-add-label" @bind="_addLabel" placeholder="Open the door" />
+
+        <label for="choice-add-target">Leads to</label>
+        <select id="choice-add-target" @bind="_addTarget">
+            @foreach (var target in Scenes.Ordered(Story))
+            {
+                <option value="@target.Id.Value">@Scenes.Label(target)</option>
+            }
+        </select>
+
+        <button id="choice-add-submit" @onclick="AddAsync">Add choice</button>
+    </div>
+}
+else if (Scene.Kind is SceneKind.Linear)
+{
+    <h2>Follow-up</h2>
+
+    @if (Scene.FollowUpSceneId is null)
+    {
+        <p class="follow-up-hint">A linear scene flows into exactly one scene.</p>
+    }
+
+    <label for="follow-up">Flows into</label>
+    <select id="follow-up"
+            value="@(Scene.FollowUpSceneId?.Value.ToString() ?? string.Empty)"
+            @onchange="e => SetFollowUpAsync(e.Value as string)">
+        <option value="">(none)</option>
+        @foreach (var target in Scenes.Ordered(Story))
+        {
+            <option value="@target.Id.Value">@Scenes.Label(target)</option>
+        }
+    </select>
+}

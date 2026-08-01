@@ -6,8 +6,6 @@ namespace Fourthwall.Web.Components.Editor;
 
 public partial class SceneList
 {
-    private const int SnippetLength = 60;
-
     private SceneKind _createKind = SceneKind.Linear;
     private OutcomeKind _createOutcome = OutcomeKind.Death;
     private string _createOutcomeLabel = string.Empty;
@@ -33,36 +31,6 @@ public partial class SceneList
     /// </summary>
     [Parameter]
     public EventCallback OnChanged { get; set; }
-
-    private static string Snippet(Scene scene)
-    {
-        // Scenes carry narrative text and no title, so the list labels a row with the text itself —
-        // and empty text is legal while authoring, which still needs something to click.
-        if (string.IsNullOrWhiteSpace(scene.Text))
-        {
-            return "(no text)";
-        }
-
-        var text = scene.Text.Trim();
-        if (text.Length <= SnippetLength)
-        {
-            return text;
-        }
-
-        // Back off a character when the cut would land inside a surrogate pair, so the snippet
-        // never ends in half an emoji.
-        var length = char.IsHighSurrogate(text[SnippetLength - 1]) ? SnippetLength - 1 : SnippetLength;
-        return string.Concat(text.AsSpan(0, length), "…");
-    }
-
-    // Story.Scenes comes from a dictionary and has no inherent order, so the list imposes one: the
-    // start scene first, then alphabetically, with the identifier breaking ties so identical text
-    // cannot make rows swap places between renders.
-    private IEnumerable<Scene> OrderedScenes() =>
-        Story.Scenes
-            .OrderByDescending(scene => scene.Id == Story.StartSceneId)
-            .ThenBy(scene => scene.Text, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(scene => scene.Id.Value);
 
     private Task SelectAsync(SceneId sceneId) => SelectedSceneIdChanged.InvokeAsync(sceneId);
 

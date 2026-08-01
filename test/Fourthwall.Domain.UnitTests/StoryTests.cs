@@ -312,6 +312,167 @@ public class StoryTests
     }
 
     [Fact]
+    public void Should_ChangeTheLabel_When_ChoiceRelabelled()
+    {
+        // Relabelling keeps the choice where it is: remove-and-rewire would append it to the end
+        // and pass through a state with fewer choices than the scene had.
+
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        var right = story.AddScene(SceneKind.Linear, "right");
+        story.WireChoice(from.Id, "Go left", left.Id);
+        story.WireChoice(from.Id, "Go right", right.Id);
+
+        // Act
+        story.RelabelChoice(from.Id, 0, "Take the left path");
+
+        // Assert
+        Assert.Collection(
+            from.Choices,
+            choice =>
+            {
+                Assert.Equal("Take the left path", choice.Label);
+                Assert.Equal(left.Id, choice.TargetSceneId);
+            },
+            choice => Assert.Equal("Go right", choice.Label));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_RelabellingWithABlankLabel()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.RelabelChoice(from.Id, 0, "   "));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentNullException_When_RelabellingWithANullLabel()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => story.RelabelChoice(from.Id, 0, null!));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void Should_ThrowArgumentOutOfRangeException_When_RelabellingAtInvalidIndex(int index)
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => story.RelabelChoice(from.Id, index, "Other"));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_RelabellingInAnUnknownScene()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.RelabelChoice(SceneId.New(), 0, "Go left"));
+    }
+
+    [Fact]
+    public void Should_ChangeTheTarget_When_ChoiceRetargeted()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        var right = story.AddScene(SceneKind.Linear, "right");
+        story.WireChoice(from.Id, "Go left", left.Id);
+        story.WireChoice(from.Id, "Go right", right.Id);
+
+        // Act
+        story.RetargetChoice(from.Id, 0, right.Id);
+
+        // Assert
+        Assert.Collection(
+            from.Choices,
+            choice =>
+            {
+                Assert.Equal("Go left", choice.Label);
+                Assert.Equal(right.Id, choice.TargetSceneId);
+            },
+            choice => Assert.Equal(right.Id, choice.TargetSceneId));
+    }
+
+    [Fact]
+    public void Should_AllowASelfLoop_When_ChoiceRetargetedAtItsOwnScene()
+    {
+        // Gamebooks legitimately loop, so the graph permits cycles (design section 4.2).
+
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act
+        story.RetargetChoice(from.Id, 0, from.Id);
+
+        // Assert
+        Assert.Equal(from.Id, from.Choices[0].TargetSceneId);
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_RetargetingAtASceneOutsideTheStory()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.RetargetChoice(from.Id, 0, SceneId.New()));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void Should_ThrowArgumentOutOfRangeException_When_RetargetingAtInvalidIndex(int index)
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Choice, "A fork");
+        var left = story.AddScene(SceneKind.Linear, "left");
+        story.WireChoice(from.Id, "Go left", left.Id);
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => story.RetargetChoice(from.Id, index, left.Id));
+    }
+
+    [Fact]
+    public void Should_ThrowArgumentException_When_RetargetingInAnUnknownScene()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var target = story.AddScene(SceneKind.Linear, "left");
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => story.RetargetChoice(SceneId.New(), 0, target.Id));
+    }
+
+    [Fact]
     public void Should_ReorderChoices_When_ChoiceMoved()
     {
         // Choice order is the reader-facing order, so moving one reorders the list.

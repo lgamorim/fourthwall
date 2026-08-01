@@ -380,6 +380,74 @@ html, body {
     color: #7a1717;
 }
 
+/* Scene transitions. */
+
+.choice-rows {
+    margin: 0 0 0.75rem;
+    padding-left: 1.25rem;
+}
+
+.choice-row {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--app-rule);
+}
+
+.choice-row:last-child {
+    border-bottom: none;
+}
+
+.choice-up,
+.choice-down,
+.choice-remove {
+    border: none;
+    background: none;
+    padding: 0;
+    margin-right: 0.75rem;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.choice-up:hover,
+.choice-down:hover,
+.choice-remove:hover {
+    opacity: 1;
+}
+
+.choice-add {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--app-rule);
+}
+
+.choice-add button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--app-rule);
+    border-radius: 0.25rem;
+    background: var(--app-surface);
+    font: inherit;
+    cursor: pointer;
+}
+
+.choice-hint,
+.follow-up-hint {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid #b58900;
+    background: #fdf7e6;
+    font-size: 0.875rem;
+}
+
+.choice-error,
+.choice-add-error {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid #b32121;
+    background: #fdf0f0;
+    color: #7a1717;
+    font-size: 0.875rem;
+}
+
 .inspector-kind-prompt {
     margin-bottom: 0.75rem;
     padding: 0.5rem 0.75rem;
