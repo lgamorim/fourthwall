@@ -37,12 +37,13 @@ Integration tests (real SQLite) live in `test/*.IntegrationTests/` projects, sep
 @.claude/rules/core/workflow-core.md
 @.claude/rules/overlays/workflow-team.md
 @.claude/rules/archetype/application.md
-@.claude/rules/overlays/workflow-agent-review.md
+@.claude/rules/overlays/workflow-agent-review-team.md
+@.claude/rules/overlays/frontend-blazor.md
 
-These are copied from the shared [claude-rules](https://github.com/lgamorim/claude-rules) repository via its `tools/sync.ps1`, composed as `application-solo -Workflow team -Add workflow-agent-review`. Because that combination matches no profile, the modules are imported directly rather than through a profile manifest. Re-audit for drift from the claude-rules checkout with the **same flags**, plus `-Check` — it cannot infer how the set was composed:
+These are copied from the shared [claude-rules](https://github.com/lgamorim/claude-rules) repository via its `tools/sync.ps1`, composed as `application-solo -Workflow team -Add workflow-agent-review-team,frontend-blazor`. Because that combination matches no profile, the modules are imported directly rather than through a profile manifest. Re-audit for drift from the claude-rules checkout with the **same flags**, plus `-Check` — it cannot infer how the set was composed:
 
 ```powershell
-./tools/sync.ps1 -Target <path-to>\fourthwall -Profile application-solo -Workflow team -Add workflow-agent-review -Check
+./tools/sync.ps1 -Target <path-to>\fourthwall -Profile application-solo -Workflow team -Add workflow-agent-review-team,frontend-blazor -Check
 ```
 
 ## Architecture (dependencies always point inward)
@@ -64,12 +65,13 @@ Clean architecture: Domain ← Application ← Infrastructure/Web.
 - `PackageVersion` carries a prerelease suffix (`X.Y.0-preview.N`) during a phase's active development. Closing the phase drops the suffix to the clean `X.Y.0` in the same commit that gets tagged, so the tag always matches the package version it marks exactly. The next phase's first commit starts the new prerelease line (`X.(Y+1).0-preview.1`).
 - Each phase has one matching GitHub milestone (titled `Phase N — <Name> (0.Y.x)`), not one per M-number; every M-number's PR in that phase is associated with the phase's milestone on creation, and the milestone is closed when the phase's final PR merges. The milestone's description lists each composing M-number with its own description as a bullet, so the phase-level summary and the per-milestone detail both stay visible in one place.
 
-## Reviews follow `overlays/workflow-agent-review.md`
+## Reviews follow `overlays/workflow-agent-review-team.md`
 
 A separate review agent reads each PR fresh, with no implementer context, and leaves inline comments that cite the specific rule module a finding violates rather than raising bare style preferences. It never pushes, merges, or resolves its own comments. The implementer addresses feedback with follow-up commits on the same branch; disagreements go to the maintainer to adjudicate, not back-and-forth between agents. The overlay's own text says the implementer "opens the PR" — that's about role separation from the reviewer, not a license to skip confirmation: the implementer still confirms with the maintainer before opening any PR, per `overlays/workflow-team.md`, which takes precedence here.
 
 ## Deliberate deviations from the imported rules
 
+- **Interactive server rendering is applied globally**, in `Components/App.razor`, although `overlays/frontend-blazor.md` calls render mode a per-page/per-component decision that should start from static SSR. The editor is interactive on every screen — the picker opens stories, the editor edits them, the validation panel runs on demand — so per-page opt-in would repeat the same attribute on every page and add a static-SSR variant of each component to maintain for no reader-visible gain. Revisit if a genuinely static page (a docs or about screen) is ever added.
 - **`dotnet pack` runs in CI**, although `archetype/application.md` says the deliverable of an application is the running app, not a package. The pack step is load-bearing here: the phase-versioning discipline ties each annotated tag to the exact `PackageVersion` it marks, and packing continuously keeps that machinery honest. Do not remove the Pack step from CI.
 - **XML docs are enforced, not relaxed.** `GenerateDocumentationFile` is on and `CS1591` is *not* suppressed (unlike the archetype's relaxation, which this repo deliberately exceeds); missing docs on public members fail the build, with suppressions scoped to non-API surfaces (Web components, tests) via `.editorconfig`.
 - **This repo's `.editorconfig` is richer than the claude-rules reference** (it adds an intersection symbol group so `private static readonly` fields stay PascalCase, with notes). Keep it; do not overwrite it with the reference copy.
