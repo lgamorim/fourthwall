@@ -14,6 +14,8 @@
     </p>
 }
 
+@* Operational failures only — a folder that is taken, gone, or unreadable. What the creator
+   typed is the form's own business, and shows up next to the field it belongs to. *@
 @if (_error is not null)
 {
     <p class="picker-error" role="alert">@_error</p>
@@ -21,18 +23,27 @@
 
 <section class="picker-section">
     <h2>New story</h2>
-    <label for="create-folder">Folder</label>
-    <input id="create-folder" @bind="_createFolder" placeholder="C:\stories\my-story" />
-    <label for="create-title">Title</label>
-    <input id="create-title" @bind="_createTitle" />
-    <button id="create-submit" @onclick="CreateAsync">Create story</button>
+    <EditForm id="create-story" Model="_create" OnValidSubmit="CreateAsync">
+        <DataAnnotationsValidator />
+        <label for="create-folder">Folder</label>
+        <InputText id="create-folder" @bind-Value="_create.FolderPath" placeholder="C:\stories\my-story" />
+        <ValidationMessage For="() => _create.FolderPath" />
+        <label for="create-title">Title</label>
+        <InputText id="create-title" @bind-Value="_create.Title" />
+        <ValidationMessage For="() => _create.Title" />
+        <button id="create-submit" type="submit">Create story</button>
+    </EditForm>
 </section>
 
 <section class="picker-section">
     <h2>Open story</h2>
-    <label for="open-folder">Folder</label>
-    <input id="open-folder" @bind="_openFolder" placeholder="C:\stories\my-story" />
-    <button id="open-submit" @onclick="OpenAsync">Open story</button>
+    <EditForm id="open-story" Model="_open" OnValidSubmit="OpenAsync">
+        <DataAnnotationsValidator />
+        <label for="open-folder">Folder</label>
+        <InputText id="open-folder" @bind-Value="_open.FolderPath" placeholder="C:\stories\my-story" />
+        <ValidationMessage For="() => _open.FolderPath" />
+        <button id="open-submit" type="submit">Open story</button>
+    </EditForm>
 </section>
 
 @if (_recent.Count > 0)

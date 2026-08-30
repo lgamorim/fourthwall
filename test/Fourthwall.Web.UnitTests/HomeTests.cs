@@ -4,7 +4,9 @@ using Fourthwall.Application;
 using Fourthwall.Domain;
 using Fourthwall.Web.Components.Pages;
 
+using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Fourthwall.Web.UnitTests;
 
@@ -17,6 +19,12 @@ public class HomeTests : BunitContext
     {
         Services.AddSingleton<IStoryWorkspace>(_workspace);
         Services.AddSingleton<IRecentStories>(_recent);
+
+        // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does
+        // not, so the page under test gets one built the same way the framework builds it. Nothing
+        // is prerendered here, so it always starts empty and the page loads from IRecentStories.
+        Services.AddSingleton(
+            new ComponentStatePersistenceManager(NullLogger<ComponentStatePersistenceManager>.Instance).State);
     }
 
     private BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
@@ -30,7 +38,7 @@ public class HomeTests : BunitContext
         cut.Find("#create-title").Change("The Wreck");
 
         // Act
-        cut.Find("#create-submit").Click();
+        cut.Find("#create-story").Submit();
 
         // Assert
         Assert.Equal("The Wreck", _workspace.Current?.Title);
@@ -46,7 +54,7 @@ public class HomeTests : BunitContext
         cut.Find("#create-title").Change("The Wreck");
 
         // Act
-        cut.Find("#create-submit").Click();
+        cut.Find("#create-story").Submit();
 
         // Assert
         var remembered = await _recent.ListAsync(TestContext.Current.CancellationToken);
@@ -63,24 +71,63 @@ public class HomeTests : BunitContext
         cut.Find("#create-title").Change("The Wreck");
 
         // Act
-        cut.Find("#create-submit").Click();
+        cut.Find("#create-story").Submit();
 
-        // Assert
+        // Assert — an operational failure, so it lands on the error line and not on a field.
         Assert.Contains("already exists", cut.Find(".picker-error").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".validation-message"));
     }
 
     [Fact]
-    public void Should_ShowAnError_When_CreateIsSubmittedWithoutAFolder()
+    public void Should_ShowAValidationMessage_When_CreateIsSubmittedWithoutAFolder()
     {
         // Arrange
         var cut = Render<Home>();
         cut.Find("#create-title").Change("The Wreck");
 
         // Act
-        cut.Find("#create-submit").Click();
+        cut.Find("#create-story").Submit();
+
+        // Assert — shape is the form's business, so this never reaches the workspace.
+        Assert.Contains(
+            "Enter the folder to create the story in.",
+            cut.Find(".validation-message").TextContent,
+            StringComparison.Ordinal);
+        Assert.Null(_workspace.Current);
+    }
+
+    [Fact]
+    public void Should_ShowAValidationMessage_When_CreateIsSubmittedWithoutATitle()
+    {
+        // Arrange
+        var cut = Render<Home>();
+        cut.Find("#create-folder").Change(@"C:\stories\wreck");
+
+        // Act
+        cut.Find("#create-story").Submit();
 
         // Assert
-        Assert.NotNull(cut.Find(".picker-error"));
+        Assert.Contains(
+            "Enter a title for the story.",
+            cut.Find(".validation-message").TextContent,
+            StringComparison.Ordinal);
+        Assert.Null(_workspace.Current);
+    }
+
+    [Fact]
+    public void Should_ShowAValidationMessage_When_OpenIsSubmittedWithoutAFolder()
+    {
+        // Arrange
+        var cut = Render<Home>();
+
+        // Act
+        cut.Find("#open-story").Submit();
+
+        // Assert
+        Assert.Contains(
+            "Enter the folder holding the story.",
+            cut.Find(".validation-message").TextContent,
+            StringComparison.Ordinal);
         Assert.Null(_workspace.Current);
     }
 
@@ -93,7 +140,7 @@ public class HomeTests : BunitContext
         cut.Find("#open-folder").Change(@"C:\stories\wreck");
 
         // Act
-        cut.Find("#open-submit").Click();
+        cut.Find("#open-story").Submit();
 
         // Assert
         Assert.Equal("The Wreck", _workspace.Current?.Title);
@@ -107,7 +154,7 @@ public class HomeTests : BunitContext
         cut.Find("#open-folder").Change(@"C:\stories\missing");
 
         // Act
-        cut.Find("#open-submit").Click();
+        cut.Find("#open-story").Submit();
 
         // Assert
         Assert.Contains("No story", cut.Find(".picker-error").TextContent, StringComparison.Ordinal);
@@ -185,7 +232,7 @@ public class HomeTests : BunitContext
         cut.Find("#create-title").Change("The Wreck");
 
         // Act
-        cut.Find("#create-submit").Click();
+        cut.Find("#create-story").Submit();
 
         // Assert
         Assert.Equal("/story", Assert.Single(Navigation.History).Uri);
@@ -200,7 +247,7 @@ public class HomeTests : BunitContext
         cut.Find("#open-folder").Change(@"C:\stories\wreck");
 
         // Act
-        cut.Find("#open-submit").Click();
+        cut.Find("#open-story").Submit();
 
         // Assert
         Assert.Equal("/story", Assert.Single(Navigation.History).Uri);
@@ -214,7 +261,7 @@ public class HomeTests : BunitContext
         cut.Find("#open-folder").Change(@"C:\stories\missing");
 
         // Act
-        cut.Find("#open-submit").Click();
+        cut.Find("#open-story").Submit();
 
         // Assert
         Assert.Empty(Navigation.History);
@@ -261,7 +308,7 @@ public class HomeTests : BunitContext
         cut.Find("#open-folder").Change(@"C:\stories\wreck");
 
         // Act
-        cut.Find("#open-submit").Click();
+        cut.Find("#open-story").Submit();
 
         // Assert
         var open = cut.Find(".picker-open").TextContent;
