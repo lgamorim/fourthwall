@@ -61,6 +61,11 @@ public partial class Home : IDisposable
         return Task.CompletedTask;
     }
 
+    // An invalid submit never reaches a handler, so nothing would otherwise clear a failure from
+    // an earlier attempt — leaving it above the field message, describing an operation that is no
+    // longer pending.
+    private void ClearOperationalError() => _error = null;
+
     private async Task CreateAsync()
     {
         // Shape is the form's job — reaching here means a folder and a title were typed. Whether

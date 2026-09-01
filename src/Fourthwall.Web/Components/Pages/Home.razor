@@ -23,7 +23,7 @@
 
 <section class="picker-section">
     <h2>New story</h2>
-    <EditForm id="create-story" Model="_create" OnValidSubmit="CreateAsync">
+    <EditForm id="create-story" Model="_create" OnValidSubmit="CreateAsync" OnInvalidSubmit="ClearOperationalError">
         <DataAnnotationsValidator />
         <label for="create-folder">Folder</label>
         <InputText id="create-folder" @bind-Value="_create.FolderPath" placeholder="C:\stories\my-story" />
@@ -37,7 +37,7 @@
 
 <section class="picker-section">
     <h2>Open story</h2>
-    <EditForm id="open-story" Model="_open" OnValidSubmit="OpenAsync">
+    <EditForm id="open-story" Model="_open" OnValidSubmit="OpenAsync" OnInvalidSubmit="ClearOperationalError">
         <DataAnnotationsValidator />
         <label for="open-folder">Folder</label>
         <InputText id="open-folder" @bind-Value="_open.FolderPath" placeholder="C:\stories\my-story" />
