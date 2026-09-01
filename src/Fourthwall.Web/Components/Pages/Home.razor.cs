@@ -6,12 +6,17 @@ namespace Fourthwall.Web.Components.Pages;
 
 public partial class Home : IDisposable
 {
+    // Prerendering runs this page twice — once on the server, once when the circuit attaches —
+    // and the recent list comes off disk. Persisting it across the handoff means one read per
+    // visit instead of two, without giving up prerendering.
+    private const string RecentStateKey = "recent-stories";
+
     private readonly HashSet<string> _unavailable = new(StringComparer.Ordinal);
+    private readonly CreateStoryInput _create = new();
+    private readonly OpenStoryInput _open = new();
     private IReadOnlyList<RecentStory> _recent = [];
-    private string _createFolder = string.Empty;
-    private string _createTitle = string.Empty;
-    private string _openFolder = string.Empty;
     private string? _error;
+    private PersistingComponentStateSubscription _persisting;
 
     // default!: the framework assigns every [Inject] property before any member of the component
     // runs, so these are never observed null.
@@ -24,42 +29,55 @@ public partial class Home : IDisposable
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private PersistentComponentState State { get; set; } = default!;
+
     public void Dispose()
     {
         Workspace.Changed -= OnWorkspaceChanged;
+        _persisting.Dispose();
         GC.SuppressFinalize(this);
     }
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         // The header owns the close action, so the story can be closed while this page is showing
         // it. Follow the workspace rather than only the clicks that happen here.
         Workspace.Changed += OnWorkspaceChanged;
-        return RefreshRecentAsync();
+        _persisting = State.RegisterOnPersisting(PersistRecentAsync);
+
+        if (State.TryTakeFromJson<IReadOnlyList<RecentStory>>(RecentStateKey, out var restored))
+        {
+            _recent = restored ?? [];
+            return;
+        }
+
+        await RefreshRecentAsync();
     }
+
+    private Task PersistRecentAsync()
+    {
+        State.PersistAsJson(RecentStateKey, _recent);
+        return Task.CompletedTask;
+    }
+
+    // An invalid submit never reaches a handler, so nothing would otherwise clear a failure from
+    // an earlier attempt — leaving it above the field message, describing an operation that is no
+    // longer pending.
+    private void ClearOperationalError() => _error = null;
 
     private async Task CreateAsync()
     {
+        // Shape is the form's job — reaching here means a folder and a title were typed. Whether
+        // a story can be created there is the workspace's answer.
         _error = null;
-
-        if (string.IsNullOrWhiteSpace(_createFolder))
-        {
-            _error = "Enter the folder to create the story in.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_createTitle))
-        {
-            _error = "Enter a title for the story.";
-            return;
-        }
 
         try
         {
-            var story = await Workspace.CreateAsync(_createFolder, _createTitle);
-            await RememberAsync(_createFolder, story.Title);
-            _createFolder = string.Empty;
-            _createTitle = string.Empty;
+            var story = await Workspace.CreateAsync(_create.FolderPath, _create.Title);
+            await RememberAsync(_create.FolderPath, story.Title);
+            _create.FolderPath = string.Empty;
+            _create.Title = string.Empty;
             Navigation.NavigateTo("/story");
         }
         catch (Exception exception) when (UserFacingFailures.Includes(exception))
@@ -72,15 +90,9 @@ public partial class Home : IDisposable
     {
         _error = null;
 
-        if (string.IsNullOrWhiteSpace(_openFolder))
+        if (await TryOpenAsync(_open.FolderPath))
         {
-            _error = "Enter the folder holding the story.";
-            return;
-        }
-
-        if (await TryOpenAsync(_openFolder))
-        {
-            _openFolder = string.Empty;
+            _open.FolderPath = string.Empty;
         }
     }
 
