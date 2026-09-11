@@ -134,6 +134,94 @@ public sealed class SqliteStoryRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_KeepSceneLayout_When_StorySavedAgain()
+    {
+        // editor_scene_layout cascades from scenes, so a save that deletes and reinserts every
+        // scene silently drops the canvas positions the editor stores there.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Layout");
+        var scene = story.AddScene(SceneKind.Linear, "a");
+        await SaveAsync(story, cancellationToken);
+        await ExecuteAsync(
+            $"INSERT INTO editor_scene_layout (scene_id, x, y) VALUES ('{scene.Id.Value}', 12.5, 30)",
+            cancellationToken);
+
+        await SaveAsync(story, cancellationToken);
+
+        Assert.Equal(
+            "12.5,30.0",
+            await QueryTextAsync(
+                $"SELECT x || ',' || y FROM editor_scene_layout WHERE scene_id = '{scene.Id.Value}'",
+                cancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_DropSceneLayout_When_SceneRemovedAndSaved()
+    {
+        // The cascade is still wanted for scenes that really are gone: a position for a scene the
+        // story no longer has is dead editor state.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Layout");
+        var kept = story.AddScene(SceneKind.Linear, "kept");
+        var removed = story.AddScene(SceneKind.Linear, "removed");
+        await SaveAsync(story, cancellationToken);
+        await ExecuteAsync(
+            $"INSERT INTO editor_scene_layout (scene_id, x, y) VALUES ('{kept.Id.Value}', 1, 2), ('{removed.Id.Value}', 3, 4)",
+            cancellationToken);
+
+        story.RemoveScene(removed.Id);
+        await SaveAsync(story, cancellationToken);
+
+        Assert.Equal(
+            kept.Id.Value.ToString(),
+            await QueryTextAsync("SELECT group_concat(scene_id) FROM editor_scene_layout", cancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_KeepExtensionSlot_When_SceneSavedAgain()
+    {
+        // The D6 extension columns are written by the runtime, never by this repository; a save
+        // must leave them exactly as it found them rather than nulling them on the way past.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Extended");
+        var scene = story.AddScene(SceneKind.Linear, "a");
+        await SaveAsync(story, cancellationToken);
+        await ExecuteAsync(
+            $"UPDATE scenes SET extension_tag = 'combat', extension_payload = '{{}}' WHERE id = '{scene.Id.Value}'",
+            cancellationToken);
+
+        await SaveAsync(story, cancellationToken);
+
+        Assert.Equal(
+            "combat,{}",
+            await QueryTextAsync(
+                $"SELECT extension_tag || ',' || extension_payload FROM scenes WHERE id = '{scene.Id.Value}'",
+                cancellationToken));
+    }
+
+    [Fact]
+    public async Task Should_RemoveTrailingChoice_When_ChoiceRemovedAndSaved()
+    {
+        // Choices are replaced wholesale rather than upserted, so a story that loses its last
+        // choice must not leave the old tail row behind under its (scene_id, order_index) key.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Choices");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var a = story.AddScene(SceneKind.Linear, "a");
+        var b = story.AddScene(SceneKind.Linear, "b");
+        story.WireChoice(fork.Id, "first", a.Id);
+        story.WireChoice(fork.Id, "second", b.Id);
+        await SaveAsync(story, cancellationToken);
+
+        story.RemoveChoice(fork.Id, 1);
+        await SaveAsync(story, cancellationToken);
+        var loaded = await LoadAsync(cancellationToken);
+
+        var choice = Assert.Single(loaded!.FindScene(fork.Id)!.Choices);
+        Assert.Equal("first", choice.Label);
+    }
+
+    [Fact]
     public async Task Should_Throw_When_SavingNullStory()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -245,6 +333,24 @@ public sealed class SqliteStoryRepositoryTests : IDisposable
         await using var connection = await OpenMigratedAsync(cancellationToken);
         var repository = new SqliteStoryRepository(connection);
         return await repository.LoadAsync(cancellationToken);
+    }
+
+    // The editor_* and D6 extension columns have no repository surface by design, so the tests
+    // that pin their survival across a save seed and read them with raw SQL.
+    private async Task ExecuteAsync(string sql, CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenMigratedAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task<string?> QueryTextAsync(string sql, CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenMigratedAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return await command.ExecuteScalarAsync(cancellationToken) as string;
     }
 
     private async Task<DbConnection> OpenMigratedAsync(CancellationToken cancellationToken)
