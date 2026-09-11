@@ -103,6 +103,49 @@ public sealed class SqliteSceneLayoutStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_BlameTheUnsavedScene_When_SaveViolatesTheForeignKey()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await SaveStoryAsync(new Story("Layout"), cancellationToken);
+        await using var connection = await OpenMigratedAsync(cancellationToken);
+        var store = new SqliteSceneLayoutStore(connection);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => store.SaveAsync(
+                new Dictionary<SceneId, ScenePosition> { [SceneId.New()] = new(1, 2) }, cancellationToken));
+
+        Assert.Contains("scene", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Should_NotBlameTheScene_When_SaveFailsForAnotherReason()
+    {
+        // A failure that is not the foreign key — here a read-only database, but equally a locked
+        // one or a full disk — must not be reported as a position naming a scene that does not
+        // exist, which would send the creator looking for a story problem that is not there.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Layout");
+        var scene = story.AddScene(SceneKind.Linear, "a");
+        await SaveStoryAsync(story, cancellationToken);
+
+        await using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = _databasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+        await connection.OpenAsync(cancellationToken);
+        var store = new SqliteSceneLayoutStore(connection);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => store.SaveAsync(
+                new Dictionary<SceneId, ScenePosition> { [scene.Id] = new(1, 2) }, cancellationToken));
+
+        Assert.DoesNotContain("scene", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Should_Throw_When_SaveIsAlreadyCancelled()
     {
         await using var connection = await OpenMigratedAsync(TestContext.Current.CancellationToken);

@@ -208,6 +208,14 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
     /// semaphore is what makes it wait — and it is the whole reason this decorator exists, since
     /// unlike every other operation behind that gate, saving a layout must not raise
     /// <see cref="Changed"/>.
+    /// <para>
+    /// An instance is bound to the package that was open when it was handed out, and is not
+    /// guarded against outliving it: a caller holding one across a close or a reopen is calling a
+    /// store over a disposed connection, and gets the provider's failure rather than "no story is
+    /// open". That is deliberate — <see cref="IStoryWorkspace.Layout"/> documents the store as
+    /// having the same lifetime as the open story, so re-reading the property after a transition
+    /// is the caller's job, exactly as it is for <see cref="IStoryWorkspace.Assets"/>.
+    /// </para>
     /// </remarks>
     private sealed class GatedSceneLayoutStore(ISceneLayoutStore inner, SemaphoreSlim gate) : ISceneLayoutStore
     {

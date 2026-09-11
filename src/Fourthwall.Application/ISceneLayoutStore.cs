@@ -40,8 +40,9 @@ public interface ISceneLayoutStore
     /// <returns>A task that completes when the positions have been stored.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="positions"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
-    /// A position names a scene the story has not saved. Nothing is stored: the batch either
-    /// applies whole or not at all.
+    /// The positions could not be stored — most often because one names a scene the story has not
+    /// saved, but equally because the store itself refused the write. Nothing is stored either
+    /// way: the batch applies whole or not at all, and the message says which happened.
     /// </exception>
     /// <exception cref="OperationCanceledException">The operation was cancelled.</exception>
     Task SaveAsync(

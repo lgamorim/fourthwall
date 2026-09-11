@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Fourthwall.Application;
 using Fourthwall.Domain;
+using Microsoft.Data.Sqlite;
 using SqlBound;
 
 namespace Fourthwall.Infrastructure;
@@ -21,6 +22,9 @@ namespace Fourthwall.Infrastructure;
 /// </remarks>
 public sealed partial class SqliteSceneLayoutStore : ISceneLayoutStore
 {
+    // SQLITE_CONSTRAINT_FOREIGNKEY: SQLITE_CONSTRAINT (19) in the low byte, cause 3 above it.
+    private const int ForeignKeyViolation = 787;
+
     private readonly DbConnection _connection;
 
     /// <summary>
@@ -64,19 +68,25 @@ public sealed partial class SqliteSceneLayoutStore : ISceneLayoutStore
                     position.Y,
                     cancellationToken).ConfigureAwait(false);
             }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (DbException exception)
         {
-            // The foreign key to scenes is immediate, so this is a position for a scene that does
-            // not exist. The provider's exception must not escape this adapter (CLAUDE.md: provider
-            // types stay in Infrastructure), so it becomes the failure the port documents.
-            throw new InvalidOperationException(
-                "A node position names a scene the story has not saved; no positions were stored.",
-                exception);
+            // The provider's exception must not escape this adapter (CLAUDE.md: provider types stay
+            // in Infrastructure), but the reason has to survive the translation: a locked database
+            // or a full disk reported as a missing scene sends the creator looking for a story
+            // problem that is not there.
+            throw new InvalidOperationException(Describe(exception), exception);
         }
-
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private static string Describe(DbException exception) =>
+        // The foreign key to scenes is immediate, so a position for a scene the story has not saved
+        // fails here rather than at commit; every other cause is the database itself.
+        exception is SqliteException { SqliteExtendedErrorCode: ForeignKeyViolation }
+            ? "A node position names a scene the story has not saved; no positions were stored."
+            : "The story's node positions could not be stored; no positions were stored.";
 
     [SqlQuery("SELECT scene_id AS SceneId, x AS X, y AS Y FROM editor_scene_layout")]
     private static partial Task<IReadOnlyList<LayoutRow>> ReadLayoutAsync(
