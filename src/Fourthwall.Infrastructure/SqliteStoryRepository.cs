@@ -13,9 +13,18 @@ namespace Fourthwall.Infrastructure;
 /// otherwise owns it — the story-package orchestration owns that lifetime. Reads and writes go
 /// through SqlBound's source-generated queries, so no SqlBound or ADO.NET type leaks past this layer.
 /// <para>
-/// A save is a single transaction: the previous scenes and choices are cleared and the whole
-/// aggregate is written afresh. The scene and story self-references are deferred to commit (see the
-/// initial migration), so a story's legal cycles need no particular insert order.
+/// A save is a single transaction that diffs rather than rewrites. Choices, which have no identity,
+/// are replaced wholesale; scenes are upserted by id and only the scenes the story no longer holds
+/// are deleted. That matters beyond efficiency: a scene row carries state this repository does not
+/// own — the D6 <c>extension_*</c> slot, and the <c>editor_*</c> tables that cascade from it, such
+/// as the canvas positions in <c>editor_scene_layout</c> — and deleting a scene to reinsert it
+/// destroys that state, because a cascade runs at statement time and deferral postpones constraint
+/// <em>checks</em> only. So the upsert leaves the extension columns out of its update list, and the
+/// only delete is the one that should genuinely take a scene's editor state with it.
+/// </para>
+/// <para>
+/// The scene and story self-references are deferred to commit (see the initial migration), so a
+/// story's legal cycles need no particular insert order.
 /// </para>
 /// </remarks>
 public sealed partial class SqliteStoryRepository : IStoryRepository
@@ -40,19 +49,13 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
 
         await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
+        // Choices go first so that both of their immediate foreign keys are clear before any scene
+        // is deleted below.
         await DeleteChoicesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
-
-        // NOTE (tracked follow-up): DELETE FROM scenes fires editor_scene_layout's immediate
-        // ON DELETE CASCADE, so any stored canvas positions are dropped here — cascade actions run
-        // at statement time, and deferral only postpones constraint *checks*, not cascades — even
-        // though the scenes are re-inserted with the same ids before commit. This is harmless while
-        // nothing writes editor_scene_layout, but once the editor persists layout, this
-        // wipe-and-reinsert must become a diff/upsert (or preserve and restore the layout rows).
-        await DeleteScenesAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
 
         foreach (var scene in story.Scenes)
         {
-            await InsertSceneAsync(
+            await UpsertSceneAsync(
                 _connection,
                 transaction,
                 IdText(scene.Id),
@@ -63,6 +66,18 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
                 scene.Outcome?.Kind.ToString(),
                 scene.Outcome?.Label,
                 cancellationToken).ConfigureAwait(false);
+        }
+
+        // SqlBound verifies static SQL, so a variable-length NOT IN list is not available; the loop
+        // costs one statement per scene the story dropped, which is at most a handful per save.
+        var storedIds = await ReadSceneIdsAsync(_connection, transaction, cancellationToken).ConfigureAwait(false);
+        var liveIds = story.Scenes.Select(scene => IdText(scene.Id)).ToHashSet(StringComparer.Ordinal);
+        foreach (var storedId in storedIds)
+        {
+            if (!liveIds.Contains(storedId))
+            {
+                await DeleteSceneAsync(_connection, transaction, storedId, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         foreach (var scene in story.Scenes)
@@ -171,14 +186,24 @@ public sealed partial class SqliteStoryRepository : IStoryRepository
     private static partial Task<int> DeleteChoicesAsync(
         DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken);
 
-    [SqlExecute("DELETE FROM scenes")]
-    private static partial Task<int> DeleteScenesAsync(
+    [SqlExecute("DELETE FROM scenes WHERE id = @id")]
+    private static partial Task<int> DeleteSceneAsync(
+        DbConnection connection, DbTransaction transaction, string id, CancellationToken cancellationToken);
+
+    [SqlQuery("SELECT id FROM scenes")]
+    private static partial Task<IReadOnlyList<string>> ReadSceneIdsAsync(
         DbConnection connection, DbTransaction transaction, CancellationToken cancellationToken);
 
+    // extension_tag and extension_payload are absent from both the column list and the update list
+    // on purpose: the D6 slot belongs to the runtime, and naming it here would null it on insert
+    // and overwrite it on update.
     [SqlExecute(
         "INSERT INTO scenes (id, kind, text, image_path, follow_up_scene_id, outcome_kind, outcome_label) " +
-        "VALUES (@id, @kind, @text, @imagePath, @followUpSceneId, @outcomeKind, @outcomeLabel)")]
-    private static partial Task<int> InsertSceneAsync(
+        "VALUES (@id, @kind, @text, @imagePath, @followUpSceneId, @outcomeKind, @outcomeLabel) " +
+        "ON CONFLICT(id) DO UPDATE SET kind = excluded.kind, text = excluded.text, " +
+        "image_path = excluded.image_path, follow_up_scene_id = excluded.follow_up_scene_id, " +
+        "outcome_kind = excluded.outcome_kind, outcome_label = excluded.outcome_label")]
+    private static partial Task<int> UpsertSceneAsync(
         DbConnection connection,
         DbTransaction transaction,
         string id,

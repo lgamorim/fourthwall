@@ -12,7 +12,7 @@ The authoritative design is [docs/design/0001-architecture-and-roadmap.md](docs/
 
 `0.3.0` — **Phase 3 (Web Shell and Form-Based Editing) complete** (milestones M1–M16; tags `v0.1.0`, `v0.2.0`, `v0.3.0`). The solution is scaffolded per design doc §9 (`Fourthwall.slnx` and `Directory.Build.props` at the root, Domain/Application/Infrastructure/Web projects under `src/`, unit and integration tests under `test/`). On top of the domain model, validation engine, Graph1x-backed reachability, and SQLite persistence from Phases 1–2, the Blazor UI now authors a complete story end to end: a story picker over an `IStoryWorkspace` session, scene CRUD with kind and outcome editing, choice wiring and follow-ups, image attach with preview served from the story folder, and an on-demand validation panel with click-to-navigate. Editing autosaves. Next up: **Phase 4 — Interactive Canvas** (`0.4.x`), the SVG graph canvas with persisted node positions. See the README's Status section and design doc §6 for detail.
 
-Known items Phase 4 inherits: `SqliteStoryRepository.SaveAsync` rewrites the whole story on every save, which cascades away `editor_scene_layout` — it must become a diff or upsert before the canvas persists node positions.
+Phase 4 has since fixed the save cascade it inherited: `SqliteStoryRepository.SaveAsync` upserts scenes by id and deletes only the scenes a story has dropped, so `editor_scene_layout` and the D6 `extension_*` slot survive a save, and node positions have their own Application port (`ISceneLayoutStore`, reached as `IStoryWorkspace.Layout`) that never raises `Changed`. Nothing writes positions yet — the canvas does, from M21.
 
 ## Commands
 
@@ -63,6 +63,7 @@ Clean architecture: Domain ← Application ← Infrastructure/Web.
 - Versioning follows semantic versioning: each phase gets its own minor version (Phase 1 → `0.1.x`, Phase 2 → `0.2.x`, …).
 - When a phase completes, tag it on the default branch with an annotated tag (e.g., `git tag -a v0.1.0 -m "..."`) and push the tag to GitHub for reference.
 - `PackageVersion` carries a prerelease suffix (`X.Y.0-preview.N`) during a phase's active development. Closing the phase drops the suffix to the clean `X.Y.0` in the same commit that gets tagged, so the tag always matches the package version it marks exactly. The next phase's first commit starts the new prerelease line (`X.(Y+1).0-preview.1`).
+- From Phase 4 on, `N` advances once per milestone, in that milestone's first commit — M17 is `0.4.0-preview.1`, M18 is `0.4.0-preview.2`, and so on, until the phase-closing milestone drops the suffix. Phases 1–3 bumped `N` only at the phase bootstrap and left it there, so their history shows one preview per phase; the per-milestone cadence is the current convention, and a build's version now identifies the milestone it came from rather than only the phase.
 - Each phase has one matching GitHub milestone (titled `Phase N — <Name> (0.Y.x)`), not one per M-number; every M-number's PR in that phase is associated with the phase's milestone on creation, and the milestone is closed when the phase's final PR merges. The milestone's description lists each composing M-number with its own description as a bullet, so the phase-level summary and the per-milestone detail both stay visible in one place.
 
 ## Reviews follow `overlays/workflow-agent-review-team.md`

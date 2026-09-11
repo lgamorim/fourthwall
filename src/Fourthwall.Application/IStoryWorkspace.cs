@@ -43,6 +43,16 @@ public interface IStoryWorkspace
     IAssetStore? Assets { get; }
 
     /// <summary>
+    /// Gets the open story's node-position store, or <see langword="null"/> when no story is open.
+    /// </summary>
+    /// <remarks>
+    /// A story's canvas layout lives in its own database, so the store only exists while a story is
+    /// open — the same lifetime as <see cref="Current"/>. Saving through it does not raise
+    /// <see cref="Changed"/>: moving a node changes where the story is drawn, not what it says.
+    /// </remarks>
+    ISceneLayoutStore? Layout { get; }
+
+    /// <summary>
     /// Creates a story in a new folder and opens it, closing whatever story was open before.
     /// </summary>
     /// <param name="folderPath">The folder to create the story in.</param>

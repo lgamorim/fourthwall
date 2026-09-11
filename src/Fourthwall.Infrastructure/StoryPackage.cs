@@ -5,7 +5,8 @@ namespace Fourthwall.Infrastructure;
 
 /// <summary>
 /// An open story on disk: the folder holding <c>story.db</c> and its <c>assets/</c> images, exposed
-/// as a bound <see cref="IStoryRepository"/> and <see cref="IAssetStore"/>.
+/// as a bound <see cref="IStoryRepository"/>, <see cref="IAssetStore"/>, and
+/// <see cref="ISceneLayoutStore"/>.
 /// </summary>
 /// <remarks>
 /// A story is created or opened through <see cref="CreateAsync"/> / <see cref="OpenAsync"/>, which
@@ -19,11 +20,13 @@ public sealed class StoryPackage : IAsyncDisposable
     private const string AssetsFolderName = "assets";
     private readonly DbConnection _connection;
 
-    private StoryPackage(DbConnection connection, IStoryRepository repository, IAssetStore assets)
+    private StoryPackage(
+        DbConnection connection, IStoryRepository repository, IAssetStore assets, ISceneLayoutStore layout)
     {
         _connection = connection;
         Repository = repository;
         Assets = assets;
+        Layout = layout;
     }
 
     /// <summary>
@@ -35,6 +38,11 @@ public sealed class StoryPackage : IAsyncDisposable
     /// Gets the asset store that ingests and resolves this story's images.
     /// </summary>
     public IAssetStore Assets { get; }
+
+    /// <summary>
+    /// Gets the store holding where the editor's canvas places this story's scenes.
+    /// </summary>
+    public ISceneLayoutStore Layout { get; }
 
     /// <summary>
     /// Creates a new story folder — its <c>story.db</c> (migrated to the current schema) and
@@ -119,7 +127,8 @@ public sealed class StoryPackage : IAsyncDisposable
             await new StoryDatabaseMigrator().MigrateAsync(connection, cancellationToken).ConfigureAwait(false);
             var repository = new SqliteStoryRepository(connection);
             var assets = new FileSystemAssetStore(folderPath);
-            return new StoryPackage(connection, repository, assets);
+            var layout = new SqliteSceneLayoutStore(connection);
+            return new StoryPackage(connection, repository, assets, layout);
         }
         catch
         {
