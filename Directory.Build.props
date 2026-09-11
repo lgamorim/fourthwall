@@ -24,7 +24,7 @@
        preview per milestone. Its closing commit drops the suffix to 0.4.0 and is
        tagged v0.4.0, so the tag always matches the version it marks exactly. -->
   <PropertyGroup>
-    <Version>0.4.0-preview.1</Version>
+    <Version>0.4.0-preview.2</Version>
   </PropertyGroup>
 
 </Project>

@@ -158,4 +158,102 @@ public class InMemoryStoryGraphTests
         // Assert
         Assert.Empty(canReach);
     }
+
+    [Fact]
+    public void Should_MapOriginToZero_When_DepthIsQueried()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(0, depths[start.Id]);
+    }
+
+    [Fact]
+    public void Should_UseTheShorterPath_When_ASceneIsReachableTwoWays()
+    {
+        // A diamond: one route is a single hop, the other goes through an extra scene. Both scenes
+        // are asserted so a depth flattened to "1 if reachable" (which would also satisfy a
+        // target-only assertion, since target sits at depth 1 either way) cannot pass by accident.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Choice, "start");
+        var detour = story.AddScene(SceneKind.Linear, "detour");
+        var target = story.AddScene(SceneKind.Ending, "target", EndingOutcome.Victory());
+        story.WireChoice(start.Id, "the long way", detour.Id);
+        story.SetFollowUp(detour.Id, target.Id);
+        story.WireChoice(start.Id, "the short way", target.Id);
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(1, depths[target.Id]);
+        Assert.Equal(1, depths[detour.Id]);
+    }
+
+    [Fact]
+    public void Should_AccumulateDepthAcrossMultipleHops_When_WalkingAChain()
+    {
+        // A single hop is not enough to distinguish "depth" from "is reachable"; a chain long
+        // enough to reach depth two closes that gap.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var middle = story.AddScene(SceneKind.Linear, "middle");
+        var end = story.AddScene(SceneKind.Linear, "end");
+        story.SetFollowUp(start.Id, middle.Id);
+        story.SetFollowUp(middle.Id, end.Id);
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(1, depths[middle.Id]);
+        Assert.Equal(2, depths[end.Id]);
+    }
+
+    [Fact]
+    public void Should_OmitUnreachableScenes_When_DepthIsQueried()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var orphan = story.AddScene(SceneKind.Linear, "orphan");
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.False(depths.ContainsKey(orphan.Id));
+    }
+
+    [Fact]
+    public void Should_Terminate_When_DepthIsQueriedOnACycle()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var a = story.AddScene(SceneKind.Linear, "a");
+        var b = story.AddScene(SceneKind.Linear, "b");
+        story.SetFollowUp(a.Id, b.Id);
+        story.SetFollowUp(b.Id, a.Id);
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(a.Id);
+
+        // Assert
+        Assert.Equal(0, depths[a.Id]);
+        Assert.Equal(1, depths[b.Id]);
+    }
 }
