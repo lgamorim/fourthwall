@@ -1,3 +1,4 @@
+using Fourthwall.Application;
 using Fourthwall.Domain;
 using Microsoft.Data.Sqlite;
 
@@ -224,6 +225,56 @@ public sealed class StoryPackageWorkspaceTests : IDisposable
         await workspace.CloseAsync(cancellationToken);
 
         Assert.Equal(3, raised);
+    }
+
+    [Fact]
+    public async Task Should_ExposeLayout_When_StoryOpen()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var workspace = new StoryPackageWorkspace();
+        var story = await workspace.CreateAsync(NewStoryFolder(), "The Wreck", cancellationToken);
+        var scene = story.AddScene(SceneKind.Linear, "a");
+        await workspace.SaveAsync(cancellationToken);
+
+        await workspace.Layout!.SaveAsync(
+            new Dictionary<SceneId, ScenePosition> { [scene.Id] = new(7, 9) }, cancellationToken);
+
+        var positions = await workspace.Layout.LoadAsync(cancellationToken);
+        Assert.Equal(new ScenePosition(7, 9), positions[scene.Id]);
+    }
+
+    [Fact]
+    public async Task Should_ExposeNoLayout_When_NoStoryOpen()
+    {
+        // The layout store lives on the open story's database, so it has the same lifetime as the
+        // story itself — exactly as the asset store does.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var workspace = new StoryPackageWorkspace();
+        Assert.Null(workspace.Layout);
+
+        await workspace.CreateAsync(NewStoryFolder(), "The Wreck", cancellationToken);
+        await workspace.CloseAsync(cancellationToken);
+
+        Assert.Null(workspace.Layout);
+    }
+
+    [Fact]
+    public async Task Should_NotRaiseChanged_When_LayoutSaved()
+    {
+        // Dragging a node is not a change to the story. Raising Changed here would tell every
+        // component the story had been rewritten, and the validation panel would drop its report.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var workspace = new StoryPackageWorkspace();
+        var story = await workspace.CreateAsync(NewStoryFolder(), "The Wreck", cancellationToken);
+        var scene = story.AddScene(SceneKind.Linear, "a");
+        await workspace.SaveAsync(cancellationToken);
+        var raised = 0;
+        workspace.Changed += (_, _) => raised++;
+
+        await workspace.Layout!.SaveAsync(
+            new Dictionary<SceneId, ScenePosition> { [scene.Id] = new(7, 9) }, cancellationToken);
+
+        Assert.Equal(0, raised);
     }
 
     [Fact]

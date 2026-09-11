@@ -17,6 +17,7 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private StoryPackage? _package;
+    private GatedSceneLayoutStore? _layout;
     private bool _disposed;
 
     /// <inheritdoc/>
@@ -30,6 +31,9 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
 
     /// <inheritdoc/>
     public IAssetStore? Assets => _package?.Assets;
+
+    /// <inheritdoc/>
+    public ISceneLayoutStore? Layout => _layout;
 
     /// <inheritdoc/>
     public async Task<Story> CreateAsync(
@@ -164,6 +168,7 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
             await ReleaseAsync().ConfigureAwait(false);
 
             _package = opened.Package;
+            _layout = new GatedSceneLayoutStore(opened.Package.Layout, _gate);
             Current = opened.Story;
             FolderPath = folderPath;
         }
@@ -185,10 +190,55 @@ public sealed class StoryPackageWorkspace : IStoryWorkspace, IAsyncDisposable
 
         await _package.DisposeAsync().ConfigureAwait(false);
         _package = null;
+        _layout = null;
         Current = null;
         FolderPath = null;
         return true;
     }
 
     private void OnChanged() => Changed?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
+    /// The open package's layout store, serialized against the workspace's own transitions.
+    /// </summary>
+    /// <remarks>
+    /// The package's stores all share one <see cref="System.Data.Common.DbConnection"/>, which
+    /// allows one transaction at a time, so a node drag arriving on one circuit while another
+    /// circuit is mid-save has to wait rather than open a second one. Taking the workspace's
+    /// semaphore is what makes it wait — and it is the whole reason this decorator exists, since
+    /// unlike every other operation behind that gate, saving a layout must not raise
+    /// <see cref="Changed"/>.
+    /// </remarks>
+    private sealed class GatedSceneLayoutStore(ISceneLayoutStore inner, SemaphoreSlim gate) : ISceneLayoutStore
+    {
+        public async Task<IReadOnlyDictionary<SceneId, ScenePosition>> LoadAsync(
+            CancellationToken cancellationToken = default)
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await inner.LoadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        public async Task SaveAsync(
+            IReadOnlyDictionary<SceneId, ScenePosition> positions, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(positions);
+
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await inner.SaveAsync(positions, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+    }
 }
