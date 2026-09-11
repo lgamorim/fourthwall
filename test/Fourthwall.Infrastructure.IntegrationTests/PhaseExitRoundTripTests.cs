@@ -105,6 +105,40 @@ public sealed class PhaseExitRoundTripTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Should_KeepNodePositions_When_StorySavedClosedAndReopened()
+    {
+        // Canvas positions are editor-only state alongside the story, so they have to survive the
+        // same create-save-close-reopen path the story itself does — including the second save.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var folder = NewStoryFolder();
+        SceneId sceneId;
+
+        await using (var package = await StoryPackage.CreateAsync(folder, cancellationToken))
+        {
+            var story = new Story("Placed");
+            var scene = story.AddScene(SceneKind.Ending, "The end.", EndingOutcome.Victory());
+            story.SetStartScene(scene.Id);
+            sceneId = scene.Id;
+
+            await package.Repository.SaveAsync(story, cancellationToken);
+            await package.Layout.SaveAsync(
+                new Dictionary<SceneId, ScenePosition> { [sceneId] = new(120.5, -48) }, cancellationToken);
+
+            story.Rename("Placed and renamed");
+            await package.Repository.SaveAsync(story, cancellationToken);
+        }
+
+        await using (var package = await StoryPackage.OpenAsync(folder, cancellationToken))
+        {
+            var loaded = await package.Repository.LoadAsync(cancellationToken);
+            var positions = await package.Layout.LoadAsync(cancellationToken);
+
+            Assert.Equal("Placed and renamed", loaded!.Title);
+            Assert.Equal(new ScenePosition(120.5, -48), positions[sceneId]);
+        }
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
