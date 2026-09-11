@@ -11,7 +11,9 @@ namespace Fourthwall.Infrastructure;
 /// Forward reachability is a breadth-first search from the origin; reverse reachability walks the
 /// graph's transpose, built once on first use and reused (a story is validated by building the
 /// graph once and querying it several times). No Graph1x type crosses this boundary — every
-/// method translates scene identifiers in and a plain <see cref="IReadOnlySet{T}"/> out.
+/// method translates scene identifiers in and a plain <see cref="IReadOnlySet{T}"/> or
+/// <see cref="IReadOnlyDictionary{TKey, TValue}"/> out, copied out of whatever Graph1x-owned
+/// instance produced it rather than handed back directly.
 /// </remarks>
 internal sealed class Graph1xStoryGraph : IStoryGraph
 {
@@ -50,5 +52,5 @@ internal sealed class Graph1xStoryGraph : IStoryGraph
     }
 
     public IReadOnlyDictionary<SceneId, int> DepthFrom(SceneId origin) =>
-        _graph.ShortestPathsFrom(origin, _ => 1).Distances;
+        _graph.ShortestPathsFrom(origin, _ => 1).Distances.ToDictionary(pair => pair.Key, pair => pair.Value);
 }

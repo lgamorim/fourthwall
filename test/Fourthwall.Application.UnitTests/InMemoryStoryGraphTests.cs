@@ -177,6 +177,10 @@ public class InMemoryStoryGraphTests
     [Fact]
     public void Should_UseTheShorterPath_When_ASceneIsReachableTwoWays()
     {
+        // A diamond: one route is a single hop, the other goes through an extra scene. Both scenes
+        // are asserted so a depth flattened to "1 if reachable" (which would also satisfy a
+        // target-only assertion, since target sits at depth 1 either way) cannot pass by accident.
+
         // Arrange
         var story = new Story("Story");
         var start = story.AddScene(SceneKind.Choice, "start");
@@ -192,6 +196,30 @@ public class InMemoryStoryGraphTests
 
         // Assert
         Assert.Equal(1, depths[target.Id]);
+        Assert.Equal(1, depths[detour.Id]);
+    }
+
+    [Fact]
+    public void Should_AccumulateDepthAcrossMultipleHops_When_WalkingAChain()
+    {
+        // A single hop is not enough to distinguish "depth" from "is reachable"; a chain long
+        // enough to reach depth two closes that gap.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var middle = story.AddScene(SceneKind.Linear, "middle");
+        var end = story.AddScene(SceneKind.Linear, "end");
+        story.SetFollowUp(start.Id, middle.Id);
+        story.SetFollowUp(middle.Id, end.Id);
+        var graph = new InMemoryStoryGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(1, depths[middle.Id]);
+        Assert.Equal(2, depths[end.Id]);
     }
 
     [Fact]

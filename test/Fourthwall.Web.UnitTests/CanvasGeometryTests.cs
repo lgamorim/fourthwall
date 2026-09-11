@@ -39,18 +39,30 @@ public class CanvasGeometryTests
     }
 
     [Fact]
-    public void Should_OffsetControlPoints_When_ParallelIndexDiffers()
+    public void Should_OffsetControlPointsLinearlyWithParallelIndex_When_ParallelIndexDiffers()
     {
+        // Asserting only that two paths differ would pass for a bug that moves the wrong
+        // coordinate, or moves it by the wrong amount. Parsing the control-point Y out of each
+        // path pins the actual relationship: consecutive indices are offset by the same amount,
+        // and nothing else about the curve (its endpoints) moves.
+
         // Arrange
         var from = new ScenePosition(0, 0);
         var to = new ScenePosition(300, 0);
 
         // Act
-        var straight = CanvasGeometry.EdgePath(from, to, parallelIndex: 0);
-        var offset = CanvasGeometry.EdgePath(from, to, parallelIndex: 1);
+        var zero = ParseEdgePath(CanvasGeometry.EdgePath(from, to, parallelIndex: 0));
+        var one = ParseEdgePath(CanvasGeometry.EdgePath(from, to, parallelIndex: 1));
+        var two = ParseEdgePath(CanvasGeometry.EdgePath(from, to, parallelIndex: 2));
 
         // Assert
-        Assert.NotEqual(straight, offset);
+        var stepFromZeroToOne = one.ControlOneY - zero.ControlOneY;
+        var stepFromOneToTwo = two.ControlOneY - one.ControlOneY;
+        Assert.NotEqual(0, stepFromZeroToOne);
+        Assert.Equal(stepFromZeroToOne, stepFromOneToTwo);
+        Assert.Equal(stepFromZeroToOne, two.ControlTwoY - one.ControlTwoY);
+        Assert.Equal(zero.Start, one.Start);
+        Assert.Equal(zero.End, one.End);
     }
 
     [Fact]
@@ -63,26 +75,30 @@ public class CanvasGeometryTests
         // Act
         var path = CanvasGeometry.SelfLoopPath(node, parallelIndex: 0);
 
-        // Assert: the loop starts at the node's right-centre (node.X + NodeWidth).
+        // Assert: the loop starts at the node's right-centre (node.X + NodeWidth); this is the
+        // only assertion that can fail if SelfLoopPath itself formats with the current culture.
         var expectedStartX = CanvasGeometry.Invariant(node.X + CanvasGeometry.NodeWidth);
         Assert.Contains(expectedStartX, path, StringComparison.Ordinal);
-        Assert.DoesNotContain(",", expectedStartX, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Should_FormatLabelPointInvariantly_When_CurrentCultureUsesCommaDecimals()
     {
+        // Both coordinates are given a fractional part, so a formatter that fell back to the
+        // current culture would emit a comma somewhere in the exact string asserted below — under
+        // en-US rounding alone ("26") the same test would pass no matter which culture was active.
+
         // Arrange
         using var _ = new CulturePin("pt-PT");
-        var from = new ScenePosition(10.5, 0);
-        var to = new ScenePosition(300, 0);
+        var from = new ScenePosition(10.5, 5.5);
+        var to = new ScenePosition(300, 5.5);
 
         // Act
         var (x, y) = CanvasGeometry.LabelPoint(from, to, parallelIndex: 0);
 
         // Assert
-        Assert.DoesNotContain(",", x, StringComparison.Ordinal);
-        Assert.DoesNotContain(",", y, StringComparison.Ordinal);
+        Assert.Equal("245.25", x);
+        Assert.Equal("31.5", y);
     }
 
     [Fact]
@@ -90,14 +106,37 @@ public class CanvasGeometryTests
     {
         // Arrange
         using var _ = new CulturePin("pt-PT");
-        var node = new ScenePosition(10.5, 20);
+        var node = new ScenePosition(10.5, 5.5);
 
         // Act
         var (x, y) = CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 0);
 
         // Assert
-        Assert.DoesNotContain(",", x, StringComparison.Ordinal);
-        Assert.DoesNotContain(",", y, StringComparison.Ordinal);
+        Assert.Equal("238.5", x);
+        Assert.Equal("41.5", y);
+    }
+
+    private static (
+        (double X, double Y) Start,
+        double ControlOneY,
+        double ControlTwoY,
+        (double X, double Y) End) ParseEdgePath(string path)
+    {
+        // "M x0,y0 C c1x,c1y c2x,c2y x1,y1" — split on the command letters and the token
+        // separators the geometry itself uses, then parse every coordinate with InvariantCulture
+        // regardless of what culture produced the string.
+        var numbers = path
+            .Replace("M ", string.Empty, StringComparison.Ordinal)
+            .Replace("C ", string.Empty, StringComparison.Ordinal)
+            .Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
+            .Select(token => double.Parse(token, CultureInfo.InvariantCulture))
+            .ToArray();
+
+        return (
+            Start: (numbers[0], numbers[1]),
+            ControlOneY: numbers[3],
+            ControlTwoY: numbers[5],
+            End: (numbers[6], numbers[7]));
     }
 
     /// <summary>

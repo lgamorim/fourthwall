@@ -122,6 +122,111 @@ public class CanvasModelTests
     }
 
     [Fact]
+    public void Should_HitTest_When_PointSitsExactlyOnTheFarBoundary()
+    {
+        // The bounds are inclusive on every side. Pinning the exact edge (rather than only a point
+        // well inside or well outside) means flipping either comparison to exclusive breaks this test.
+
+        // Arrange
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Linear, "Alone");
+        var positions = new Dictionary<SceneId, ScenePosition> { [scene.Id] = new ScenePosition(0, 0) };
+        var model = CanvasModel.Build(story, positions);
+
+        // Act
+        var hit = model.HitTest(new ScenePosition(CanvasGeometry.NodeWidth, CanvasGeometry.NodeHeight));
+
+        // Assert
+        Assert.Equal(scene.Id, hit);
+    }
+
+    [Fact]
+    public void Should_ReturnNull_When_PointSitsJustPastTheFarBoundary()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Linear, "Alone");
+        var positions = new Dictionary<SceneId, ScenePosition> { [scene.Id] = new ScenePosition(0, 0) };
+        var model = CanvasModel.Build(story, positions);
+
+        // Act
+        var hit = model.HitTest(new ScenePosition(CanvasGeometry.NodeWidth + 0.01, CanvasGeometry.NodeHeight + 0.01));
+
+        // Assert
+        Assert.Null(hit);
+    }
+
+    [Fact]
+    public void Should_ReturnAnEmptyModel_When_TheStoryHasNoScenes()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var positions = new Dictionary<SceneId, ScenePosition>();
+
+        // Act
+        var model = CanvasModel.Build(story, positions);
+
+        // Assert
+        Assert.Empty(model.Nodes);
+        Assert.Empty(model.Edges);
+    }
+
+    [Fact]
+    public void Should_Throw_When_StoryIsNull()
+    {
+        // Arrange
+        var positions = new Dictionary<SceneId, ScenePosition>();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => CanvasModel.Build(null!, positions));
+    }
+
+    [Fact]
+    public void Should_Throw_When_PositionsIsNull()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => CanvasModel.Build(story, null!));
+    }
+
+    [Fact]
+    public void Should_ThrowNamingTheScene_When_ANodeHasNoPosition()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Linear, "Alone");
+        var positions = new Dictionary<SceneId, ScenePosition>();
+
+        // Act
+        var exception = Assert.Throws<ArgumentException>(() => CanvasModel.Build(story, positions));
+
+        // Assert
+        Assert.Contains(scene.Id.Value.ToString(), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_ThrowNamingTheScene_When_AnEdgeTargetHasNoPosition()
+    {
+        // The scene at the other end of a transition is looked up too, whether or not the caller
+        // remembered it — the missing scene here is never a node itself, only a choice's target.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Choice, "start");
+        var target = story.AddScene(SceneKind.Ending, "end", EndingOutcome.Victory());
+        story.WireChoice(start.Id, "Go", target.Id);
+        var positions = new Dictionary<SceneId, ScenePosition> { [start.Id] = new ScenePosition(0, 0) };
+
+        // Act
+        var exception = Assert.Throws<ArgumentException>(() => CanvasModel.Build(story, positions));
+
+        // Assert
+        Assert.Contains(target.Id.Value.ToString(), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_FormatNodeTransformInvariantly_When_CurrentCultureUsesCommaDecimals()
     {
         // Arrange

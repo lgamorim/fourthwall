@@ -31,6 +31,11 @@ public sealed class CanvasModel
     /// </summary>
     /// <param name="story">The story to render.</param>
     /// <param name="positions">Every scene's position; must have an entry for each of the story's scenes.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="story"/> or <paramref name="positions"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="positions"/> has no entry for one of <paramref name="story"/>'s scenes, or for
+    /// the target of one of its transitions.
+    /// </exception>
     public static CanvasModel Build(Story story, IReadOnlyDictionary<SceneId, ScenePosition> positions)
     {
         ArgumentNullException.ThrowIfNull(story);
@@ -38,7 +43,8 @@ public sealed class CanvasModel
 
         var orderedScenes = Scenes.Ordered(story).ToList();
         var nodes = orderedScenes
-            .Select(scene => new CanvasNode(scene, positions[scene.Id], scene.Id == story.StartSceneId))
+            .Select(scene => new CanvasNode(
+                scene, RequirePosition(positions, scene.Id), scene.Id == story.StartSceneId))
             .ToList();
 
         var parallelCounts = new Dictionary<(SceneId Source, SceneId Target), int>();
@@ -105,8 +111,8 @@ public sealed class CanvasModel
         parallelCounts[pair] = parallelIndex + 1;
 
         var isSelfLoop = source == target;
-        var fromPosition = positions[source];
-        var toPosition = positions[target];
+        var fromPosition = RequirePosition(positions, source);
+        var toPosition = RequirePosition(positions, target);
 
         var pathData = isSelfLoop
             ? CanvasGeometry.SelfLoopPath(fromPosition, parallelIndex)
@@ -117,5 +123,16 @@ public sealed class CanvasModel
             : CanvasGeometry.LabelPoint(fromPosition, toPosition, parallelIndex);
 
         return new CanvasEdge(key, source, target, label, parallelIndex, isSelfLoop, pathData, labelX, labelY);
+    }
+
+    private static ScenePosition RequirePosition(
+        IReadOnlyDictionary<SceneId, ScenePosition> positions, SceneId sceneId)
+    {
+        if (!positions.TryGetValue(sceneId, out var position))
+        {
+            throw new ArgumentException($"No position was given for scene '{sceneId.Value}'.", nameof(positions));
+        }
+
+        return position;
     }
 }
