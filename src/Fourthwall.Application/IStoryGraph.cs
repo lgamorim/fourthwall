@@ -31,4 +31,14 @@ public interface IStoryGraph
     /// trivially reaches an ending. Empty when <paramref name="targets"/> is empty.
     /// </returns>
     IReadOnlySet<SceneId> ScenesThatCanReachAny(IReadOnlySet<SceneId> targets);
+
+    /// <summary>
+    /// Finds the shortest transition count from a scene to each scene reachable from it.
+    /// </summary>
+    /// <param name="origin">The scene to walk from.</param>
+    /// <returns>
+    /// The number of transitions on the shortest path to each reachable scene; <paramref name="origin"/>
+    /// itself maps to zero. Unreachable scenes are absent.
+    /// </returns>
+    IReadOnlyDictionary<SceneId, int> DepthFrom(SceneId origin);
 }

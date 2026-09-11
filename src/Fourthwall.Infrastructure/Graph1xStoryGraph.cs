@@ -48,4 +48,7 @@ internal sealed class Graph1xStoryGraph : IStoryGraph
 
         return canReach;
     }
+
+    public IReadOnlyDictionary<SceneId, int> DepthFrom(SceneId origin) =>
+        _graph.ShortestPathsFrom(origin, _ => 1).Distances;
 }

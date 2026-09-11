@@ -36,6 +36,34 @@ internal sealed class InMemoryStoryGraph : IStoryGraph
     public IReadOnlySet<SceneId> ScenesThatCanReachAny(IReadOnlySet<SceneId> targets) =>
         Walk(targets, _incoming);
 
+    public IReadOnlyDictionary<SceneId, int> DepthFrom(SceneId origin)
+    {
+        var depths = new Dictionary<SceneId, int> { [origin] = 0 };
+        var pending = new Queue<SceneId>();
+        pending.Enqueue(origin);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Dequeue();
+
+            if (!_outgoing.TryGetValue(current, out var neighbours))
+            {
+                continue;
+            }
+
+            foreach (var neighbour in neighbours)
+            {
+                if (!depths.ContainsKey(neighbour))
+                {
+                    depths[neighbour] = depths[current] + 1;
+                    pending.Enqueue(neighbour);
+                }
+            }
+        }
+
+        return depths;
+    }
+
     private static HashSet<SceneId> Walk(
         IEnumerable<SceneId> seeds,
         Dictionary<SceneId, List<SceneId>> adjacency)

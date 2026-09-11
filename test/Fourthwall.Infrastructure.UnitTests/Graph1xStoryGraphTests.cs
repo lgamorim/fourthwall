@@ -146,5 +146,79 @@ public class Graph1xStoryGraphTests
         Assert.DoesNotContain(trapped.Id, canReach);
     }
 
+    [Fact]
+    public void Should_MapOriginToZero_When_DepthIsQueried()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var graph = CreateGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(0, depths[start.Id]);
+    }
+
+    [Fact]
+    public void Should_UseTheShorterPath_When_ASceneIsReachableTwoWays()
+    {
+        // A diamond: one route is a single hop, the other goes through an extra scene. Depth must
+        // report the shorter one, matching Dijkstra semantics rather than any particular traversal
+        // order.
+
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Choice, "start");
+        var detour = story.AddScene(SceneKind.Linear, "detour");
+        var target = story.AddScene(SceneKind.Ending, "target", EndingOutcome.Victory());
+        story.WireChoice(start.Id, "the long way", detour.Id);
+        story.SetFollowUp(detour.Id, target.Id);
+        story.WireChoice(start.Id, "the short way", target.Id);
+        var graph = CreateGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.Equal(1, depths[target.Id]);
+    }
+
+    [Fact]
+    public void Should_OmitUnreachableScenes_When_DepthIsQueried()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var orphan = story.AddScene(SceneKind.Linear, "orphan");
+        var graph = CreateGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(start.Id);
+
+        // Assert
+        Assert.False(depths.ContainsKey(orphan.Id));
+    }
+
+    [Fact]
+    public void Should_Terminate_When_DepthIsQueriedOnACycle()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var a = story.AddScene(SceneKind.Linear, "a");
+        var b = story.AddScene(SceneKind.Linear, "b");
+        story.SetFollowUp(a.Id, b.Id);
+        story.SetFollowUp(b.Id, a.Id);
+        var graph = CreateGraph(story);
+
+        // Act
+        var depths = graph.DepthFrom(a.Id);
+
+        // Assert
+        Assert.Equal(0, depths[a.Id]);
+        Assert.Equal(1, depths[b.Id]);
+    }
+
     private static IStoryGraph CreateGraph(Story story) => new Graph1xStoryGraphFactory().Create(story);
 }
