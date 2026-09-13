@@ -613,8 +613,8 @@ button:disabled {
     border-bottom-color: var(--fw-rule);
 }
 
+/* The global ring stays; the underline joins it so the title reads as the field it is. */
 .story-title-input:focus-visible {
-    outline: none;
     border-bottom-color: var(--fw-ribbon);
 }
 
