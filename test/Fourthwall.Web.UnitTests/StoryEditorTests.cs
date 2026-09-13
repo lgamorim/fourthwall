@@ -67,7 +67,9 @@ public class StoryEditorTests : BunitContext
         var cut = RenderEditor();
 
         // Assert — nothing to pick yet, so the main region points at the one thing to do.
-        Assert.Contains("Add", cut.Find(".canvas-placeholder").TextContent, StringComparison.Ordinal);
+        Assert.Equal(
+            "This story has no scenes yet. Add the one it opens with, in the navigator on the right.",
+            cut.Find(".canvas-placeholder").TextContent.Trim());
     }
 
     [Fact]
@@ -81,7 +83,9 @@ public class StoryEditorTests : BunitContext
         var cut = RenderEditor();
 
         // Assert
-        Assert.Contains("Pick", cut.Find(".canvas-placeholder").TextContent, StringComparison.Ordinal);
+        Assert.Equal(
+            "Your scenes live in the navigator on the right. Pick one to edit it, or add a new one below the list.",
+            cut.Find(".canvas-placeholder").TextContent.Trim());
     }
 
     [Fact]
