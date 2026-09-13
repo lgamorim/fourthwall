@@ -69,6 +69,33 @@ public class HomeTests : BunitContext
 
 
     [Fact]
+    public void Should_RenderThePickerInsideThePage_When_Rendered()
+    {
+        // Arrange & Act
+        var cut = Render<Home>();
+
+        // Assert — the main region is full bleed for the canvas, so the picker carries its own
+        // measure and padding through a page container.
+        Assert.NotNull(cut.Find(".page #create-story"));
+        Assert.NotNull(cut.Find(".page #open-story"));
+    }
+
+    [Fact]
+    public async Task Should_OfferAWayBackToTheEditor_When_AStoryIsOpen()
+    {
+        // Arrange — the picker names the open story; without a way back, the only route to the
+        // editor from here is the address bar.
+        _workspace.Stories[@"C:\stories\wreck"] = new Story("The Wreck");
+        await _workspace.OpenAsync(@"C:\stories\wreck", TestContext.Current.CancellationToken);
+
+        // Act
+        var cut = Render<Home>();
+
+        // Assert
+        Assert.Equal("/story", cut.Find(".picker-return").GetAttribute("href"));
+    }
+
+    [Fact]
     public void Should_CreateAndOpenTheStory_When_CreateIsSubmitted()
     {
         // Arrange

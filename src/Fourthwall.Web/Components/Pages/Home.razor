@@ -2,67 +2,74 @@
 
 <PageTitle>Fourthwall</PageTitle>
 
-<h1>Fourthwall</h1>
+@* The main region is full bleed for the canvas, so the picker carries its own measure and padding. *@
+<div class="page">
+    <h1>Fourthwall</h1>
 
-<p>Design, visualize, and validate branching stories.</p>
+    <p class="page-intro">Write a branching story, see its shape, and check that every path leads somewhere.</p>
 
-@* Bound once, for the same reason as the layout: another circuit can close the story mid-render. *@
-@if (Workspace.Current is { } openStory)
-{
-    <p class="picker-open">
-        Open: <strong>@openStory.Title</strong> <span class="picker-folder">@Workspace.FolderPath</span>
-    </p>
-}
+    @* Bound once, for the same reason as the layout: another circuit can close the story mid-render. *@
+    @if (Workspace.Current is { } openStory)
+    {
+        <p class="picker-open">
+            <span>Open now: <strong>@openStory.Title</strong> <span class="picker-folder">@Workspace.FolderPath</span></span>
+            <a class="picker-return" href="/story">Return to it</a>
+        </p>
+    }
 
-@* Operational failures only — a folder that is taken, gone, or unreadable. What the creator
-   typed is the form's own business, and shows up next to the field it belongs to. *@
-@if (_error is not null)
-{
-    <p class="picker-error" role="alert">@_error</p>
-}
+    @* Operational failures only — a folder that is taken, gone, or unreadable. What the creator
+       typed is the form's own business, and shows up next to the field it belongs to. *@
+    @if (_error is not null)
+    {
+        <p class="picker-error" role="alert">@_error</p>
+    }
 
-<section class="picker-section">
-    <h2>New story</h2>
-    <EditForm id="create-story" Model="_create" OnValidSubmit="CreateAsync" OnInvalidSubmit="ClearOperationalError">
-        <DataAnnotationsValidator />
-        <label for="create-folder">Folder</label>
-        <InputText id="create-folder" @bind-Value="_create.FolderPath" placeholder="C:\stories\my-story" />
-        <ValidationMessage For="() => _create.FolderPath" />
-        <label for="create-title">Title</label>
-        <InputText id="create-title" @bind-Value="_create.Title" />
-        <ValidationMessage For="() => _create.Title" />
-        <button id="create-submit" type="submit">Create story</button>
-    </EditForm>
-</section>
+    @* First when there are any: the picker's job is one click back into a story. *@
+    @if (_recent.Count > 0)
+    {
+        <section class="picker-section picker-recent">
+            <h2>Recent stories</h2>
+            <ul class="recent">
+                @foreach (var story in _recent)
+                {
+                    <li class="recent-story">
+                        <button class="recent-open" @onclick="() => OpenRecentAsync(story)">@story.Title</button>
+                        <span class="recent-folder">@story.FolderPath</span>
+                        @if (_unavailable.Contains(story.FolderPath))
+                        {
+                            <span class="recent-unavailable">can't be opened</span>
+                        }
+                        <button class="recent-remove" @onclick="() => ForgetAsync(story)">Forget</button>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
 
-<section class="picker-section">
-    <h2>Open story</h2>
-    <EditForm id="open-story" Model="_open" OnValidSubmit="OpenAsync" OnInvalidSubmit="ClearOperationalError">
-        <DataAnnotationsValidator />
-        <label for="open-folder">Folder</label>
-        <InputText id="open-folder" @bind-Value="_open.FolderPath" placeholder="C:\stories\my-story" />
-        <ValidationMessage For="() => _open.FolderPath" />
-        <button id="open-submit" type="submit">Open story</button>
-    </EditForm>
-</section>
+    <div class="picker-forms">
+        <section class="picker-section">
+            <h2>Create a story</h2>
+            <EditForm id="create-story" Model="_create" OnValidSubmit="CreateAsync" OnInvalidSubmit="ClearOperationalError">
+                <DataAnnotationsValidator />
+                <label for="create-folder">Folder</label>
+                <InputText id="create-folder" @bind-Value="_create.FolderPath" placeholder="C:\stories\my-story" />
+                <ValidationMessage For="() => _create.FolderPath" />
+                <label for="create-title">Title</label>
+                <InputText id="create-title" @bind-Value="_create.Title" />
+                <ValidationMessage For="() => _create.Title" />
+                <button id="create-submit" type="submit">Create story</button>
+            </EditForm>
+        </section>
 
-@if (_recent.Count > 0)
-{
-    <section class="picker-section">
-        <h2>Recent</h2>
-        <ul class="recent">
-            @foreach (var story in _recent)
-            {
-                <li class="recent-story">
-                    <button class="recent-open" @onclick="() => OpenRecentAsync(story)">@story.Title</button>
-                    <span class="recent-folder">@story.FolderPath</span>
-                    @if (_unavailable.Contains(story.FolderPath))
-                    {
-                        <span class="recent-unavailable">unavailable</span>
-                    }
-                    <button class="recent-remove" @onclick="() => ForgetAsync(story)">Remove</button>
-                </li>
-            }
-        </ul>
-    </section>
-}
+        <section class="picker-section">
+            <h2>Open a story</h2>
+            <EditForm id="open-story" Model="_open" OnValidSubmit="OpenAsync" OnInvalidSubmit="ClearOperationalError">
+                <DataAnnotationsValidator />
+                <label for="open-folder">Folder</label>
+                <InputText id="open-folder" @bind-Value="_open.FolderPath" placeholder="C:\stories\my-story" />
+                <ValidationMessage For="() => _open.FolderPath" />
+                <button id="open-submit" type="submit">Open story</button>
+            </EditForm>
+        </section>
+    </div>
+</div>

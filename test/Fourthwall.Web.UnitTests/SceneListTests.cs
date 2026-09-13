@@ -59,6 +59,24 @@ public class SceneListTests : BunitContext
         Assert.Equal(expected, rendered);
     }
 
+    [Theory]
+    [InlineData(SceneKind.Choice, "scene-kind-choice")]
+    [InlineData(SceneKind.Linear, "scene-kind-linear")]
+    [InlineData(SceneKind.Ending, "scene-kind-ending")]
+    public void Should_MarkTheRowWithItsKind_When_Rendered(SceneKind kind, string expectedClass)
+    {
+        // Arrange — the stylesheet draws the kind mark from this class, so kind never reads by the
+        // word alone.
+        var story = new Story("The Wreck");
+        story.AddScene(kind, "A storm gathers", kind == SceneKind.Ending ? EndingOutcome.Death() : null);
+
+        // Act
+        var cut = Render<SceneList>(parameters => parameters.Add(p => p.Story, story));
+
+        // Assert
+        Assert.Contains(expectedClass, cut.Find(".scene-kind").ClassList);
+    }
+
     [Fact]
     public void Should_ShowAPlaceholder_When_ASceneHasNoText()
     {
@@ -280,7 +298,7 @@ public class SceneListTests : BunitContext
         cut.Find(".scene-delete").Click();
 
         // Assert
-        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+        Assert.Equal("Delete scene", cut.Find(".scene-delete-confirm").TextContent.Trim());
     }
 
     [Fact]
@@ -295,7 +313,7 @@ public class SceneListTests : BunitContext
         cut.Find(".scene-delete").Click();
 
         // Assert
-        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+        Assert.Equal("Delete scene", cut.Find(".scene-delete-confirm").TextContent.Trim());
     }
 
     [Fact]

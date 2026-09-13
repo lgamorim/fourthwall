@@ -9,7 +9,7 @@
 
     @if (Scene.Choices.Count < 2)
     {
-        <p class="choice-hint">A choice scene needs at least two choices.</p>
+        <p class="choice-hint">A choice scene needs at least two choices for the reader to pick from.</p>
     }
 
     <ol class="choice-rows">
@@ -75,14 +75,14 @@ else if (Scene.Kind is SceneKind.Linear)
 
     @if (Scene.FollowUpSceneId is null)
     {
-        <p class="follow-up-hint">A linear scene flows into exactly one scene.</p>
+        <p class="follow-up-hint">A linear scene flows into one scene. Choose which.</p>
     }
 
     <label for="follow-up">Flows into</label>
     <select id="follow-up"
             value="@(Scene.FollowUpSceneId?.Value.ToString() ?? string.Empty)"
             @onchange="e => SetFollowUpAsync(e.Value as string)">
-        <option value="">(none)</option>
+        <option value="">Nowhere yet</option>
         @foreach (var target in Scenes.Ordered(Story))
         {
             <option value="@target.Id.Value">@Scenes.Label(target)</option>

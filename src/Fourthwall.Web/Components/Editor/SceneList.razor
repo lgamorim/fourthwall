@@ -6,7 +6,7 @@ else
 {
     @if (Story.StartSceneId is null)
     {
-        <p class="scene-no-start">No scene starts this story.</p>
+        <p class="scene-no-start">No scene starts this story yet. Choose one with Start here.</p>
     }
 
     <ul class="scene-rows">
@@ -16,29 +16,31 @@ else
                 data-scene-id="@scene.Id.Value">
                 <button class="scene-select" @onclick="() => SelectAsync(scene.Id)">
                     <span class="scene-snippet">@Scenes.Label(scene)</span>
-                    <span class="scene-kind">@scene.Kind</span>
+                    <span class="scene-kind @KindClass(scene)">@scene.Kind</span>
                 </button>
 
-                @if (scene.Id == Story.StartSceneId)
-                {
-                    <span class="scene-start" title="The story starts here">start</span>
-                }
-                else
-                {
-                    <button class="scene-make-start" @onclick="() => SetStartAsync(scene.Id)">Make start</button>
-                }
+                <span class="scene-actions">
+                    @if (scene.Id == Story.StartSceneId)
+                    {
+                        <span class="scene-start" title="The story starts here">Start</span>
+                    }
+                    else
+                    {
+                        <button class="scene-make-start" @onclick="() => SetStartAsync(scene.Id)">Start here</button>
+                    }
 
-                @if (_pendingDelete == scene.Id)
-                {
-                    <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">
-                        @DeleteConfirmation(scene.Id)
-                    </button>
-                    <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
-                }
-                else
-                {
-                    <button class="scene-delete" @onclick="() => AskToDelete(scene.Id)">Delete</button>
-                }
+                    @if (_pendingDelete == scene.Id)
+                    {
+                        <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">
+                            @DeleteConfirmation(scene.Id)
+                        </button>
+                        <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
+                    }
+                    else
+                    {
+                        <button class="scene-delete" @onclick="() => AskToDelete(scene.Id)">Delete</button>
+                    }
+                </span>
             </li>
         }
     </ul>

@@ -6,32 +6,57 @@
 
     <h1 class="visually-hidden">@story.Title</h1>
 
-    @if (_error is not null)
-    {
-        <p class="editor-error" role="alert">@_error</p>
-    }
+    <div class="editor-toolbar">
+        <label for="story-title" class="visually-hidden">Story title</label>
+        <input id="story-title"
+               class="story-title-input"
+               placeholder="Untitled story"
+               @bind="_title"
+               @bind:after="RenameAsync" />
 
-    <label for="story-title">Story title</label>
-    <input id="story-title" class="story-title-input" @bind="_title" @bind:after="RenameAsync" />
+        @if (_error is not null)
+        {
+            <p class="editor-error" role="alert">@_error</p>
+        }
+    </div>
 
-    <SceneList Story="story"
-               SelectedSceneId="_selectedSceneId"
-               SelectedSceneIdChanged="OnSceneSelected"
-               OnChanged="SaveAsync" />
+    @* The canvas takes this region from M20. Until then the main region says what the creator can
+       do now, which depends on whether there is anything to pick yet. *@
+    <div class="canvas-placeholder">
+        @if (story.Scenes.Count == 0)
+        {
+            <p>This story has no scenes yet. Add the one it opens with, in the navigator on the right.</p>
+        }
+        else
+        {
+            <p>Your scenes live in the navigator on the right. Pick one to edit it, or add a new one below the list.</p>
+        }
+    </div>
 
     <SectionContent SectionId="LayoutSections.Dock">
         @* Story-level, so it sits above the detail of whichever scene is selected. *@
         <ValidationPanel OnSceneSelected="OnSceneSelected" />
 
-        @if (SelectedScene is { } scene)
-        {
-            <SceneInspector Scene="scene" OnChanged="SaveAsync" />
-            <SceneImage Scene="scene" OnChanged="SaveAsync" />
-            <SceneTransitions Story="story" Scene="scene" OnChanged="SaveAsync" />
-        }
-        else
-        {
-            <p class="inspector-empty">Select a scene to edit it.</p>
-        }
+        <section class="navigator" aria-label="Scenes">
+            <h2>Scenes</h2>
+            <SceneList Story="story"
+                       SelectedSceneId="_selectedSceneId"
+                       SelectedSceneIdChanged="OnSceneSelected"
+                       OnChanged="SaveAsync" />
+        </section>
+
+        <section class="inspector" aria-label="Selected scene">
+            @if (SelectedScene is { } scene)
+            {
+                <SceneInspector Scene="scene" OnChanged="SaveAsync" />
+                <SceneImage Scene="scene" OnChanged="SaveAsync" />
+                <SceneTransitions Story="story" Scene="scene" OnChanged="SaveAsync" />
+            }
+            else
+            {
+                <h2>Scene</h2>
+                <p class="inspector-empty">Pick a scene in the navigator to edit its text, kind, image, and links.</p>
+            }
+        </section>
     </SectionContent>
 }

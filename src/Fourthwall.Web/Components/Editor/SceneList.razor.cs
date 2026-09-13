@@ -44,9 +44,21 @@ public partial class SceneList
             .Sum(scene => scene.OutgoingSceneIds.Count(id => id == sceneId));
 
         return inbound == 0
-            ? "Confirm delete"
-            : $"Confirm delete and remove {inbound} link{(inbound == 1 ? string.Empty : "s")} to it";
+            ? "Delete scene"
+            : $"Delete scene and {inbound} link{(inbound == 1 ? string.Empty : "s")} to it";
     }
+
+    // The kind mark beside the word is drawn by the stylesheet from this class, so kind never
+    // reads by colour alone or by the word alone. Exhaustive, like ValidationRules.Label: a kind
+    // the editor does not know is a defect, not an ending. Scene itself rejects undefined kinds,
+    // so the last arm is unreachable through the domain.
+    private static string KindClass(Scene scene) => scene.Kind switch
+    {
+        SceneKind.Choice => "scene-kind-choice",
+        SceneKind.Linear => "scene-kind-linear",
+        SceneKind.Ending => "scene-kind-ending",
+        _ => throw new ArgumentOutOfRangeException(nameof(scene), scene.Kind, "Unknown scene kind."),
+    };
 
     private Task SelectAsync(SceneId sceneId) => SelectedSceneIdChanged.InvokeAsync(sceneId);
 

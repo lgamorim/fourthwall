@@ -1,0 +1,349 @@
+# Fourthwall — Visual Direction
+
+Status: approved by the maintainer with the M19 plan on 2026-09-13, before any M19 code was written.
+Scope: the whole app as one identity — the Phase 3 chrome (header, dock, forms, picker) and the
+Phase 4 canvas. Written by applying the `frontend-design` skill's process (brainstorm → plan →
+critique → build → critique again); every UI milestone from M19 on re-reads it before building.
+
+## 1. Subject, audience, job
+
+**Subject.** A gamebook workbench. Fourthwall is where a write-your-own-adventure story is born: a
+creator writes scenes, wires choices between them, and checks that every path leads somewhere. The
+story is a map of scenes; the tool's material is the map, the page, and the pencil.
+
+**Audience.** One writer, on their own machine, for hours at a time. Not a team, not a reader, not a
+dashboard viewer. They know their story; they need the tool to stay out of the way and to tell
+them, without ceremony, where they are and what is broken.
+
+**Job.** Make the shape of the story legible and editable at a glance. The picker's job is to get
+the writer back into a story in one click; the dock's job is the detail view — check, find, edit;
+the canvas's job (from M20) is the map itself.
+
+**World to draw from.** The gamebook, not the graph editor: the paperback with the green spine, the
+pencil-and-paper map the reader draws so as not to get lost, the ribbon that keeps the place, the
+running head at the top of the page, the printed section in a book face. Not: dark panels, neon
+ports, blueprint grids, floating cards with shadows, icon-only toolbars.
+
+## 2. Tokens
+
+Every colour, type, spacing, and radius value in the app comes from `wwwroot/app.css` `:root`
+under the `--fw-` prefix. The editor's shared vocabulary is applied by role across components from
+that same file (a deliberate deviation recorded in `CLAUDE.md`); the layout components' own
+`.razor.css` files consume the tokens and never introduce colour, type, spacing, or radius
+literals.
+
+### 2.1 Palette
+
+Ink on paper, on a desk, with one ribbon.
+
+| Token | Hex | Named for | Used for |
+|---|---|---|---|
+| `--fw-ink` | `#1B1F2A` | ink | text, the header block, primary buttons, the start tag |
+| `--fw-paper` | `#F5F4EF` | the page | the main ground, input fields, text on ink, the hovered and selected navigator row (rows sit on the desk, so paper is the lift) |
+| `--fw-desk` | `#E7E3D8` | the desk under the page | the dock ground and the "open now" line on the picker |
+| `--fw-pencil` | `#5F5B4E` | pencil | secondary text: folder paths, hints, eyebrow headings |
+| `--fw-rule` | `#CFCABB` | a ruled line | borders and dividers, one pixel |
+| `--fw-ribbon` | `#1F6F63` | the ribbon bookmark | selection, focus, the bookmark, primary hover, "no problems" |
+
+Two functional colours, each with a tint for the row it sits on, kept apart from the palette so
+severity never competes with identity:
+
+| Token | Hex | Used for |
+|---|---|---|
+| `--fw-error` / `--fw-error-tint` | `#9E2B25` / `#F6E7E4` | errors: failed operations, validation errors, destructive confirmation |
+| `--fw-warning` / `--fw-warning-tint` | `#8A5B00` / `#F5EBD2` | warnings: validation warnings, "no start scene", kind-change prompt |
+
+Contrast target: WCAG AA (4.5:1) for every text and tag against the ground it sits on — ink and
+pencil on paper and on desk, ribbon on paper and on desk, paper on ink, each functional colour on
+its tint. The ratios are computed from the built CSS and listed in the M19 PR; any pair under 4.5
+is darkened before the PR opens.
+
+### 2.2 Type
+
+Three roles, three faces, all self-hosted under the SIL Open Font License from `wwwroot/fonts/`.
+The tool must work with the network off, so there is no font CDN and no `<link>` to one.
+
+| Role | Face | Files | Fallback stack | Where |
+|---|---|---|---|---|
+| Display | **Young Serif** (Regular) | `YoungSerif-Regular.woff2` | `"Iowan Old Style", "Palatino Linotype", Georgia, serif` | the app name, the story title in the toolbar, the picker headline. Nowhere else. |
+| Body | **Literata** (variable: `opsz` 7–72, `wght` 400–700, roman and italic) | `Literata[opsz,wght].woff2`, `Literata-Italic[opsz,wght].woff2` | `Georgia, "Times New Roman", serif` | prose: scene text and its textarea, scene snippets in the navigator, hints, empty states, error and validation messages, the picker intro |
+| Utility | **iA Writer Quattro S** (Regular, Italic, Bold) | `iAWriterQuattroS-{Regular,Italic,Bold}.woff2` | `"IBM Plex Sans", "Segoe UI", system-ui, sans-serif` | labels, buttons, eyebrow headings, kind tags, chips, folder paths, the header |
+
+Why these. Young Serif is a chunky, low-contrast serif with a hand-cut, paperback-title feel; it
+carries the identity in three places and is otherwise absent. Literata is a book face made for
+reading long text on screens — the writer's scene text is set the way it will be read. iA Writer
+Quattro descends from a typewriter face (IBM Plex Mono, proportionally respaced); it says
+"manuscript" for the working parts — labels, paths, buttons — without the Courier cliché, and it
+keeps folder paths legible.
+
+Licences: `wwwroot/fonts/OFL-YoungSerif.txt`, `wwwroot/fonts/OFL-Literata.txt`,
+`wwwroot/fonts/OFL-iAWriter.md` — copied verbatim from the upstream sources (Google Fonts
+`ofl/youngserif`, `ofl/literata`; `iaolo/iA-Fonts`). Young Serif and Literata ship upstream as
+TTF; they are converted once to WOFF2 with fontTools (`pip install fonttools brotli`, then
+`TTFont(src).flavor = "woff2"; save(dst)`) with no subsetting, so any script a story is written in
+still renders. iA Writer Quattro ships WOFF2 upstream and is used as is.
+
+Scale (rem; base 16px):
+
+| Token | Size | Role |
+|---|---|---|
+| `--fw-text-xs` | 0.6875 (11px) | eyebrow headings, kind and start tags, "can't be opened" |
+| `--fw-text-s` | 0.8125 (13px) | utility: labels, buttons, chips, paths, navigator rows |
+| `--fw-text-m` | 0.9375 (15px) | body prose, inputs, hints, messages |
+| `--fw-text-l` | 1.125 (18px) | the app name |
+| `--fw-text-xl` | 1.5 (24px) | the story title in the toolbar |
+| `--fw-text-2xl` | 2.5 (40px) | the picker headline |
+
+Line height 1.55 for body, 1.4 for utility, 1.15 for display. Eyebrow headings (`h2` in the dock
+and picker sections) are utility, uppercase, `letter-spacing: 0.08em`, pencil — the same device
+everywhere a section starts, and nowhere else.
+
+### 2.3 Spacing and radius
+
+Four-pixel base: `--fw-space-1` 0.25rem, `-2` 0.5rem, `-3` 0.75rem, `-4` 1rem, `-5` 1.5rem,
+`-6` 2rem, `-7` 3rem. Radii stay close to paper: `--fw-radius-s` 2px (inputs, buttons, tags,
+chips), `--fw-radius-m` 4px (image preview, prompts). No pills, no shadows, no gradients. Rules are
+one pixel of `--fw-rule`; the only heavy block is the ink header.
+
+Shell measures: `--fw-header-height` 3rem, `--fw-dock-width` 24rem (up from 22rem: the dock now
+holds validation, navigator, and inspector), `--fw-page-width` 46rem (the picker's measure),
+`--fw-ribbon-width` 8px and `--fw-ribbon-length` 22px (the bookmark, §4).
+
+Motion: one duration, `--fw-motion` 120ms, on background, colour, border colour, and opacity
+changes only; the focus ring appears without transition. Under `prefers-reduced-motion: reduce`
+every transition and animation is removed.
+
+## 3. Layout
+
+### 3.1 Editor
+
+One sentence: a slim ink header, a full-bleed main column holding a toolbar over the canvas
+region, and a fixed desk-coloured dock on the right stacking validation → navigator → inspector.
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│ Fourthwall   THE WRECK                                                  [Close story] │  header: ink
+├─────────────────────────────────────────────────────────────┬─────────────────────────┤
+│ The Wreck                                    ← story title   │ VALIDATION              │
+│ ── error line, only when a save fails ──      (display face) │ [Validate story]        │
+│                                                             │ Not validated yet. …    │
+│                                                             ├─────────────────────────┤
+│                                                             │ SCENES                  │
+│                                                             │ ▌⑂ A fork      CHOICE   │ ← ribbon: selected
+│                 Your scenes live in the navigator.          │  → Below deck  LINEAR   │
+│                 Pick one to edit it, or add a new one       │  ■ You drown   ENDING   │
+│                 below the list.                             │ ADD A SCENE             │
+│                              ↑ canvas placeholder until M20 │ Kind [Linear ▾] Text [] │
+│                                                             │ [Add scene]             │
+│                                                             ├─────────────────────────┤
+│                                                             │ ▌SCENE                  │ ← ribbon again
+│                                                             │ Kind [Choice ▾]         │
+│                                                             │ Text [ prose, Literata ]│
+│                                                             │ IMAGE … CHOICES …       │
+└─────────────────────────────────────────────────────────────┴─────────────────────────┘
+  main: paper, no padding, overflow hidden                      dock: desk, scrolls on its own
+```
+
+- The header names the app (display face) and, when a story is open, the story as a running head
+  in utility caps, with "Close story" at the far right. The header is the only ink-filled block.
+- The toolbar is the top of the main column: the editable story title set as a title (display
+  face, no visible border until hover or focus), and the editor's error line under it. From M21 the
+  fit and reset controls sit at its right edge.
+- The main region below the toolbar is the canvas region: paper, full bleed, `overflow: hidden`.
+  Until M20 it holds the `.canvas-placeholder` empty state, centred, written as an invitation.
+- The dock is desk-coloured and scrolls independently. Three sections, each opened by an eyebrow
+  heading and separated by a rule: **Validation** (the story-level check, on top because it is
+  about the whole story), **Scenes** — the navigator (compact rows: kind mark, snippet, kind tag,
+  with "Start here" and "Delete" revealed on the selected row and on hover or focus), then the
+  "Add a scene" form, and **Scene** — the inspector for the selected scene (kind, outcome, text,
+  image, choices or follow-up), or its empty-state invitation.
+- At 1280px wide the main column is 896px; the dock never shrinks below its width.
+
+### 3.2 Picker
+
+One sentence: a single centred page — headline and one-line promise, then the shelf of recent
+stories when there are any, then the two forms side by side.
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ Fourthwall                                                     │  header: ink
+├───────────────────────────────────────────────────────────────┤
+│        .page — max 46rem, centred, its own padding             │
+│                                                                │
+│        Fourthwall                        ← display, 2.5rem     │
+│        Write a branching story, see its shape, and check       │
+│        that every path leads somewhere.                        │
+│                                                                │
+│        ▌Open now: The Wreck   C:\stories\wreck   (when open)   │
+│        ── error line, only after a failed create or open ──    │
+│                                                                │
+│        RECENT STORIES                                          │
+│        The Wreck            C:\stories\wreck           Forget  │
+│        Shadows of Kell      D:\kell   CAN'T BE OPENED  Forget  │
+│                                                                │
+│        CREATE A STORY                 OPEN A STORY             │
+│        Folder [              ]        Folder [              ]  │
+│        Title  [              ]        [Open story]             │
+│        [Create story]                                          │
+└───────────────────────────────────────────────────────────────┘
+```
+
+- Recent stories come first when there are any: the picker's job is one click back into the story.
+  With no recents the forms are the first thing under the promise.
+- The two forms sit side by side from 44rem up and stack below it.
+- Recent rows: title (body face, a link-styled button), path (utility, pencil), the "can't be
+  opened" tag only after an open has failed, and "Forget" at the right.
+
+## 4. Signature element: the ribbon bookmark
+
+**What.** A ribbon in `--fw-ribbon`, 8px wide and 22px long (`--fw-ribbon-width`,
+`--fw-ribbon-length`; a 6px draft read as timid in the first screenshots), hanging from the top
+edge of whatever stands for the selected scene, ending in a notched fishtail. In M19 it hangs from the selected navigator row and
+from the inspector's heading; from M20 it hangs from the selected node on the canvas.
+
+**Why this, and why only this.** Selection is the one state that must read identically across the
+navigator, the inspector, the validation chips, and the canvas — four surfaces that were built
+separately and will otherwise each invent their own highlight. A gamebook reader keeps their place
+with a ribbon; the writer's place in the book is the scene they are editing. The ribbon is drawn
+from the subject, it encodes state rather than decorating, and it is the one element that will be
+recognised in a screenshot. Everything around it is quiet: one-pixel rules, small radii, no
+shadows, no gradients, no icons on buttons.
+
+**How.** CSS only — a `::before` pseudo-element on `.scene-row-selected` and on `.inspector`,
+`clip-path: polygon(...)` for the notch — so no test-targeted markup changes and no SVG sprite to
+maintain. M20's node gets the same ribbon as an SVG `<path>` in the same colour.
+
+## 5. Structural devices (quiet, and each encodes something)
+
+- **Kind marks.** A small ink glyph before every kind tag: a fork for Choice, an arrow for Linear,
+  a full stop for Ending. Drawn as CSS masks on `.scene-kind::before` from inline SVG, coloured by
+  `currentColor`, always beside the word — kind never reads by colour alone or by icon alone. In
+  M20 the same three shapes become the node silhouettes, so the navigator and the canvas share one
+  vocabulary.
+- **Eyebrow headings** open every section of the dock and the picker: utility caps in pencil. One
+  device for "a section starts here".
+- **Severity rows** (validation, hints, errors) keep the left-rule-plus-tint treatment the app
+  already has, now from tokens: error rows in `--fw-error` on its tint, warnings in `--fw-warning`
+  on its tint. A row's colour is always paired with its rule name in bold utility, so severity never
+  reads by colour alone.
+- **Start tag.** The start scene's tag is ink on paper (inverted) — the one row that is the
+  beginning is the one row with an ink tag.
+- No numbered markers. Scenes carry no number in the domain; gamebook section numbers would be
+  decoration here, not addressing. (The picker's forms are not a sequence either.)
+
+## 6. Genericness critique
+
+Checked against the three AI-default looks and against "what would I produce for any graph
+editor", before building.
+
+1. **Cream + high-contrast serif + terracotta.** The first draft of this note had a warm paper
+   nearer `#F4F1EA`, a gold accent (the yellow-spined paperback), and a serif display. Revised:
+   the paper cooled to `#F5F4EF` (less yellow, and paired with a desk tone so it is not one cream
+   field); the display serif is chunky and low-contrast (Young Serif), not a Didone; the accent is
+   verdigris, not terracotta, and the gold was dropped because it collided with the warning colour
+   and failed AA on paper. Paper itself stays: this is a writing tool, and the sheet is its
+   material — that is a choice for this subject, stated here, not a default.
+2. **Near-black + acid accent.** Not this. The header is ink because a book has a spine, but the
+   working surfaces are paper and desk, and the accent is a muted ribbon green.
+3. **Hairline broadsheet.** The closest risk: this design does use one-pixel rules and small
+   radii. Revised away from it: radii are 2px and 4px, not zero; rows have generous padding and no
+   column density; the paper/desk two-tone and the ink header give the page weight; the ribbon
+   gives it one saturated, non-typographic element.
+
+**"Any graph editor."** The default answer is dark chrome, a dotted grid ground, floating panels
+with shadows, an icon toolbar, pill badges in a rainbow of kinds, and nodes as rounded rectangles
+with coloured headers. Revised: no shadows or floating panels — the dock is a fixed desk; the
+toolbar is words, not icons; kinds are marks-plus-words in ink, not colours; the canvas ground is
+plain paper (M20 decides whether it carries anything at all); nodes will take their silhouette
+from the kind marks rather than from a coloured header bar.
+
+**Other things tried and dropped during the pass.** A dark dock (prose on dark reads as developer
+tooling, and the dock is where the writing happens). Recent stories rendered as book spines
+(decoration; a list with paths is what gets the writer back in one click). Numbered navigator rows
+(no number exists in the domain).
+
+## 7. Copy register
+
+Written from the creator's side of the screen. Sentence case. Active voice. Plain verbs. An action
+keeps its name through its whole flow. Errors say what happened and how to fix it, never apologise,
+never hedge. Empty states invite the next action.
+
+Vocabulary (the creator's words, used consistently): *story, scene, start scene, choice,
+follow-up, link* (the creator's word for a transition; "transition" stays in code), *kind, ending,
+outcome, image, folder, navigator*. Never: transition, node, edge, asset, workspace.
+
+Action names and their flows:
+
+| Action | Button | While it runs / after |
+|---|---|---|
+| Create a story | Create story | the editor opens |
+| Open a story | Open story | the editor opens |
+| Close the story | Close story | the picker |
+| Forget a recent story | Forget | the row is gone |
+| Add a scene | Add scene | the scene is selected |
+| Make a scene the start | Start here | the tag reads Start |
+| Delete a scene | Delete → Delete scene / Keep scene | two steps, because links to it go too |
+| Change a scene's kind that has links | Change kind and remove links / Keep Choice | |
+| Attach an image | Attach an image / Replace the image / Remove image | |
+| Add a choice | Add choice | |
+| Validate the story | Validate story → Validating… → No problems found. / rows | |
+
+Copy changes M19 makes (current → new):
+
+- Picker intro: "Design, visualize, and validate branching stories." → "Write a branching story,
+  see its shape, and check that every path leads somewhere."
+- Picker sections: "New story" → "Create a story"; "Open story" → "Open a story"; "Recent" →
+  "Recent stories". Recent row: "Remove" → "Forget" (it forgets the entry; "Remove" reads as
+  deleting the story); "unavailable" → "can't be opened". "Open:" → "Open now:".
+- Editor: the visible "Story title" label becomes the visually hidden label of the title set as a
+  title; placeholder "Untitled story".
+- Canvas placeholder (new): with scenes, "Your scenes live in the navigator on the right. Pick one
+  to edit it, or add a new one below the list."; with none, "This story has no scenes yet. Add the
+  one it opens with, in the navigator on the right."
+- Inspector empty state: "Select a scene to edit it." → "Pick a scene in the navigator to edit its
+  text, kind, image, and links."
+- Navigator: "No scene starts this story." → "No scene starts this story yet. Choose one with
+  Start here."; "Make start" → "Start here"; tag "start" → "Start"; "Confirm delete" → "Delete
+  scene"; "Confirm delete and remove N links to it" → "Delete scene and N links to it".
+- Inspector kind prompt: "Changing the kind discards this scene's outgoing transitions." →
+  "Changing the kind removes this scene's outgoing links."; "Change kind and discard" → "Change
+  kind and remove links".
+- Follow-up: "A linear scene flows into exactly one scene." → "A linear scene flows into one
+  scene. Choose which."; option "(none)" → "Nowhere yet".
+- Image: "That image is larger than 10 MB." → "That image is over 10 MB. Choose a smaller one."
+- Validation: idle "Not validated yet." → "Not validated yet. Validate to find unreachable scenes,
+  dead ends, and missing images."; running "Checking the story…" → "Validating…" with the button
+  keeping its name (disabled) instead of changing to "Validating…"; rule names shown as words
+  instead of enum members — Start scene, Unreachable scenes, Links don't match the kind, No ending
+  can be reached, Dead ends, Missing image, Unused image.
+- Not found page: "Sorry, the content you are looking for does not exist." → "There's nothing at
+  this address." with a link back to the picker.
+- Blazor error boundary: "An error has occurred." → "Something went wrong here. Reload the page to
+  carry on." (what happened and how to fix it, in the interface's voice).
+- Left as the framework wrote them: the reconnect dialog and the production error page (their copy
+  is the host's, not the editor's; they are restyled from tokens only).
+
+## 8. Quality floor (checked every UI milestone)
+
+- `:focus-visible` on every control: a 2px ribbon outline, 2px offset; never removed. A control may
+  add to it (the story title also underlines in ribbon), never replace it.
+- `prefers-reduced-motion: reduce` removes every transition and animation.
+- Usable at a 1280px-wide window with the dock open; the body never scrolls horizontally.
+- Text and tags at WCAG AA against the ground they sit on (§2.1).
+- Kind and severity never read by colour alone.
+- Fonts load with the network off.
+
+## 9. What later milestones inherit
+
+- **M20 (nodes and edges).** Node silhouettes from the kind marks; the ribbon on the selected node;
+  labels in the utility face; edge labels in the utility face with a paper halo; the canvas ground
+  is plain paper unless M20's design plan argues otherwise in this note's terms.
+- **M21 (toolbar controls).** Words, not icons, at the toolbar's right edge; ground cursor
+  grab/grabbing, node cursor move; the canvas error line reuses the editor error treatment.
+- **M22 (ports, ghost edge).** The port in ink, the ghost edge in ribbon; default copy written as
+  prompts to the creator.
+- **M23 (badges).** Error and warning badges use the functional colours with a shape difference,
+  consistent with the panel rows.
+
+Each of those milestones adds its design plan as a short section here, so this note stays the one
+record of the direction.

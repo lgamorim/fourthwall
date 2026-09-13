@@ -16,8 +16,8 @@
 @if (_pendingKindChange)
 {
     <div class="inspector-kind-prompt" role="alert">
-        <p>Changing the kind discards this scene's outgoing transitions.</p>
-        <button class="inspector-kind-confirm" @onclick="ApplyKindAsync">Change kind and discard</button>
+        <p>Changing the kind removes this scene's outgoing links.</p>
+        <button class="inspector-kind-confirm" @onclick="ApplyKindAsync">Change kind and remove links</button>
         <button class="inspector-kind-cancel" @onclick="CancelKindChange">Keep @Scene.Kind</button>
     </div>
 }

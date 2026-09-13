@@ -60,7 +60,7 @@ public partial class SceneImage
 
         if (file.Size > MaximumBytes)
         {
-            _error = $"That image is larger than {MaximumBytes / (1024 * 1024)} MB.";
+            _error = $"That image is over {MaximumBytes / (1024 * 1024)} MB. Choose a smaller one.";
             return;
         }
 

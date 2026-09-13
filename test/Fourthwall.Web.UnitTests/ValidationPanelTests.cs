@@ -80,9 +80,9 @@ public class ValidationPanelTests : BunitContext
         // Act
         cut.Find("#validate").Click();
 
-        // Assert
+        // Assert — the rule is named in the creator's words, not by its enum member.
         var row = cut.Find(".validation-violation").TextContent;
-        Assert.Contains(nameof(ValidationRule.AllScenesReachable), row, StringComparison.Ordinal);
+        Assert.Contains("Unreachable scenes", row, StringComparison.Ordinal);
         Assert.Contains("cannot be reached", row, StringComparison.Ordinal);
     }
 
@@ -194,9 +194,11 @@ public class ValidationPanelTests : BunitContext
         cut.Find("#validate").Click();
 
         // Assert — "Not validated yet" would be untrue while it runs, and a second click pointless.
+        // The button keeps its name: the action is the same one the creator started.
         cut.WaitForAssertion(() =>
         {
             Assert.NotNull(cut.Find("#validate").GetAttribute("disabled"));
+            Assert.Equal("Validate story", cut.Find("#validate").TextContent.Trim());
             Assert.Empty(cut.FindAll(".validation-idle"));
         });
 
