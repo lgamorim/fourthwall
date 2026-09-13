@@ -2,7 +2,10 @@
 @using Fourthwall.Web.Components.Pages
 @using Microsoft.AspNetCore.Components.Sections
 
-@* Stands in for MainLayout: the editor projects its inspector into the dock outlet, which only
-   renders when an outlet with the same identity is present. *@
+@* Stands in for MainLayout: the editor projects the validation panel, the navigator, and the
+   inspector into the dock outlet, which only renders when an outlet with the same identity is
+   present. The aside carries the layout's class so a test can tell dock content from main content. *@
 <StoryEditor />
-<SectionOutlet SectionId="LayoutSections.Dock" />
+<aside class="app-dock">
+    <SectionOutlet SectionId="LayoutSections.Dock" />
+</aside>

@@ -41,6 +41,50 @@ public class StoryEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_ShowTheNavigatorInTheDock_When_AStoryIsOpen()
+    {
+        // Arrange
+        await OpenStoryAsync();
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert — the scene list lives in the dock as the navigator, between the story-level
+        // validation panel and the inspector, in that order.
+        Assert.NotNull(cut.Find(".app-dock .navigator .scene-create"));
+        Assert.Equal(
+            ["validation", "navigator", "inspector"],
+            cut.FindAll(".app-dock > section").Select(section => section.ClassName));
+    }
+
+    [Fact]
+    public async Task Should_InviteToAddTheFirstScene_When_TheStoryHasNoScenes()
+    {
+        // Arrange
+        await OpenStoryAsync();
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert — nothing to pick yet, so the main region points at the one thing to do.
+        Assert.Contains("Add", cut.Find(".canvas-placeholder").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_InviteToPickAScene_When_TheStoryHasScenes()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert
+        Assert.Contains("Pick", cut.Find(".canvas-placeholder").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_SaveTheStory_When_ASceneIsAdded()
     {
         // Arrange
