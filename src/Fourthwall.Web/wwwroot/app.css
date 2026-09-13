@@ -816,9 +816,11 @@ button:disabled {
     margin: 0 0 var(--fw-space-2);
 }
 
+/* The two answers stay a pair even when the prompt is narrow enough to wrap them. */
 .inspector-kind-confirm,
 .inspector-kind-cancel {
-    margin-right: var(--fw-space-3);
+    margin: var(--fw-space-1) var(--fw-space-3) var(--fw-space-1) 0;
+    vertical-align: middle;
 }
 
 /* Validation. */
