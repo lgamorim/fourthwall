@@ -27,7 +27,10 @@ ports, blueprint grids, floating cards with shadows, icon-only toolbars.
 ## 2. Tokens
 
 Every colour, type, spacing, and radius value in the app comes from `wwwroot/app.css` `:root`
-under the `--fw-` prefix. Component stylesheets consume tokens and never introduce literals.
+under the `--fw-` prefix. The editor's shared vocabulary is applied by role across components from
+that same file (a deliberate deviation recorded in `CLAUDE.md`); the layout components' own
+`.razor.css` files consume the tokens and never introduce colour, type, spacing, or radius
+literals.
 
 ### 2.1 Palette
 
@@ -36,8 +39,8 @@ Ink on paper, on a desk, with one ribbon.
 | Token | Hex | Named for | Used for |
 |---|---|---|---|
 | `--fw-ink` | `#1B1F2A` | ink | text, the header block, primary buttons, the start tag |
-| `--fw-paper` | `#F5F4EF` | the page | the main ground, input fields, text on ink |
-| `--fw-desk` | `#E7E3D8` | the desk under the page | the dock ground, quiet tags, hover on rows |
+| `--fw-paper` | `#F5F4EF` | the page | the main ground, input fields, text on ink, the hovered and selected navigator row (rows sit on the desk, so paper is the lift) |
+| `--fw-desk` | `#E7E3D8` | the desk under the page | the dock ground and the "open now" line on the picker |
 | `--fw-pencil` | `#5F5B4E` | pencil | secondary text: folder paths, hints, eyebrow headings |
 | `--fw-rule` | `#CFCABB` | a ruled line | borders and dividers, one pixel |
 | `--fw-ribbon` | `#1F6F63` | the ribbon bookmark | selection, focus, the bookmark, primary hover, "no problems" |
@@ -103,10 +106,12 @@ chips), `--fw-radius-m` 4px (image preview, prompts). No pills, no shadows, no g
 one pixel of `--fw-rule`; the only heavy block is the ink header.
 
 Shell measures: `--fw-header-height` 3rem, `--fw-dock-width` 24rem (up from 22rem: the dock now
-holds validation, navigator, and inspector), `--fw-page-width` 46rem (the picker's measure).
+holds validation, navigator, and inspector), `--fw-page-width` 46rem (the picker's measure),
+`--fw-ribbon-width` 8px and `--fw-ribbon-length` 22px (the bookmark, §4).
 
-Motion: one duration, `--fw-motion` 120ms, on background, colour, and outline changes only. Under
-`prefers-reduced-motion: reduce` every transition and animation is removed.
+Motion: one duration, `--fw-motion` 120ms, on background, colour, border colour, and opacity
+changes only; the focus ring appears without transition. Under `prefers-reduced-motion: reduce`
+every transition and animation is removed.
 
 ## 3. Layout
 
@@ -191,8 +196,9 @@ stories when there are any, then the two forms side by side.
 
 ## 4. Signature element: the ribbon bookmark
 
-**What.** A ribbon in `--fw-ribbon`, 6px wide, hanging from the top edge of whatever stands for the
-selected scene, ending in a notched fishtail. In M19 it hangs from the selected navigator row and
+**What.** A ribbon in `--fw-ribbon`, 8px wide and 22px long (`--fw-ribbon-width`,
+`--fw-ribbon-length`; a 6px draft read as timid in the first screenshots), hanging from the top
+edge of whatever stands for the selected scene, ending in a notched fishtail. In M19 it hangs from the selected navigator row and
 from the inspector's heading; from M20 it hangs from the selected node on the canvas.
 
 **Why this, and why only this.** Selection is the one state that must read identically across the
@@ -312,12 +318,15 @@ Copy changes M19 makes (current → new):
   can be reached, Dead ends, Missing image, Unused image.
 - Not found page: "Sorry, the content you are looking for does not exist." → "There's nothing at
   this address." with a link back to the picker.
+- Blazor error boundary: "An error has occurred." → "Something went wrong here. Reload the page to
+  carry on." (what happened and how to fix it, in the interface's voice).
 - Left as the framework wrote them: the reconnect dialog and the production error page (their copy
   is the host's, not the editor's; they are restyled from tokens only).
 
 ## 8. Quality floor (checked every UI milestone)
 
-- `:focus-visible` on every control: a 2px ribbon outline, 2px offset; never removed.
+- `:focus-visible` on every control: a 2px ribbon outline, 2px offset; never removed. A control may
+  add to it (the story title also underlines in ribbon), never replace it.
 - `prefers-reduced-motion: reduce` removes every transition and animation.
 - Usable at a 1280px-wide window with the dock open; the body never scrolls horizontally.
 - Text and tags at WCAG AA against the ground they sit on (§2.1).
