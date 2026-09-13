@@ -193,8 +193,7 @@ stories when there are any, then the two forms side by side.
 
 **What.** A ribbon in `--fw-ribbon`, 6px wide, hanging from the top edge of whatever stands for the
 selected scene, ending in a notched fishtail. In M19 it hangs from the selected navigator row and
-from the inspector's heading; from M20 it hangs from the selected node on the canvas; the
-validation chips that name the selected scene take the same colour.
+from the inspector's heading; from M20 it hangs from the selected node on the canvas.
 
 **Why this, and why only this.** Selection is the one state that must read identically across the
 navigator, the inspector, the validation chips, and the canvas — four surfaces that were built

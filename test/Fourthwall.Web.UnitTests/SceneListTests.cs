@@ -280,7 +280,7 @@ public class SceneListTests : BunitContext
         cut.Find(".scene-delete").Click();
 
         // Assert
-        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+        Assert.Equal("Delete scene", cut.Find(".scene-delete-confirm").TextContent.Trim());
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class SceneListTests : BunitContext
         cut.Find(".scene-delete").Click();
 
         // Assert
-        Assert.Equal("Confirm delete", cut.Find(".scene-delete-confirm").TextContent.Trim());
+        Assert.Equal("Delete scene", cut.Find(".scene-delete-confirm").TextContent.Trim());
     }
 
     [Fact]

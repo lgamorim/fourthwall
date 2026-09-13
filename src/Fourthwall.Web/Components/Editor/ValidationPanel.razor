@@ -3,9 +3,7 @@
     <section class="validation">
         <h2>Validation</h2>
 
-        <button id="validate" disabled="@_validating" @onclick="ValidateAsync">
-            @(_validating ? "Validating…" : "Validate story")
-        </button>
+        <button id="validate" disabled="@_validating" @onclick="ValidateAsync">Validate story</button>
 
         @if (_failure is not null)
         {
@@ -13,11 +11,11 @@
         }
         else if (_validating)
         {
-            <p class="validation-running">Checking the story…</p>
+            <p class="validation-running">Validating…</p>
         }
         else if (_report is null)
         {
-            <p class="validation-idle">Not validated yet.</p>
+            <p class="validation-idle">Not validated yet. Validate to find unreachable scenes, dead ends, and missing images.</p>
         }
         else if (_report.Violations.Count == 0)
         {
@@ -29,7 +27,7 @@
                 @foreach (var violation in _report.Violations)
                 {
                     <li class="validation-violation @SeverityClass(violation)">
-                        <span class="validation-rule">@violation.Rule</span>
+                        <span class="validation-rule">@ValidationRules.Label(violation.Rule)</span>
                         <span class="validation-message">@violation.Message</span>
 
                         @if (violation.SceneIds.Count > 0)

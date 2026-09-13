@@ -80,9 +80,9 @@ public class ValidationPanelTests : BunitContext
         // Act
         cut.Find("#validate").Click();
 
-        // Assert
+        // Assert — the rule is named in the creator's words, not by its enum member.
         var row = cut.Find(".validation-violation").TextContent;
-        Assert.Contains(nameof(ValidationRule.AllScenesReachable), row, StringComparison.Ordinal);
+        Assert.Contains("Unreachable scenes", row, StringComparison.Ordinal);
         Assert.Contains("cannot be reached", row, StringComparison.Ordinal);
     }
 
