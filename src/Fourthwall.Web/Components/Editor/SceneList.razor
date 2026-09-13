@@ -19,26 +19,28 @@ else
                     <span class="scene-kind @KindClass(scene)">@scene.Kind</span>
                 </button>
 
-                @if (scene.Id == Story.StartSceneId)
-                {
-                    <span class="scene-start" title="The story starts here">Start</span>
-                }
-                else
-                {
-                    <button class="scene-make-start" @onclick="() => SetStartAsync(scene.Id)">Start here</button>
-                }
+                <span class="scene-actions">
+                    @if (scene.Id == Story.StartSceneId)
+                    {
+                        <span class="scene-start" title="The story starts here">Start</span>
+                    }
+                    else
+                    {
+                        <button class="scene-make-start" @onclick="() => SetStartAsync(scene.Id)">Start here</button>
+                    }
 
-                @if (_pendingDelete == scene.Id)
-                {
-                    <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">
-                        @DeleteConfirmation(scene.Id)
-                    </button>
-                    <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
-                }
-                else
-                {
-                    <button class="scene-delete" @onclick="() => AskToDelete(scene.Id)">Delete</button>
-                }
+                    @if (_pendingDelete == scene.Id)
+                    {
+                        <button class="scene-delete-confirm" @onclick="() => DeleteAsync(scene.Id)">
+                            @DeleteConfirmation(scene.Id)
+                        </button>
+                        <button class="scene-delete-cancel" @onclick="CancelDelete">Keep scene</button>
+                    }
+                    else
+                    {
+                        <button class="scene-delete" @onclick="() => AskToDelete(scene.Id)">Delete</button>
+                    }
+                </span>
             </li>
         }
     </ul>

@@ -434,3 +434,6 @@ FodyWeavers.xsd
 # DocFX generated output
 docs/_site/
 docs/api/
+
+# Playwright MCP output (screenshots, snapshots) from browser sessions.
+.playwright-mcp/

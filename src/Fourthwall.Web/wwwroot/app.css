@@ -102,8 +102,8 @@
     --fw-header-height: 3rem;
     --fw-dock-width: 24rem;
     --fw-page-width: 46rem;
-    --fw-ribbon-width: 6px;
-    --fw-ribbon-length: 18px;
+    --fw-ribbon-width: 8px;
+    --fw-ribbon-length: 22px;
 
     /* Motion: one duration, on colour changes only. */
     --fw-motion: 120ms;
@@ -250,9 +250,16 @@ a {
 .app-dock {
     width: var(--fw-dock-width);
     flex-shrink: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     border-left: 1px solid var(--fw-rule);
     background: var(--fw-desk);
+}
+
+/* The dock is part of the layout, but a desk with nothing on it is just an empty column: the
+   picker gets the whole width until a page fills the outlet. */
+.app-dock:not(:has(*)) {
+    display: none;
 }
 
 /* Every dock section opens with an eyebrow heading and closes with a rule. */
@@ -295,6 +302,30 @@ textarea {
     font-size: var(--fw-text-m);
 }
 
+input[type="file"] {
+    padding: var(--fw-space-1);
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-s);
+    color: var(--fw-pencil);
+}
+
+input[type="file"]::file-selector-button {
+    margin-right: var(--fw-space-3);
+    padding: var(--fw-space-1) var(--fw-space-3);
+    border: 1px solid var(--fw-ink);
+    border-radius: var(--fw-radius-s);
+    background: var(--fw-paper);
+    color: var(--fw-ink);
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-s);
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+    border-color: var(--fw-ribbon);
+    color: var(--fw-ribbon);
+}
+
 input::placeholder,
 textarea::placeholder {
     color: var(--fw-pencil);
@@ -307,12 +338,13 @@ textarea:hover {
     border-color: var(--fw-pencil);
 }
 
-/* Blazor's form validation feedback: only the failure is marked, next to its field. */
-.invalid {
+/* Blazor's form validation feedback: only the failure is marked, next to its field. Scoped to
+   forms because the validation panel's rows use the same class name for a violation's text. */
+form .invalid {
     border-color: var(--fw-error);
 }
 
-.validation-message {
+form .validation-message {
     display: block;
     margin: calc(-1 * var(--fw-space-2)) 0 var(--fw-space-3);
     font-size: var(--fw-text-s);
@@ -439,7 +471,8 @@ button:disabled {
 }
 
 .page h1 {
-    margin: 0 0 var(--fw-space-2);
+    margin-top: 0;
+    margin-bottom: var(--fw-space-2);
     font-family: var(--fw-font-display);
     font-size: var(--fw-text-2xl);
     font-weight: 400;
@@ -511,12 +544,18 @@ button:disabled {
     list-style: none;
 }
 
+/* Title first and whole; the path yields the room, wrapping before the title does. */
 .recent-story {
-    display: flex;
+    display: grid;
+    grid-template-columns: fit-content(20rem) minmax(0, 1fr) auto auto;
     align-items: baseline;
     gap: var(--fw-space-3);
     padding: var(--fw-space-2) 0;
     border-bottom: 1px solid var(--fw-rule);
+}
+
+.recent-story:last-child {
+    border-bottom: none;
 }
 
 .recent-open {
@@ -537,7 +576,6 @@ button:disabled {
 }
 
 .recent-unavailable {
-    flex-shrink: 0;
     font-family: var(--fw-font-utility);
     font-size: var(--fw-text-xs);
     letter-spacing: var(--fw-tracking-caps);
@@ -546,8 +584,7 @@ button:disabled {
 }
 
 .recent-remove {
-    flex-shrink: 0;
-    margin-left: auto;
+    grid-column: -2;
 }
 
 /* Editor: the toolbar over the canvas region. */
@@ -608,11 +645,11 @@ button:disabled {
     list-style: none;
 }
 
+/* Two lines: the scene's own words, then its kind — with the row's actions at the bottom right. */
 .scene-row {
     position: relative;
     display: flex;
-    align-items: baseline;
-    gap: var(--fw-space-2);
+    flex-wrap: wrap;
     padding: var(--fw-space-2) var(--fw-space-4);
     border-bottom: 1px solid var(--fw-rule);
 }
@@ -629,11 +666,11 @@ button:disabled {
    of whatever stands for the selected scene — this row now, the inspector below, the canvas node
    from M20. */
 .scene-row-selected::before,
-.inspector::before {
+.inspector:not(:has(.inspector-empty))::before {
     content: "";
     position: absolute;
     top: 0;
-    left: var(--fw-space-2);
+    left: var(--fw-space-1);
     width: var(--fw-ribbon-width);
     height: var(--fw-ribbon-length);
     background: var(--fw-ribbon);
@@ -642,9 +679,10 @@ button:disabled {
 
 .scene-select {
     display: flex;
-    flex: 1;
-    align-items: baseline;
-    gap: var(--fw-space-2);
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--fw-space-1);
     min-width: 0;
     padding: 0;
     border: none;
@@ -660,9 +698,27 @@ button:disabled {
 }
 
 .scene-snippet {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.scene-actions {
+    position: absolute;
+    right: var(--fw-space-4);
+    bottom: var(--fw-space-2);
+    display: flex;
+    align-items: baseline;
+    gap: var(--fw-space-3);
+}
+
+/* The delete confirmation needs the words, so it takes a line of its own. */
+.scene-actions:has(.scene-delete-confirm) {
+    position: static;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    margin-top: var(--fw-space-1);
 }
 
 /* Kind marks: a fork, an arrow, a full stop — beside the word, never instead of it. The same
@@ -672,7 +728,6 @@ button:disabled {
     flex-shrink: 0;
     align-items: center;
     gap: 0.35em;
-    margin-left: auto;
     font-family: var(--fw-font-utility);
     font-size: var(--fw-text-xs);
     letter-spacing: var(--fw-tracking-caps);
@@ -815,6 +870,11 @@ button:disabled {
     margin: var(--fw-space-2) 0 0;
     padding: 0;
     list-style: none;
+}
+
+.validation-scenes li {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .validation-scene {
