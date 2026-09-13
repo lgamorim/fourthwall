@@ -9,7 +9,7 @@
     box-sizing: border-box;
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: var(--fw-space-3) var(--fw-space-5);
     position: fixed;
     width: 100%;
     z-index: 1000;
@@ -18,6 +18,6 @@
     #blazor-error-ui .dismiss {
         cursor: pointer;
         position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
+        right: var(--fw-space-3);
+        top: var(--fw-space-2);
     }

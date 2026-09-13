@@ -25,8 +25,7 @@
     color: var(--fw-ink);
     width: 20rem;
     margin: 20vh auto;
-    padding: 2rem;
-    border: 0;
+    padding: var(--fw-space-6);
     border: 1px solid var(--fw-rule);
     border-radius: var(--fw-radius-m);
     opacity: 0;
@@ -41,11 +40,11 @@
 
 }
 
+/* Translucency lives in the colour: the fade-in keyframe animates the backdrop's own opacity to
+   1, so an opacity here would be overridden the moment the animation lands. */
 #components-reconnect-modal::backdrop {
-    background-color: var(--fw-ink);
-    opacity: 0.6;
+    background-color: color-mix(in srgb, var(--fw-ink) 60%, transparent);
     animation: components-reconnect-modal-fadeInOpacity 0.5s ease-in-out;
-    opacity: 1;
 }
 
 @keyframes components-reconnect-modal-slideUp {
@@ -82,7 +81,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: var(--fw-space-4);
 }
 
 #components-reconnect-modal p {
