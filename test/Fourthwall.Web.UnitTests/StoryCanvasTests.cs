@@ -1075,6 +1075,49 @@ public class StoryCanvasTests : BunitContext
         Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
     }
 
+    [Fact]
+    public void Should_KeepTheErrorLineOutOfTheSheet_When_OneShows()
+    {
+        // Arrange — the shim measures the sheet and anchors the wheel to it, and the svg fills it
+        // exactly; an error line inside the same box would shift every frame the viewport reasons
+        // with by its own height.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.FailNextLoad = new IOException("The story folder can't be read.");
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert
+        Assert.Null(cut.Find(".canvas-error").Closest(".canvas-sheet"));
+        Assert.NotNull(cut.Find(".canvas-svg").Closest(".canvas-sheet"));
+        Assert.Contains("canvas", cut.Find(".canvas-sheet").ParentElement!.ClassList);
+    }
+
+    [Fact]
+    public async Task Should_EndTheGesture_When_ThePressedSceneLeavesTheStory()
+    {
+        // Arrange — another tab deletes the held scene; the page re-renders the canvas with the story
+        // as it now is. The release that follows must not try to save a place for a scene that is
+        // gone, and the ground must stop saying a page is held.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        story.RemoveScene(storm.Id);
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+        await cut.Instance.UpAsync(140, 120);
+
+        // Assert
+        Assert.DoesNotContain("canvas-dragging", cut.Find(".canvas").ClassList);
+        Assert.Equal(0, _layout.SaveCount);
+        Assert.Empty(cut.FindAll(".canvas-error"));
+    }
+
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
         cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
 

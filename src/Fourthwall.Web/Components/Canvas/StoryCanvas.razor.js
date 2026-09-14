@@ -1,6 +1,7 @@
 // The canvas's shim: the thin layer between the browser's resize, wheel, and pointer events and
 // StoryCanvas's [JSInvokable] methods. It measures, captures, and forwards; every decision about
-// what a gesture means is made in C# (CanvasViewport, CanvasInteraction).
+// what a gesture means is made in C# (CanvasViewport, CanvasInteraction). The host it is given
+// is the sheet the svg fills exactly, so the sizes and wheel points it reports are the svg's own.
 //
 // Why it exists at all: browsers register wheel listeners as passive by default, so only a
 // non-passive listener here can stop a wheel from scrolling the page; pointer capture must be set
@@ -42,9 +43,17 @@ export function attach(host, dotnet) {
     const options = { signal: listeners.signal };
     host.addEventListener("wheel", (event) => onWheel(session, event), { passive: false, signal: listeners.signal });
     host.addEventListener("pointerdown", (event) => onPointerDown(session, event), options);
-    host.addEventListener("pointermove", (event) => onPointerMove(session, event), options);
-    host.addEventListener("pointerup", (event) => onPointerUp(session, event), options);
-    host.addEventListener("pointercancel", (event) => onPointerUp(session, event), options);
+    // A press starts on the sheet; the rest of the gesture is heard at the document. While the
+    // capture holds, every move and the release reach the document anyway. If the pressed element
+    // leaves the DOM mid-gesture (its scene deleted from another tab, a child of it dropped by a
+    // re-render), the browser drops the capture, fires lostpointercapture at the document, and a
+    // release outside the sheet no longer reaches the sheet; the document still hears it, so the
+    // gesture always ends. The pointer id filter keeps other pointers, and the ordinary release
+    // (pointerup, then the loss of its capture), from ending it twice.
+    document.addEventListener("pointermove", (event) => onPointerMove(session, event), options);
+    document.addEventListener("pointerup", (event) => onPointerUp(session, event), options);
+    document.addEventListener("pointercancel", (event) => onPointerUp(session, event), options);
+    document.addEventListener("lostpointercapture", (event) => onPointerUp(session, event), options);
     session.observer.observe(host);
 }
 
@@ -104,8 +113,9 @@ function onPointerUp(session, event) {
         return;
     }
 
-    // A cancel carries no useful coordinates; the release ends where the pointer was last seen.
-    const point = event.type === "pointercancel" ? session.lastPoint : [event.clientX, event.clientY];
+    // A cancel or a lost capture carries no useful coordinates; the release ends where the pointer
+    // was last seen.
+    const point = event.type === "pointerup" ? [event.clientX, event.clientY] : session.lastPoint;
     session.pointerId = null;
     session.lastPoint = null;
     session.pending.delete("MoveAsync");

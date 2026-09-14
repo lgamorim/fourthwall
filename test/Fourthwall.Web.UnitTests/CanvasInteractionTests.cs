@@ -239,6 +239,25 @@ public class CanvasInteractionTests
     }
 
     [Fact]
+    public void Should_EndTheGestureWithoutAResult_When_Cancelled()
+    {
+        // Arrange — the pressed scene can leave the story mid-drag (deleted from another tab); the
+        // gesture ends with nothing to save and no click to claim.
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PointerDown(Scene, NodeAt, 100, 100);
+        interaction.PointerMove(130, 100);
+
+        // Act
+        interaction.Cancel();
+
+        // Assert
+        Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
+        Assert.Null(interaction.PressedScene);
+        Assert.False(interaction.ClaimClickAfterDrag());
+        Assert.Null(interaction.PointerUp());
+    }
+
+    [Fact]
     public void Should_Throw_When_ANodeIsPressedWithoutItsPosition()
     {
         // Arrange

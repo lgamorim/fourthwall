@@ -10,8 +10,16 @@
     background: var(--fw-paper);
 }
 
-/* The drawing fills whatever the error line leaves; the viewport transform frames the map. The
-   paper is held to slide it (§11.3), and the browser's own touch gestures are kept off the map. */
+/* The sheet takes whatever the error line leaves, and is the box the shim measures. */
+.canvas-sheet {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The drawing fills the sheet exactly; the viewport transform frames the map. The paper is held to
+   slide it (§11.3), and the browser's own touch gestures are kept off the map. */
 .canvas-svg {
     display: block;
     flex: 1;

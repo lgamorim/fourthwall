@@ -1,12 +1,16 @@
 @* The story as a pencil map: plain paper, pages for scenes, pencil for links
    (docs/design/0002-visual-direction.md §10). The map is a sheet larger than the window: the
    viewport slides and zooms it, and a page can be moved by hand (§11). *@
-<div class="canvas @HostStateClass" @ref="_host">
+<div class="canvas @HostStateClass">
     @if (Error is { } error)
     {
         <p class="canvas-error" role="alert">@error</p>
     }
 
+    @* The sheet is the box the shim measures and the wheel is anchored to, and the svg fills it
+       exactly. The error line stays outside it: inside, its height would shift every frame the
+       viewport reasons with. *@
+    <div class="canvas-sheet" @ref="_host">
     @if (Story.Scenes.Count == 0)
     {
         <p class="canvas-empty">This story has no scenes yet. Add the one it opens with, in the navigator on the right.</p>
@@ -65,4 +69,5 @@
             </g>
         </svg>
     }
+    </div>
 </div>

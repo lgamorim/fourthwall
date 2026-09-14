@@ -125,6 +125,17 @@ public sealed class CanvasInteraction
     }
 
     /// <summary>
+    /// Ends the gesture with nothing to report: no position to save and no click to claim. For a
+    /// pressed scene that has left the story mid-drag.
+    /// </summary>
+    public void Cancel()
+    {
+        _clickAfterDrag = false;
+        Mode = CanvasInteractionMode.Idle;
+        PressedScene = null;
+    }
+
+    /// <summary>
     /// Reports whether the click the browser fires after the most recent release belongs to a
     /// drag, and forgets it, so it is answered exactly once: that click must not select.
     /// </summary>

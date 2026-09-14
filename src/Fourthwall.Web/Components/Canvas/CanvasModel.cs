@@ -18,7 +18,7 @@ public sealed class CanvasModel
     }
 
     /// <summary>
-    /// Gets the edges the drawing reaches, tight to its nodes, their self-loops, and the bow of
+    /// Gets the box the drawing reaches, tight to its nodes, their self-loops, and the bow of
     /// every link; empty with no nodes. The viewport adds its own margin when it frames the content.
     /// </summary>
     public CanvasBounds Bounds { get; }

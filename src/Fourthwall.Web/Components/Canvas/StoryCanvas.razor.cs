@@ -198,6 +198,11 @@ public partial class StoryCanvas : IAsyncDisposable
         StateHasChanged();
     });
 
+    // The two view methods are entry points for the page, not event handlers of this component:
+    // the render they need comes from a StateHasChanged of their own. Today the page's re-render
+    // would reach the canvas anyway, through its reference-typed parameters; that is the page's
+    // business, and these methods must not depend on it.
+
     /// <summary>
     /// Frames every scene in the window, centred, never enlarging past actual size: the toolbar's
     /// "Show whole story". Nothing to show returns the map to actual size.
@@ -279,6 +284,13 @@ public partial class StoryCanvas : IAsyncDisposable
         _placed = new Dictionary<SceneId, ScenePosition>(AutoLayout.Place(Story, GraphFactory.Create(Story), _positions));
         _model = CanvasModel.Build(Story, _placed);
         FrameIfNeeded();
+
+        // The held scene can be deleted from another tab mid-drag; the release that follows has
+        // nothing left to place or to save.
+        if (_interaction.PressedScene is { } pressed && Story.FindScene(pressed) is null)
+        {
+            _interaction.Cancel();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
