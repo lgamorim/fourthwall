@@ -476,7 +476,8 @@ canvas follows `overlays/frontend-blazor.md` instead of widening the exception.
 
 ## 11. M21 — pan, zoom, and moving scenes
 
-Approved by the maintainer with the M21 plan on 2026-09-14, before any M21 code was written.
+Approved by the maintainer with the M21 plan on 2026-09-14, before any M21 code was written. §11.8
+records what the screenshot pass changed against the approved text.
 
 **Thesis.** The map is a sheet larger than the window. The creator slides the sheet under the
 window, leans in and out, and moves pages about by hand. The sheet itself never changes: same
@@ -553,3 +554,26 @@ grid, a floating control cluster with a shadow, a hand-tool toggle, snapping, an
 on the dragged card. None of that is here: two words in the toolbar, and the pages' size shows the
 zoom. Remove-one-accessory candidates for the screenshot pass: the `node-dragging` fill (the first
 to go if the moving links suffice) and the disabled state of the two buttons on an empty story.
+
+### 11.8 What the screenshot pass changed
+
+Screenshots under `docs/design/screenshots/m21/`, all at 1280px with the dock open.
+
+- The first "Show whole story" of a seven-column story cut the link that turns back from the
+  island to the harbour: a link that doubles back bows past both of its ends, and bounds measured
+  from pages and self-loops alone framed the bow out. The drawing's bounds now hold every link's
+  curve as well, so the whole story means the links too.
+- The two toolbar words sat one step apart (`--fw-space-4`) and read as one phrase, "Show whole
+  story Actual size"; they sit at `--fw-space-5` now.
+- Forcing a failed save (another process holding the story database) found that the layout store
+  let the provider's exception escape from the transaction's start, so the creator saw nothing and
+  the browser logged an interop error. Fixed in Infrastructure; the error line now shows. The
+  store still waits the provider's default 30 seconds before it gives up on a held database, so
+  the line arrives late in that one case; a shorter wait is an Infrastructure decision left to the
+  maintainer.
+- Both remove-one-accessory candidates stayed. The `node-dragging` fill is the only thing that says
+  which page is held while the pointer sits over its text, where the links' movement is out of the
+  eye's way; and with no scenes the two words would do nothing, which is better said (half opacity)
+  than discovered.
+- The zoom step stays at ×1.2: five notches take a page from actual size to two and a half times
+  it, and thirteen span the whole range, which felt right under the wheel.

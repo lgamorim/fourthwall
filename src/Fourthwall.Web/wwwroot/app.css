@@ -634,7 +634,7 @@ button:disabled {
    (docs/design/0002-visual-direction.md §11.1). */
 .canvas-controls {
     display: flex;
-    gap: var(--fw-space-4);
+    gap: var(--fw-space-5);
     margin-left: auto;
 }
 
