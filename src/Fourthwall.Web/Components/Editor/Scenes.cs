@@ -43,24 +43,46 @@ public static class Scenes
     /// Scenes carry narrative text and no title, so the text itself is the label — truncated, and
     /// stood in for when it is empty, which is legal while authoring.
     /// </remarks>
-    public static string Label(Scene scene)
+    public static string Label(Scene scene) => Label(scene, LabelLength);
+
+    /// <summary>
+    /// Labels a scene where room is shorter than a list row — a canvas node, whose SVG text does not
+    /// wrap.
+    /// </summary>
+    /// <param name="scene">The scene to label.</param>
+    /// <param name="maxLength">The most characters of the scene's text to keep before the ellipsis.</param>
+    /// <returns>A short label derived from the scene's text.</returns>
+    public static string Label(Scene scene, int maxLength)
     {
         ArgumentNullException.ThrowIfNull(scene);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxLength);
 
-        if (string.IsNullOrWhiteSpace(scene.Text))
-        {
-            return "(no text)";
-        }
+        return string.IsNullOrWhiteSpace(scene.Text) ? "(no text)" : Truncate(scene.Text, maxLength);
+    }
 
-        var text = scene.Text.Trim();
-        if (text.Length <= LabelLength)
+    /// <summary>
+    /// Shortens text to a maximum length, marking the cut with an ellipsis.
+    /// </summary>
+    /// <param name="text">The text to shorten; surrounding whitespace is dropped.</param>
+    /// <param name="maxLength">The most characters to keep before the ellipsis.</param>
+    /// <returns>The trimmed text when it fits; otherwise its first characters and an ellipsis.</returns>
+    /// <remarks>
+    /// Scene labels and choice labels on the canvas share this, so both cut the same way.
+    /// </remarks>
+    public static string Truncate(string text, int maxLength)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxLength);
+
+        var trimmed = text.Trim();
+        if (trimmed.Length <= maxLength)
         {
-            return text;
+            return trimmed;
         }
 
         // Back off a character when the cut would land inside a surrogate pair, so the label never
         // ends in half an emoji.
-        var length = char.IsHighSurrogate(text[LabelLength - 1]) ? LabelLength - 1 : LabelLength;
-        return string.Concat(text.AsSpan(0, length), "…");
+        var length = char.IsHighSurrogate(trimmed[maxLength - 1]) ? maxLength - 1 : maxLength;
+        return string.Concat(trimmed.AsSpan(0, length), "…");
     }
 }
