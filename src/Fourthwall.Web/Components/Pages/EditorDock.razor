@@ -1,0 +1,26 @@
+@* The editor's dock: the story-level check above the detail of whichever scene is selected. The
+   page projects it into the layout's dock outlet; see StoryEditor.razor.cs for why it is a
+   component of its own. *@
+<ValidationPanel OnSceneSelected="OnSceneSelected" />
+
+<section class="navigator" aria-label="Scenes">
+    <h2>Scenes</h2>
+    <SceneList Story="Story"
+               SelectedSceneId="SelectedSceneId"
+               SelectedSceneIdChanged="OnSceneSelected"
+               OnChanged="OnChanged" />
+</section>
+
+<section class="inspector" aria-label="Selected scene">
+    @if (SelectedSceneId is { } id && Story.FindScene(id) is { } scene)
+    {
+        <SceneInspector Scene="scene" OnChanged="OnChanged" />
+        <SceneImage Scene="scene" OnChanged="OnChanged" />
+        <SceneTransitions Story="Story" Scene="scene" OnChanged="OnChanged" />
+    }
+    else
+    {
+        <h2>Scene</h2>
+        <p class="inspector-empty">Pick a scene in the navigator to edit its text, kind, image, and links.</p>
+    }
+</section>

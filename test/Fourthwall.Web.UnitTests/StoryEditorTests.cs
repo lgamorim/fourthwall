@@ -10,11 +10,12 @@ namespace Fourthwall.Web.UnitTests;
 public class StoryEditorTests : BunitContext
 {
     private readonly FakeStoryWorkspace _workspace = new();
+    private readonly FakeStoryValidation _validation = new();
 
     public StoryEditorTests()
     {
         Services.AddSingleton<IStoryWorkspace>(_workspace);
-        Services.AddSingleton<IStoryValidation>(new FakeStoryValidation());
+        Services.AddSingleton<IStoryValidation>(_validation);
     }
 
     [Fact]
@@ -244,6 +245,85 @@ public class StoryEditorTests : BunitContext
 
         // Assert — the header can close the story while the editor is showing it.
         Assert.Equal("/", Assert.Single(Navigation.History).Uri);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheValidationReport_When_AValidationChipIsClicked()
+    {
+        // Arrange
+        var orphan = await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+
+        // Act
+        cut.Find(".validation-scene").Click();
+
+        // Assert — picking a scene saves nothing, so the report still describes the story.
+        Assert.Single(cut.FindAll(".validation-violation"));
+        Assert.Equal(0, _workspace.SaveCount);
+        Assert.Contains("scene-row-selected", cut.Find($".scene-row[data-scene-id='{orphan.Id.Value}']").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheValidationReport_When_ASceneIsPickedInTheNavigator()
+    {
+        // Arrange
+        await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+
+        // Act
+        cut.Find(".scene-select").Click();
+
+        // Assert
+        Assert.Single(cut.FindAll(".validation-violation"));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheSceneDraft_When_ASceneIsSelected()
+    {
+        // Arrange — the page re-renders on every selection; the dock's own state must outlive that.
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderEditor();
+        cut.Find("#scene-create-text").Change("A half-written scene");
+
+        // Act
+        cut.Find(".scene-select").Click();
+
+        // Assert
+        Assert.Equal("A half-written scene", cut.Find("#scene-create-text").GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task Should_DropTheValidationReport_When_AnEditIsSaved()
+    {
+        // Arrange — a report of the story as it used to be would mislead, so a saved edit clears it.
+        await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+        cut.Find(".scene-select").Click();
+
+        // Act
+        cut.Find("#inspector-text").Change("The storm breaks");
+
+        // Assert
+        Assert.Equal(1, _workspace.SaveCount);
+        Assert.Empty(cut.FindAll(".validation-violation"));
+        Assert.NotNull(cut.Find(".validation-idle"));
+    }
+
+    private async Task<Scene> OpenStoryWithAReportNamingASceneAsync()
+    {
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var orphan = story.AddScene(SceneKind.Linear, "Adrift");
+        _validation.Report = new ValidationReport(
+        [
+            new ValidationViolation(
+                ValidationRule.AllScenesReachable, ValidationSeverity.Error, "1 scene cannot be reached.", [orphan.Id]),
+        ]);
+        return orphan;
     }
 
     private BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
