@@ -20,18 +20,15 @@
         }
     </div>
 
-    @* The canvas takes this region from M20. Until then the main region says what the creator can
-       do now, which depends on whether there is anything to pick yet. *@
-    <div class="canvas-placeholder">
-        @if (story.Scenes.Count == 0)
-        {
-            <p>This story has no scenes yet. Add the one it opens with, in the navigator on the right.</p>
-        }
-        else
-        {
-            <p>Your scenes live in the navigator on the right. Pick one to edit it, or add a new one below the list.</p>
-        }
-    </div>
+    @* The layout store exists exactly while a story is open; matching it here, rather than asserting
+       it, keeps a close on another circuit from reaching the canvas as a null. *@
+    @if (Workspace.Layout is { } layout)
+    {
+        <StoryCanvas Story="story"
+                     Layout="layout"
+                     SelectedSceneId="_selectedSceneId"
+                     SelectedSceneIdChanged="OnSceneSelected" />
+    }
 
     @* The dock content is one fragment for the page's whole life: the outlet rebuilds whatever it
        holds when handed a different one. See _dock in the code-behind. *@
