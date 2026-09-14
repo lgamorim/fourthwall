@@ -53,11 +53,13 @@ public sealed partial class SqliteSceneLayoutStore : ISceneLayoutStore
         ArgumentNullException.ThrowIfNull(positions);
 
         // One transaction for the batch, so a position naming a scene the story has not saved
-        // rolls back the ones that went before it rather than leaving half a layout behind.
-        await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-
+        // rolls back the ones that went before it rather than leaving half a layout behind. The
+        // transaction begins inside the try: it takes the write lock at once, so a database held
+        // by another process fails here, before any statement runs.
         try
         {
+            await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
             foreach (var (sceneId, position) in positions)
             {
                 await UpsertPositionAsync(
@@ -82,11 +84,13 @@ public sealed partial class SqliteSceneLayoutStore : ISceneLayoutStore
     }
 
     private static string Describe(DbException exception) =>
-        // The foreign key to scenes is immediate, so a position for a scene the story has not saved
-        // fails here rather than at commit; every other cause is the database itself.
+        // Written for the creator, who reads it after the canvas's own "That scene's place on the
+        // map couldn't be saved." The foreign key to scenes is immediate, so a position for a scene
+        // the story has not saved fails here rather than at commit; every other cause is the
+        // database itself, and the provider's reason (a held file, a full disk) is the useful part.
         exception is SqliteException { SqliteExtendedErrorCode: ForeignKeyViolation }
-            ? "A node position names a scene the story has not saved; no positions were stored."
-            : "The story's node positions could not be stored; no positions were stored.";
+            ? "The scene isn't in the saved story yet."
+            : $"The story file couldn't be written. {exception.Message}";
 
     [SqlQuery("SELECT scene_id AS SceneId, x AS X, y AS Y FROM editor_scene_layout")]
     private static partial Task<IReadOnlyList<LayoutRow>> ReadLayoutAsync(

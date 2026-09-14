@@ -228,15 +228,80 @@ public class SceneNodeTests : BunitContext
         Assert.Equal(0, selected);
     }
 
+    [Fact]
+    public void Should_RaisePointerDown_When_Pressed()
+    {
+        // Arrange — the canvas needs to know which node is pressed and where, to begin a drag.
+        PointerEventArgs? pressed = null;
+        var cut = RenderNode(Node(SceneKind.Choice, "A fork"), onPointerDown: args => pressed = args);
+
+        // Act
+        cut.Find(".canvas-node").PointerDown(new PointerEventArgs { Button = 0, ClientX = 12, ClientY = 34 });
+
+        // Assert
+        Assert.NotNull(pressed);
+        Assert.Equal(12, pressed.ClientX);
+        Assert.Equal(34, pressed.ClientY);
+    }
+
+    [Fact]
+    public void Should_RaiseFocus_When_Focused()
+    {
+        // Arrange — the canvas brings a scene into view when the keyboard lands on it off-screen.
+        var focused = 0;
+        var cut = RenderNode(Node(SceneKind.Choice, "A fork"), onFocused: () => focused++);
+
+        // Act
+        cut.Find(".canvas-node").Focus();
+
+        // Assert
+        Assert.Equal(1, focused);
+    }
+
+    [Fact]
+    public void Should_MarkTheNode_When_ItIsBeingDragged()
+    {
+        // Arrange
+        var node = Node(SceneKind.Choice, "A fork");
+
+        // Act
+        var cut = RenderNode(node, isDragging: true);
+
+        // Assert
+        Assert.Contains("node-dragging", cut.Find(".canvas-node").ClassList);
+    }
+
+    [Fact]
+    public void Should_NotMarkTheNode_When_ItIsStill()
+    {
+        // Arrange
+        var node = Node(SceneKind.Choice, "A fork");
+
+        // Act
+        var cut = RenderNode(node);
+
+        // Assert
+        Assert.DoesNotContain("node-dragging", cut.Find(".canvas-node").ClassList);
+    }
+
     private static CanvasNode Node(SceneKind kind, string text)
     {
         var outcome = kind == SceneKind.Ending ? EndingOutcome.Victory() : null;
         return new CanvasNode(new Scene(SceneId.New(), kind, text, outcome), new ScenePosition(0, 0), IsStart: false);
     }
 
-    private IRenderedComponent<SvgHost> RenderNode(CanvasNode node, bool isSelected = false, Action? onSelected = null) =>
+    private IRenderedComponent<SvgHost> RenderNode(
+        CanvasNode node,
+        bool isSelected = false,
+        bool isDragging = false,
+        Action? onSelected = null,
+        Action<PointerEventArgs>? onPointerDown = null,
+        Action? onFocused = null) =>
         Render<SvgHost>(host => host.AddChildContent<SceneNode>(parameters => parameters
             .Add(p => p.Node, node)
             .Add(p => p.IsSelected, isSelected)
-            .Add(p => p.OnSelected, onSelected ?? (() => { }))));
+            .Add(p => p.IsDragging, isDragging)
+            .Add(p => p.OnSelected, onSelected ?? (() => { }))
+            .Add(p => p.OnPointerDown, onPointerDown ?? (_ => { }))
+            .Add(p => p.OnFocused, onFocused ?? (() => { }))));
 }

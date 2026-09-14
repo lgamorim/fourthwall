@@ -103,6 +103,36 @@ public sealed class SqliteSceneLayoutStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_ReportTheFailure_When_TheDatabaseIsLocked()
+    {
+        // Another process holding the database (a backup tool, a second editor) fails the save at
+        // the transaction's start, before any statement runs. That failure has to reach the
+        // creator as the adapter's own exception, like every other database failure, rather than
+        // escape as the provider's.
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = new Story("Layout");
+        var scene = story.AddScene(SceneKind.Linear, "held");
+        await SaveStoryAsync(story, cancellationToken);
+        await using var connection = await OpenMigratedAsync(cancellationToken);
+        ((SqliteConnection)connection).DefaultTimeout = 1;
+        var store = new SqliteSceneLayoutStore(connection);
+        await using var holder = new SqliteConnection($"Data Source={_databasePath}");
+        await holder.OpenAsync(cancellationToken);
+        await using var hold = holder.CreateCommand();
+        hold.CommandText = "BEGIN EXCLUSIVE";
+        await hold.ExecuteNonQueryAsync(cancellationToken);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => store.SaveAsync(
+                new Dictionary<SceneId, ScenePosition> { [scene.Id] = new(1, 2) }, cancellationToken));
+
+        // The cause reaches the creator: the provider's reason follows the plain sentence.
+        Assert.StartsWith("The story file couldn't be written. ", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("locked", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.IsType<SqliteException>(exception.InnerException);
+    }
+
+    [Fact]
     public async Task Should_BlameTheUnsavedScene_When_SaveViolatesTheForeignKey()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -114,7 +144,8 @@ public sealed class SqliteSceneLayoutStoreTests : IDisposable
             () => store.SaveAsync(
                 new Dictionary<SceneId, ScenePosition> { [SceneId.New()] = new(1, 2) }, cancellationToken));
 
-        Assert.Contains("scene", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Written for the creator, who reads it after "That scene's place on the map couldn't be saved."
+        Assert.Equal("The scene isn't in the saved story yet.", exception.Message);
     }
 
     [Fact]

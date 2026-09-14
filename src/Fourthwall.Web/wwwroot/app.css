@@ -396,7 +396,9 @@ button:disabled {
 .choice-up,
 .choice-down,
 .choice-remove,
-.inspector-kind-cancel {
+.inspector-kind-cancel,
+#canvas-fit,
+#canvas-reset {
     padding: 0;
     border: none;
     background: none;
@@ -412,7 +414,9 @@ button:disabled {
 .choice-up:hover,
 .choice-down:hover,
 .choice-remove:hover,
-.inspector-kind-cancel:hover {
+.inspector-kind-cancel:hover,
+#canvas-fit:hover:enabled,
+#canvas-reset:hover:enabled {
     color: var(--fw-ink);
     text-decoration: underline;
 }
@@ -593,11 +597,17 @@ button:disabled {
 
 .editor-toolbar {
     flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--fw-space-5);
     padding: var(--fw-space-3) var(--fw-space-5);
     border-bottom: 1px solid var(--fw-rule);
 }
 
 .story-title-input {
+    flex: 1 1 16rem;
+    min-width: 0;
     max-width: 40rem;
     margin: 0;
     padding: var(--fw-space-1) 0;
@@ -620,7 +630,16 @@ button:disabled {
     border-bottom-color: var(--fw-ribbon);
 }
 
+/* The map's view controls: words at the toolbar's right edge, on the title's baseline
+   (docs/design/0002-visual-direction.md §11.1). */
+.canvas-controls {
+    display: flex;
+    gap: var(--fw-space-5);
+    margin-left: auto;
+}
+
 .editor-toolbar .editor-error {
+    flex-basis: 100%;
     max-width: 40rem;
     margin: var(--fw-space-3) 0 0;
 }

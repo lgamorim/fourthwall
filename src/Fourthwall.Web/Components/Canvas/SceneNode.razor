@@ -1,8 +1,8 @@
 @using Fourthwall.Web.Composition
 
 @* A scene on the pencil map: a page whose right edge is the shape of its kind
-   (docs/design/0002-visual-direction.md §10.1). *@
-<g class="canvas-node @KindClass @(IsSelected ? "node-selected" : null)"
+   (docs/design/0002-visual-direction.md §10.1), moved by hand from M21 (§11.2). *@
+<g class="canvas-node @KindClass @StateClasses"
    data-scene-id="@Node.Scene.Id.Value"
    transform="@Node.Transform"
    tabindex="0"
@@ -10,7 +10,10 @@
    aria-label="@AccessibleName"
    aria-current="@(IsSelected ? "true" : null)"
    @onclick="OnSelected"
-   @onkeydown="OnKeyDownAsync">
+   @onkeydown="OnKeyDownAsync"
+   @onpointerdown="OnPointerDown"
+   @onpointerdown:stopPropagation
+   @onfocus="OnFocused">
     <title>@Node.Scene.Text</title>
 
     <path class="node-shape" d="@CanvasGeometry.NodeOutline(Node.Scene.Kind)" />

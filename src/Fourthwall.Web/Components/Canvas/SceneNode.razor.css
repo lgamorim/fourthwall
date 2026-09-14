@@ -1,8 +1,9 @@
 /* A scene node: a page drawn in ink, its right edge the shape of its kind, the ribbon when it is
-   the selected scene. Direction: docs/design/0002-visual-direction.md §10.1–10.2. */
+   the selected scene. Direction: docs/design/0002-visual-direction.md §10.1–10.2; the page can be
+   picked or moved, and the cursor says both (§11.3). */
 
 .canvas-node {
-    cursor: pointer;
+    cursor: move;
 }
 
 /* A click focuses the node too; only keyboard focus draws the app's ribbon ring (app.css). */
@@ -21,7 +22,9 @@
     transition: fill var(--fw-motion);
 }
 
-.canvas-node:hover .node-shape {
+/* The hover lift, held for as long as the page is being moved (§11.2). */
+.canvas-node:hover .node-shape,
+.node-dragging .node-shape {
     fill: var(--fw-desk);
 }
 

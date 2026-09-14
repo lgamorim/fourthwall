@@ -1,19 +1,52 @@
-/* The canvas region: plain paper, scrolling to its furthest node until M21 brings pan.
-   Direction: docs/design/0002-visual-direction.md §10.4. */
+/* The canvas region: plain paper that the map slides under, so it never scrolls.
+   Direction: docs/design/0002-visual-direction.md §10.4 and §11. */
 
 .canvas {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
     background: var(--fw-paper);
 }
 
+/* The sheet takes whatever the error line leaves, and is the box the shim measures. */
+.canvas-sheet {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The drawing fills the sheet exactly; the viewport transform frames the map. The paper is held to
+   slide it (§11.3), and the browser's own touch gestures are kept off the map. */
 .canvas-svg {
     display: block;
-    flex-shrink: 0;
-    align-self: flex-start;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    touch-action: none;
+    cursor: grab;
+}
+
+.canvas-panning .canvas-svg {
+    cursor: grabbing;
+}
+
+/* Nothing on the sheet is text to select while it, or a page on it, is being moved. */
+.canvas-panning,
+.canvas-dragging {
+    user-select: none;
+}
+
+/* A click focuses the map too; only keyboard focus draws the app's ring (app.css), inside the
+   edge because the map fills its region. */
+.canvas-svg:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.canvas-svg:focus-visible {
+    outline-offset: -2px;
 }
 
 .canvas-arrow path {

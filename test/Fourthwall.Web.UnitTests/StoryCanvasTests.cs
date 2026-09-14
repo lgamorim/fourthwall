@@ -8,6 +8,7 @@ using System.Text.Json;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Infrastructure;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -16,8 +17,13 @@ namespace Fourthwall.Web.UnitTests;
 public class StoryCanvasTests : BunitContext
 {
     private const string LayoutStateKey = "story-canvas-layout";
+    private const string ModulePath = "./Components/Canvas/StoryCanvas.razor.js";
 
     private readonly FakeSceneLayoutStore _layout = new();
+
+    // The shim is an accepted untestable boundary: the module is a bUnit stand-in that records
+    // what the canvas asks of it, and the canvas's [JSInvokable] methods are called directly.
+    private readonly BunitJSModuleInterop _module;
 
     // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does not.
     private readonly ComponentStatePersistenceManager _persistence =
@@ -27,6 +33,8 @@ public class StoryCanvasTests : BunitContext
     {
         Services.AddSingleton<IStoryGraphFactory>(new Graph1xStoryGraphFactory());
         Services.AddSingleton(_persistence.State);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        _module = JSInterop.SetupModule(ModulePath);
     }
 
     [Fact]
@@ -447,14 +455,17 @@ public class StoryCanvasTests : BunitContext
         var cut = RenderCanvas(story);
 
         // Assert — the map still shows, laid out afresh, and says why it may not look as left.
-        Assert.Contains("can't be read", cut.Find(".canvas-error").TextContent, StringComparison.Ordinal);
+        Assert.Equal(
+            "The scenes' places on the map couldn't be read, so they're laid out afresh. The story folder can't be read.",
+            cut.Find(".canvas-error").TextContent);
         Assert.Single(cut.FindAll(".canvas-node"));
     }
 
     [Fact]
-    public async Task Should_SizeTheDrawingToItsContent_When_Rendered()
+    public async Task Should_FillTheRegion_When_Rendered()
     {
-        // Arrange
+        // Arrange — the map slides under the window instead of scrolling, so the drawing takes the
+        // region's size from the stylesheet, not its content's size from the markup.
         var story = new Story("The Wreck");
         var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
         await SavePositionAsync(_layout, storm.Id, new ScenePosition(1000, 500.5));
@@ -462,10 +473,651 @@ public class StoryCanvasTests : BunitContext
         // Act
         var cut = RenderCanvas(story);
 
-        // Assert — until pan arrives the canvas scrolls, so the drawing must reach its furthest node.
+        // Assert
         var svg = cut.Find(".canvas-svg");
-        Assert.Equal(CanvasGeometry.Invariant(1000 + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin), svg.GetAttribute("width"));
-        Assert.Equal(CanvasGeometry.Invariant(500.5 + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin), svg.GetAttribute("height"));
+        Assert.Null(svg.GetAttribute("width"));
+        Assert.Null(svg.GetAttribute("height"));
+    }
+
+    [Fact]
+    public void Should_ImportTheModule_When_FirstRendered()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+
+        // Act
+        RenderCanvas(story);
+
+        // Assert
+        JSInterop.VerifyInvoke("import");
+        _module.VerifyInvoke("attach");
+    }
+
+    [Fact]
+    public async Task Should_DetachTheShim_When_Disposed()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        RenderCanvas(story);
+
+        // Act
+        await DisposeComponentsAsync();
+
+        // Assert
+        _module.VerifyInvoke("detach");
+    }
+
+    [Fact]
+    public void Should_PlaceTheMapAtActualSize_When_Rendered()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert — the frame M20 drew, until the creator slides or zooms it.
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+        Assert.Equal("0", cut.Find(".canvas-svg").GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public async Task Should_SlideTheMap_When_TheGroundIsDragged()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        cut.Find(".canvas-svg").PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 90);
+
+        // Assert — the map follows the pointer, and the ground says it is being held.
+        Assert.Equal("translate(30 -10) scale(1)", WorldTransform(cut));
+        Assert.Contains("canvas-panning", cut.Find(".canvas").ClassList);
+
+        await cut.Instance.UpAsync(130, 90);
+        Assert.DoesNotContain("canvas-panning", cut.Find(".canvas").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_NotSlideTheMap_When_ASecondaryButtonPressesTheGround()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        cut.Find(".canvas-svg").PointerDown(Press(100, 100, button: 2));
+        await cut.Instance.MoveAsync(130, 90);
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_IgnoreMoves_When_NothingIsPressed()
+    {
+        // Arrange — the shim forwards moves for any captured pointer; the canvas decides.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        await cut.Instance.MoveAsync(500, 500);
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_ZoomAboutTheCursor_When_TheWheelTurns()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act — one notch towards the creator zooms in one step, about (100, 100).
+        await cut.Instance.ZoomAsync(100, 100, deltaY: -100);
+
+        // Assert
+        Assert.Equal("translate(-20 -20) scale(1.2)", WorldTransform(cut));
+    }
+
+    [Theory]
+    [InlineData("ArrowRight", "translate(-40 0) scale(1)")]
+    [InlineData("ArrowLeft", "translate(40 0) scale(1)")]
+    [InlineData("ArrowDown", "translate(0 -40) scale(1)")]
+    [InlineData("ArrowUp", "translate(0 40) scale(1)")]
+    public void Should_SlideTheMapWithTheArrowKeys_When_TheMapHasFocus(string key, string expectedTransform)
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act — the arrow names where the creator wants to look, so the map slides the other way.
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = key });
+
+        // Assert
+        Assert.Equal(expectedTransform, WorldTransform(cut));
+    }
+
+    [Theory]
+    [InlineData("+", "translate(-80 -60) scale(1.2)")]
+    [InlineData("=", "translate(-80 -60) scale(1.2)")]
+    [InlineData("-", "translate(66.67 50) scale(0.8333)")]
+    public async Task Should_ZoomAboutTheWindowsCentre_When_PlusOrMinusIsPressed(string key, string expectedTransform)
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = key });
+
+        // Assert
+        Assert.Equal(expectedTransform, WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_SlideTheMapWithTheArrowKeys_When_ASceneHasFocus()
+    {
+        // Arrange — a keyboard creator moves from scene to scene with Tab; the arrows still slide.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        NodeFor(cut, storm.Id).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Assert
+        Assert.Equal("translate(-40 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_OpenAtActualSize_When_TheWholeStoryFitsTheWindow()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act — the browser reports the window's size once the circuit attaches.
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Assert — the story sits at the page's origin, as M20 drew it.
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_ShowTheWholeStory_When_ItDoesNotFitTheWindowOnOpen()
+    {
+        // Arrange — a scene dragged far from the origin would otherwise open to a blank window.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(1000, 500));
+        var cut = RenderCanvas(story);
+
+        // Act
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Assert — framed and centred; it fits at actual size, so no zoom.
+        Assert.Equal("translate(-700 -232) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheView_When_TheWindowIsMeasuredAgain()
+    {
+        // Arrange — a story is framed once on open; a later resize never moves the map under the creator.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(1000, 500));
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Act
+        await cut.Instance.ResizeAsync(1200, 900);
+
+        // Assert
+        Assert.Equal("translate(-740 -232) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_FrameTheStory_When_ItsPositionsArriveAfterTheWindowWasMeasured()
+    {
+        // Arrange — the window can be measured while the positions are still being read.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(1000, 500));
+        _layout.LoadGate = new TaskCompletionSource();
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(() => _layout.LoadGate.SetResult());
+
+        // Assert
+        Assert.Equal("translate(-700 -232) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_ResetTheView_When_ADifferentStoryIsShown()
+    {
+        // Arrange
+        var first = new Story("The Wreck");
+        first.AddScene(SceneKind.Linear, "A storm gathers");
+        var second = new Story("Shadows of Kell");
+        second.AddScene(SceneKind.Linear, "The city gate");
+        var cut = RenderCanvas(first);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(100, 100, deltaY: -100);
+
+        // Act
+        cut.Render(parameters => parameters
+            .Add(p => p.Story, second)
+            .Add(p => p.Layout, new FakeSceneLayoutStore()));
+
+        // Assert — the new story opens the way any story opens, not through the old one's zoom.
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    private static string? WorldTransform(IRenderedComponent<StoryCanvas> cut) =>
+        cut.Find(".canvas-world").GetAttribute("transform");
+
+    private static PointerEventArgs Press(double clientX, double clientY, long button = 0) =>
+        new() { Button = button, PointerId = 1, ClientX = clientX, ClientY = clientY };
+
+    [Fact]
+    public async Task Should_MoveTheNodeAndItsLinks_When_ItIsDragged()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetFollowUp(storm.Id, deck.Id);
+        story.SetStartScene(storm.Id);
+        var cut = RenderCanvas(story);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Assert — the node follows the pointer from its placed spot, its link follows it, and the
+        // node and the ground both say a page is being moved.
+        Assert.Equal("translate(70 60)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+        Assert.Equal(
+            CanvasGeometry.EdgePath(new ScenePosition(70, 60), new ScenePosition(360, 40), parallelIndex: 0),
+            cut.Find(".edge-line").GetAttribute("d"));
+        Assert.Contains("node-dragging", NodeFor(cut, storm.Id).ClassList);
+        Assert.Contains("canvas-dragging", cut.Find(".canvas").ClassList);
+        Assert.Equal(0, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheNodeStill_When_ThePointerStaysWithinTheThreshold()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(102, 103);
+
+        // Assert
+        Assert.Equal("translate(40 40)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+        Assert.DoesNotContain("node-dragging", NodeFor(cut, storm.Id).ClassList);
+    }
+
+    [Fact]
+    public async Task Should_SaveTheNodePosition_When_ADragEnds()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Act
+        await cut.Instance.UpAsync(140, 125);
+
+        // Assert — one save, holding only the dragged scene: placed positions stay the canvas's own.
+        Assert.Equal(1, _layout.SaveCount);
+        var saved = await _layout.LoadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(new ScenePosition(80, 65), Assert.Single(saved).Value);
+        Assert.Equal("translate(80 65)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+        Assert.DoesNotContain("node-dragging", NodeFor(cut, storm.Id).ClassList);
+        Assert.DoesNotContain("canvas-dragging", cut.Find(".canvas").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheDraggedPosition_When_TheCanvasRendersAgain()
+    {
+        // Arrange — the page re-renders the canvas after every edit; a moved node must not snap back.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        await cut.Instance.UpAsync(130, 120);
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+
+        // Assert
+        Assert.Equal("translate(70 60)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+        Assert.Equal(1, _layout.LoadCount);
+    }
+
+    [Fact]
+    public async Task Should_SelectWithoutSaving_When_ANodeIsClicked()
+    {
+        // Arrange — a press and release without travel is a click; the browser then fires the click.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.UpAsync(101, 101);
+        NodeFor(cut, storm.Id).Click();
+
+        // Assert
+        Assert.Equal(storm.Id, selected);
+        Assert.Equal(0, _layout.SaveCount);
+        Assert.Equal("translate(40 40)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_NotSelect_When_TheClickFollowsADrag()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        await cut.Instance.UpAsync(130, 120);
+
+        // Act — the click the browser fires for the same press.
+        NodeFor(cut, storm.Id).Click();
+
+        // Assert
+        Assert.Null(selected);
+    }
+
+    [Fact]
+    public async Task Should_SelectAgain_When_ANodeIsClickedAfterAnEarlierDrag()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        await cut.Instance.UpAsync(130, 120);
+        NodeFor(cut, storm.Id).Click();
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(130, 120));
+        await cut.Instance.UpAsync(130, 120);
+        NodeFor(cut, storm.Id).Click();
+
+        // Assert
+        Assert.Equal(storm.Id, selected);
+    }
+
+    [Fact]
+    public async Task Should_NotStartADrag_When_ASecondaryButtonPressesANode()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100, button: 2));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Assert
+        Assert.Equal("translate(40 40)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_NotSlideTheMap_When_ANodeIsDragged()
+    {
+        // Arrange — a press on a page stops at the page; the paper under it is not held.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_ReportTheFailureAndKeepTheNode_When_ThePositionCannotBeSaved()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        _layout.FailNextSave = new IOException("The story folder is read-only.");
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Act
+        await cut.Instance.UpAsync(130, 120);
+
+        // Assert — the page stays where it was dropped for the session; the line says what happened.
+        Assert.Equal(
+            "That scene's place on the map couldn't be saved. The story folder is read-only.",
+            cut.Find(".canvas-error").TextContent);
+        Assert.Equal("translate(70 60)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_ClearTheFailure_When_ALaterDragSaves()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        _layout.FailNextSave = new IOException("The story folder is read-only.");
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        await cut.Instance.UpAsync(130, 120);
+
+        // Act
+        NodeFor(cut, storm.Id).PointerDown(Press(130, 120));
+        await cut.Instance.MoveAsync(160, 120);
+        await cut.Instance.UpAsync(160, 120);
+
+        // Assert
+        Assert.Empty(cut.FindAll(".canvas-error"));
+        Assert.Equal(1, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_IgnoreTheRelease_When_TheCanvasWasDisposedMidDrag()
+    {
+        // Arrange — the story can close while a page is held; the shim's last invokes still arrive.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        var canvas = cut.Instance;
+        await DisposeComponentsAsync();
+
+        // Act
+        var exception = await Record.ExceptionAsync(async () =>
+        {
+            await canvas.MoveAsync(140, 120);
+            await canvas.UpAsync(140, 120);
+        });
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Equal(0, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_BringTheSceneIntoView_When_ItReceivesFocusOffScreen()
+    {
+        // Arrange — Tab reaches every scene in navigator order; one slid out of the window would
+        // otherwise take the focus ring with it.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        for (var press = 0; press < 7; press++)
+        {
+            cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        }
+
+        // Act
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert — the scene's centre (140, 72) lands at the window's centre; the zoom is kept.
+        Assert.Equal("translate(260 228) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheView_When_AVisibleSceneReceivesFocus()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act — a click focuses the node too, and must never move the map under the pointer.
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheView_When_APartlyVisibleSceneReceivesFocus()
+    {
+        // Arrange — a page half off the edge still shows its ring; centring it would jump the map.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        for (var press = 0; press < 3; press++)
+        {
+            cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        }
+
+        // Act
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert
+        Assert.Equal("translate(-120 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_ShowTheWholeStory_When_Asked()
+    {
+        // Arrange — the toolbar's "Show whole story" reaches the canvas through this method.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(0, 0, deltaY: 300);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.FitToStory);
+
+        // Assert — one page at (40, 40) fits at actual size, so it is centred at 1:1.
+        Assert.Equal("translate(260 228) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_RestoreActualSize_When_Asked()
+    {
+        // Arrange — the toolbar's "Actual size" reaches the canvas through this method.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(100, 100, deltaY: -100);
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.ResetView);
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public void Should_KeepTheErrorLineOutOfTheSheet_When_OneShows()
+    {
+        // Arrange — the shim measures the sheet and anchors the wheel to it, and the svg fills it
+        // exactly; an error line inside the same box would shift every frame the viewport reasons
+        // with by its own height.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.FailNextLoad = new IOException("The story folder can't be read.");
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert
+        Assert.Null(cut.Find(".canvas-error").Closest(".canvas-sheet"));
+        Assert.NotNull(cut.Find(".canvas-svg").Closest(".canvas-sheet"));
+        var sheetParent = cut.Find(".canvas-sheet").ParentElement;
+        Assert.NotNull(sheetParent);
+        Assert.Contains("canvas", sheetParent.ClassList);
+    }
+
+    [Fact]
+    public async Task Should_EndTheGesture_When_ThePressedSceneLeavesTheStory()
+    {
+        // Arrange — another tab deletes the held scene; the page re-renders the canvas with the story
+        // as it now is. The release that follows must not try to save a place for a scene that is
+        // gone, and the ground must stop saying a page is held.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        story.RemoveScene(storm.Id);
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+        await cut.Instance.UpAsync(140, 120);
+
+        // Assert
+        Assert.DoesNotContain("canvas-dragging", cut.Find(".canvas").ClassList);
+        Assert.Equal(0, _layout.SaveCount);
+        Assert.Empty(cut.FindAll(".canvas-error"));
     }
 
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
