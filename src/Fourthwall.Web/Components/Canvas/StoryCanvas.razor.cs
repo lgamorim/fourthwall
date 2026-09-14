@@ -18,6 +18,7 @@ public partial class StoryCanvas : IDisposable
     private static readonly string ThumbnailX = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailX);
     private static readonly string ThumbnailY = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailY);
     private static readonly string ThumbnailSize = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailSize);
+    private static readonly string CornerRadius = CanvasGeometry.Invariant(CanvasGeometry.CornerRadius);
 
     private readonly CancellationTokenSource _disposal = new();
 

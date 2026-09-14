@@ -21,7 +21,7 @@ public partial class SceneNode
     private static readonly string ThumbnailX = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailX);
     private static readonly string ThumbnailY = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailY);
     private static readonly string ThumbnailSize = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailSize);
-    private static readonly string CornerRadius = CanvasGeometry.Invariant(2);
+    private static readonly string CornerRadius = CanvasGeometry.Invariant(CanvasGeometry.CornerRadius);
     private static readonly string StartTagY = CanvasGeometry.Invariant(-17);
     private static readonly string StartTagWidth = CanvasGeometry.Invariant(52);
     private static readonly string StartTagHeight = CanvasGeometry.Invariant(17);

@@ -61,7 +61,12 @@ public static class CanvasGeometry
     /// </summary>
     public const double RibbonLength = 22;
 
-    private const double CornerRadius = 2;
+    /// <summary>
+    /// The radius of a node's left corners and of its thumbnail plate. Mirrors the
+    /// <c>--fw-radius-s</c> token, which SVG path data and geometry attributes cannot read.
+    /// </summary>
+    public const double CornerRadius = 2;
+
     private const double RibbonInset = 4;
     private const double RibbonNotch = 0.7;
     private const double ParallelGap = 28;
