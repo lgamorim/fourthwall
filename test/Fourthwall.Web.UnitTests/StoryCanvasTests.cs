@@ -4,17 +4,29 @@ using Fourthwall.Infrastructure;
 using Fourthwall.Web.Components.Canvas;
 using Fourthwall.Web.Composition;
 
+using System.Text.Json;
+
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Fourthwall.Web.UnitTests;
 
 public class StoryCanvasTests : BunitContext
 {
+    private const string LayoutStateKey = "story-canvas-layout";
+
     private readonly FakeSceneLayoutStore _layout = new();
+
+    // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does not.
+    private readonly ComponentStatePersistenceManager _persistence =
+        new(NullLogger<ComponentStatePersistenceManager>.Instance);
 
     public StoryCanvasTests()
     {
         Services.AddSingleton<IStoryGraphFactory>(new Graph1xStoryGraphFactory());
+        Services.AddSingleton(_persistence.State);
     }
 
     [Fact]
@@ -286,6 +298,67 @@ public class StoryCanvasTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_NotReadPositions_When_ThePrerenderHandedThemOver()
+    {
+        // Arrange — prerendering renders the canvas twice per page load. The second pass takes the
+        // positions the first pass persisted instead of reading the story database again. The store
+        // holds a different position, so reading it would be visible.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(900, 900));
+        await SeedHandedOverLayoutAsync(new Dictionary<Guid, ScenePosition?>
+        {
+            [storm.Id.Value] = new ScenePosition(412.5, 96),
+            [deck.Id.Value] = null,
+        });
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert
+        Assert.Equal(0, _layout.LoadCount);
+        Assert.Equal("translate(412.5 96)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_ReadPositions_When_TheHandedOverLayoutIsForAnotherStory()
+    {
+        // Arrange — the workspace is shared, so another tab can open a different story between the
+        // prerender and this pass. Positions handed over for different scenes are not this story's.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(900, 900));
+        await SeedHandedOverLayoutAsync(new Dictionary<Guid, ScenePosition?>
+        {
+            [Guid.NewGuid()] = new ScenePosition(412.5, 96),
+        });
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert
+        Assert.Equal(1, _layout.LoadCount);
+        Assert.Equal("translate(900 900)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_CancelThePositionLoad_When_TheCanvasIsDisposed()
+    {
+        // Arrange — the story can close while its positions are still being read.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.LoadGate = new TaskCompletionSource();
+        RenderCanvas(story);
+
+        // Act
+        await DisposeComponentsAsync();
+
+        // Assert
+        Assert.True(_layout.LastLoadCancellationToken.IsCancellationRequested);
+    }
+
+    [Fact]
     public void Should_NotReloadPositions_When_TheSameStoryRendersAgain()
     {
         // Arrange
@@ -382,6 +455,16 @@ public class StoryCanvasTests : BunitContext
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
         cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
 
+    // Seeds the state a prerender would have handed over, serialized the way the framework does.
+    // Only the restore half is exercised: PersistStateAsync needs a Renderer, which bUnit does not
+    // surface, so the persisting callback stays an accepted boundary (overlays/frontend-blazor.md),
+    // as it is for the picker's recent list in HomeTests.
+    private Task SeedHandedOverLayoutAsync(Dictionary<Guid, ScenePosition?> layout) =>
+        _persistence.RestoreStateAsync(new SeededStore(new Dictionary<string, byte[]>
+        {
+            [LayoutStateKey] = JsonSerializer.SerializeToUtf8Bytes(layout, JsonSerializerOptions.Web),
+        }));
+
     private static Task SavePositionAsync(FakeSceneLayoutStore layout, SceneId sceneId, ScenePosition position) =>
         layout.SaveAsync(
             new Dictionary<SceneId, ScenePosition> { [sceneId] = position },
@@ -394,4 +477,11 @@ public class StoryCanvasTests : BunitContext
             .Add(p => p.Layout, _layout)
             .Add(p => p.SelectedSceneId, selected)
             .Add(p => p.SelectedSceneIdChanged, onSelected ?? (_ => { })));
+
+    private sealed class SeededStore(IDictionary<string, byte[]> state) : IPersistentComponentStateStore
+    {
+        public Task<IDictionary<string, byte[]>> GetPersistedStateAsync() => Task.FromResult(state);
+
+        public Task PersistStateAsync(IReadOnlyDictionary<string, byte[]> instance) => Task.CompletedTask;
+    }
 }

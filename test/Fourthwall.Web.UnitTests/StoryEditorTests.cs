@@ -4,7 +4,9 @@ using Fourthwall.Infrastructure;
 
 using Bunit.TestDoubles;
 
+using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Fourthwall.Web.UnitTests;
 
@@ -18,6 +20,10 @@ public class StoryEditorTests : BunitContext
         Services.AddSingleton<IStoryWorkspace>(_workspace);
         Services.AddSingleton<IStoryValidation>(_validation);
         Services.AddSingleton<IStoryGraphFactory>(new Graph1xStoryGraphFactory());
+
+        // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does not,
+        // and the canvas hands its positions across the prerender with it.
+        Services.AddSingleton(new ComponentStatePersistenceManager(NullLogger<ComponentStatePersistenceManager>.Instance).State);
     }
 
     [Fact]

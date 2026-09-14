@@ -31,9 +31,16 @@ public sealed class FakeSceneLayoutStore : ISceneLayoutStore
     /// </summary>
     public TaskCompletionSource? LoadGate { get; set; }
 
+    /// <summary>
+    /// The token the most recent load was given, so a test can tell whether its caller cancelled it.
+    /// </summary>
+    public CancellationToken LastLoadCancellationToken { get; private set; }
+
     public async Task<IReadOnlyDictionary<SceneId, ScenePosition>> LoadAsync(
         CancellationToken cancellationToken = default)
     {
+        LastLoadCancellationToken = cancellationToken;
+
         if (FailNextLoad is not null)
         {
             var failure = FailNextLoad;
@@ -46,7 +53,8 @@ public sealed class FakeSceneLayoutStore : ISceneLayoutStore
 
         if (LoadGate is not null)
         {
-            await LoadGate.Task;
+            // A cancelled load stops waiting, as the real store's query would.
+            await LoadGate.Task.WaitAsync(cancellationToken);
         }
 
         return positions;
