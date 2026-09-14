@@ -172,7 +172,7 @@ public class CanvasModelTests
     }
 
     [Fact]
-    public void Should_ReachPastTheFurthestNode_When_SizingTheDrawing()
+    public void Should_BoundTheFurthestEdges_When_MeasuringTheContent()
     {
         // Arrange
         var story = new Story("Story");
@@ -187,9 +187,27 @@ public class CanvasModelTests
         // Act
         var model = CanvasModel.Build(story, positions);
 
-        // Assert — the furthest right edge and bottom edge, plus the same margin the layout leaves at the origin.
-        Assert.Equal(300 + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin, model.Width);
-        Assert.Equal(500 + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin, model.Height);
+        // Assert — tight to the nodes: the viewport adds its own margin when it frames them.
+        Assert.Equal(
+            new CanvasBounds(0, 0, 300 + CanvasGeometry.NodeWidth, 500 + CanvasGeometry.NodeHeight),
+            model.Bounds);
+    }
+
+    [Fact]
+    public void Should_ReachIntoTheNegativeQuadrant_When_ANodeWasDraggedThere()
+    {
+        // Arrange — a drag can leave a node left of or above the origin; bounds measured from the
+        // origin would frame it out.
+        var story = new Story("Story");
+        var scene = story.AddScene(SceneKind.Linear, "Adrift");
+        var positions = new Dictionary<SceneId, ScenePosition> { [scene.Id] = new ScenePosition(-150.5, -60) };
+
+        // Act
+        var model = CanvasModel.Build(story, positions);
+
+        // Assert
+        Assert.Equal(-150.5, model.Bounds.Left);
+        Assert.Equal(-60, model.Bounds.Top);
     }
 
     [Fact]
@@ -200,19 +218,19 @@ public class CanvasModelTests
         var loop = story.AddScene(SceneKind.Choice, "A round room");
         story.WireChoice(loop.Id, "Keep walking", loop.Id);
         story.WireChoice(loop.Id, "Walk on", loop.Id);
-        var positions = new Dictionary<SceneId, ScenePosition> { [loop.Id] = new ScenePosition(0, 0) };
+        var positions = new Dictionary<SceneId, ScenePosition> { [loop.Id] = new ScenePosition(0, 100) };
 
         // Act
         var model = CanvasModel.Build(story, positions);
 
-        // Assert — the outermost of two loops and its label stay inside the drawing.
-        Assert.Equal(
-            CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(parallelIndex: 1) + CanvasGeometry.ContentMargin,
-            model.Width);
+        // Assert — the outermost of two loops rises above the node's top edge and its label reaches
+        // past the right edge; both stay inside the bounds.
+        Assert.Equal(CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(parallelIndex: 1), model.Bounds.Right);
+        Assert.Equal(100 - CanvasGeometry.SelfLoopRise(parallelIndex: 1), model.Bounds.Top);
     }
 
     [Fact]
-    public void Should_HaveNoSize_When_TheStoryHasNoScenes()
+    public void Should_HaveEmptyBounds_When_TheStoryHasNoScenes()
     {
         // Arrange
         var story = new Story("Story");
@@ -221,8 +239,7 @@ public class CanvasModelTests
         var model = CanvasModel.Build(story, new Dictionary<SceneId, ScenePosition>());
 
         // Assert
-        Assert.Equal(0, model.Width);
-        Assert.Equal(0, model.Height);
+        Assert.True(model.Bounds.IsEmpty);
     }
 
     [Fact]

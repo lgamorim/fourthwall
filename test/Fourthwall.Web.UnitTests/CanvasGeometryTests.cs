@@ -253,6 +253,18 @@ public class CanvasGeometryTests
         Assert.Contains("L 8,15.4 ", ribbon, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(0, 40)]
+    [InlineData(1, 64)]
+    public void Should_RiseHigherForEachFurtherLoop_When_MeasuringASelfLoop(int parallelIndex, double expectedRise)
+    {
+        // Act
+        var rise = CanvasGeometry.SelfLoopRise(parallelIndex);
+
+        // Assert — how far above the top edge a loop's control points sit, so the bounds can hold it.
+        Assert.Equal(expectedRise, rise);
+    }
+
     private static (
         (double X, double Y) Start,
         double ControlOneY,
@@ -274,22 +286,5 @@ public class CanvasGeometryTests
             ControlOneY: numbers[3],
             ControlTwoY: numbers[5],
             End: (numbers[6], numbers[7]));
-    }
-
-    /// <summary>
-    /// Swaps <see cref="CultureInfo.CurrentCulture"/> for the lifetime of a test and restores it,
-    /// so a culture-sensitive test can never leak into the ones that run after it.
-    /// </summary>
-    private sealed class CulturePin : IDisposable
-    {
-        private readonly CultureInfo _original;
-
-        public CulturePin(string name)
-        {
-            _original = CultureInfo.CurrentCulture;
-            CultureInfo.CurrentCulture = new CultureInfo(name);
-        }
-
-        public void Dispose() => CultureInfo.CurrentCulture = _original;
     }
 }

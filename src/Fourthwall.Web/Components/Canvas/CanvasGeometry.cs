@@ -77,7 +77,7 @@ public static class CanvasGeometry
     private const double SelfLoopInset = 44;
     private const double SelfLoopWidth = 40;
     private const double SelfLoopSize = 40;
-    private const double SelfLoopRise = 24;
+    private const double SelfLoopStep = 24;
     private const double SelfLoopSpread = 8;
     private const double SelfLoopLabelGap = 6;
     private const double SelfLoopLabelDrop = 4;
@@ -181,7 +181,7 @@ public static class CanvasGeometry
     public static string SelfLoopPath(ScenePosition node, int parallelIndex)
     {
         var (startX, endX) = SelfLoopFeet(node, parallelIndex);
-        var controlY = node.Y - SelfLoopHeight(parallelIndex);
+        var controlY = node.Y - SelfLoopRise(parallelIndex);
 
         return $"M {Invariant(startX)},{Invariant(node.Y)} " +
             $"C {Invariant(startX)},{Invariant(controlY)} " +
@@ -213,10 +213,17 @@ public static class CanvasGeometry
 
         // A cubic's apex sits three quarters of the way to its control points; the label's
         // baseline sits just under it, so the text reads beside the top of the loop.
-        var labelY = node.Y - (SelfLoopHeight(parallelIndex) * 0.75) + SelfLoopLabelDrop;
+        var labelY = node.Y - (SelfLoopRise(parallelIndex) * 0.75) + SelfLoopLabelDrop;
 
         return (Invariant(startX + SelfLoopLabelGap), Invariant(labelY));
     }
+
+    /// <summary>
+    /// How far above its node's top edge a self-loop's control points rise, so the drawing can be
+    /// bounded to hold it; each further loop on the same scene rises higher.
+    /// </summary>
+    /// <param name="parallelIndex">The loop's position among the node's other self-loops.</param>
+    public static double SelfLoopRise(int parallelIndex) => SelfLoopSize + (parallelIndex * SelfLoopStep);
 
     private static (double StartX, double EndX) SelfLoopFeet(ScenePosition node, int parallelIndex)
     {
@@ -225,7 +232,6 @@ public static class CanvasGeometry
         return (startX, startX - SelfLoopWidth - (2 * spread));
     }
 
-    private static double SelfLoopHeight(int parallelIndex) => SelfLoopSize + (parallelIndex * SelfLoopRise);
 
     private static (double X, double Y) RightCentre(ScenePosition position) =>
         (position.X + NodeWidth, position.Y + (NodeHeight / 2));

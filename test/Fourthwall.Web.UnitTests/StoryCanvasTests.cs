@@ -452,9 +452,10 @@ public class StoryCanvasTests : BunitContext
     }
 
     [Fact]
-    public async Task Should_SizeTheDrawingToItsContent_When_Rendered()
+    public async Task Should_FillTheRegion_When_Rendered()
     {
-        // Arrange
+        // Arrange — the map slides under the window instead of scrolling, so the drawing takes the
+        // region's size from the stylesheet, not its content's size from the markup.
         var story = new Story("The Wreck");
         var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
         await SavePositionAsync(_layout, storm.Id, new ScenePosition(1000, 500.5));
@@ -462,10 +463,10 @@ public class StoryCanvasTests : BunitContext
         // Act
         var cut = RenderCanvas(story);
 
-        // Assert — until pan arrives the canvas scrolls, so the drawing must reach its furthest node.
+        // Assert
         var svg = cut.Find(".canvas-svg");
-        Assert.Equal(CanvasGeometry.Invariant(1000 + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin), svg.GetAttribute("width"));
-        Assert.Equal(CanvasGeometry.Invariant(500.5 + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin), svg.GetAttribute("height"));
+        Assert.Null(svg.GetAttribute("width"));
+        Assert.Null(svg.GetAttribute("height"));
     }
 
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>

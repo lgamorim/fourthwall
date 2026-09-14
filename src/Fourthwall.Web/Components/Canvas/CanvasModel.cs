@@ -17,30 +17,31 @@ public sealed class CanvasModel
 
         if (nodes.Count > 0)
         {
-            var nodeReach = nodes.Max(node => node.Position.X + CanvasGeometry.NodeWidth);
-            var loopReach = edges
-                .Where(edge => edge.IsSelfLoop)
-                .Select(edge => nodes.First(node => node.Scene.Id == edge.Source).Position.X
-                    + CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(edge.ParallelIndex))
-                .DefaultIfEmpty(0)
+            var loops = edges.Where(edge => edge.IsSelfLoop).ToList();
+            var loopReach = loops
+                .Select(loop => nodes.First(node => node.Scene.Id == loop.Source).Position.X
+                    + CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(loop.ParallelIndex))
+                .DefaultIfEmpty(double.NegativeInfinity)
                 .Max();
+            var loopTop = loops
+                .Select(loop => nodes.First(node => node.Scene.Id == loop.Source).Position.Y
+                    - CanvasGeometry.SelfLoopRise(loop.ParallelIndex))
+                .DefaultIfEmpty(double.PositiveInfinity)
+                .Min();
 
-            Width = Math.Max(nodeReach, loopReach) + CanvasGeometry.ContentMargin;
-            Height = nodes.Max(node => node.Position.Y) + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin;
+            Bounds = new CanvasBounds(
+                nodes.Min(node => node.Position.X),
+                Math.Min(nodes.Min(node => node.Position.Y), loopTop),
+                Math.Max(nodes.Max(node => node.Position.X + CanvasGeometry.NodeWidth), loopReach),
+                nodes.Max(node => node.Position.Y + CanvasGeometry.NodeHeight));
         }
     }
 
     /// <summary>
-    /// Gets how wide the drawing must be to show every node, measured from the origin; zero with no
-    /// nodes.
+    /// Gets the edges the drawing reaches, tight to its nodes and their self-loops; empty with no
+    /// nodes. The viewport adds its own margin when it frames the content.
     /// </summary>
-    public double Width { get; }
-
-    /// <summary>
-    /// Gets how tall the drawing must be to show every node, measured from the origin; zero with no
-    /// nodes.
-    /// </summary>
-    public double Height { get; }
+    public CanvasBounds Bounds { get; }
 
     /// <summary>
     /// Gets every node, in paint order — later nodes sit on top of earlier ones.

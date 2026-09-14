@@ -1,19 +1,21 @@
-/* The canvas region: plain paper, scrolling to its furthest node until M21 brings pan.
-   Direction: docs/design/0002-visual-direction.md §10.4. */
+/* The canvas region: plain paper that the map slides under, so it never scrolls.
+   Direction: docs/design/0002-visual-direction.md §10.4 and §11. */
 
 .canvas {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
     background: var(--fw-paper);
 }
 
+/* The drawing fills whatever the error line leaves; the viewport transform frames the map. */
 .canvas-svg {
     display: block;
-    flex-shrink: 0;
-    align-self: flex-start;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
 }
 
 .canvas-arrow path {
