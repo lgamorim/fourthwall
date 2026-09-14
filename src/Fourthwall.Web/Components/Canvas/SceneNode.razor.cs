@@ -37,13 +37,29 @@ public partial class SceneNode
     [Parameter]
     public bool IsSelected { get; set; }
 
+    /// <summary>
+    /// Whether the creator is moving this node; it keeps its lifted fill while held.
+    /// </summary>
+    [Parameter]
+    public bool IsDragging { get; set; }
+
     [Parameter]
     public EventCallback OnSelected { get; set; }
+
+    /// <summary>
+    /// Raised when a pointer presses the node, with the press's window coordinates, so the canvas
+    /// can begin a drag. The press stops here: the ground under the node is not held.
+    /// </summary>
+    [Parameter]
+    public EventCallback<PointerEventArgs> OnPointerDown { get; set; }
 
     private string Label => Scenes.Label(
         Node.Scene, Node.Scene.ImagePath is null ? LabelLength : LabelLengthBesideThumbnail);
 
     private string AccessibleName => $"{Scenes.Label(Node.Scene)}, {Node.Scene.Kind}";
+
+    private string StateClasses =>
+        $"{(IsSelected ? "node-selected" : null)} {(IsDragging ? "node-dragging" : null)}".Trim();
 
     // The class picks nothing the outline has not already drawn; it lets the stylesheet and a
     // reader of the markup tell kinds apart. Exhaustive, like SceneList's: a kind the editor does

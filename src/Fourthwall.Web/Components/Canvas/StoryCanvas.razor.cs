@@ -25,9 +25,6 @@ public partial class StoryCanvas : IAsyncDisposable
     private const double KeyboardPanStep = 40;
     private const double WheelNotch = 100;
 
-    private static readonly IReadOnlyDictionary<SceneId, ScenePosition> NoPositions =
-        new Dictionary<SceneId, ScenePosition>();
-
     private static readonly string ThumbnailX = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailX);
     private static readonly string ThumbnailY = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailY);
     private static readonly string ThumbnailSize = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailSize);
@@ -37,15 +34,23 @@ public partial class StoryCanvas : IAsyncDisposable
     private readonly CanvasViewport _viewport = new();
     private readonly CanvasInteraction _interaction;
 
-    // The story whose positions were last asked for, and the story _saved holds positions for;
+    // The story whose positions were last asked for, and the story _positions holds positions for;
     // they differ only while a load is in flight. _framedStory is the one the viewport was framed
     // for on open, so a later resize never moves the map under the creator.
     private Story? _requestedStory;
     private Story? _positionsStory;
     private Story? _framedStory;
-    private IReadOnlyDictionary<SceneId, ScenePosition> _saved = NoPositions;
+
+    // Positions the store returned or the creator chose by dragging, by scene: what a drag writes
+    // and what the prerender hands over. Scenes absent here are placed afresh on every render.
+    private Dictionary<SceneId, ScenePosition> _positions = [];
+
+    // Every scene's position as the model was last built: _positions plus the placed ones. A drag
+    // updates one entry and rebuilds the model without running the layout again.
+    private Dictionary<SceneId, ScenePosition> _placed = [];
     private CanvasModel? _model;
     private string? _loadError;
+    private string? _saveError;
     private PersistingComponentStateSubscription _persisting;
     private ElementReference _host;
     private IJSObjectReference? _module;
@@ -60,8 +65,8 @@ public partial class StoryCanvas : IAsyncDisposable
     public Story Story { get; set; } = default!;
 
     /// <summary>
-    /// Where the open story's node positions are kept. Read once per story; this component never
-    /// writes it until M21 persists a drag.
+    /// Where the open story's node positions are kept. Read once per story, and written one scene
+    /// at a time when a drag ends.
     /// </summary>
     [Parameter]
     [EditorRequired]
@@ -82,7 +87,16 @@ public partial class StoryCanvas : IAsyncDisposable
     [Inject]
     private IJSRuntime JS { get; set; } = default!;
 
-    private string? HostStateClass => _interaction.Mode == CanvasInteractionMode.Panning ? "canvas-panning" : null;
+    // A failed save is the more recent news and takes the line; a failed read stays for the story's
+    // life underneath it.
+    private string? Error => _saveError ?? _loadError;
+
+    private string? HostStateClass => _interaction.Mode switch
+    {
+        CanvasInteractionMode.Panning => "canvas-panning",
+        CanvasInteractionMode.DraggingNode => "canvas-dragging",
+        _ => null,
+    };
 
     public async ValueTask DisposeAsync()
     {
@@ -135,24 +149,38 @@ public partial class StoryCanvas : IAsyncDisposable
             return;
         }
 
-        _interaction.PointerMove(clientX, clientY);
+        if (_interaction.PointerMove(clientX, clientY) is { } move)
+        {
+            Place(move);
+        }
+
         StateHasChanged();
     });
 
     /// <summary>
-    /// Releases the captured pointer at its final window position.
+    /// Releases the captured pointer at its final window position. A drag ends by saving the moved
+    /// scene's position, and nothing else, so the story and its validation report are untouched.
     /// </summary>
     [JSInvokable]
-    public Task UpAsync(double clientX, double clientY) => InvokeAsync(() =>
+    public Task UpAsync(double clientX, double clientY) => InvokeAsync(async () =>
     {
         if (_disposal.IsCancellationRequested)
         {
             return;
         }
 
-        _interaction.PointerMove(clientX, clientY);
-        _interaction.PointerUp();
+        if (_interaction.PointerMove(clientX, clientY) is { } move)
+        {
+            Place(move);
+        }
+
+        var dropped = _interaction.PointerUp();
         StateHasChanged();
+
+        if (dropped is not null)
+        {
+            await SavePositionAsync(dropped);
+        }
     });
 
     /// <summary>
@@ -182,7 +210,7 @@ public partial class StoryCanvas : IAsyncDisposable
             _model = null;
             _viewport.Reset();
 
-            var saved = NoPositions;
+            IReadOnlyDictionary<SceneId, ScenePosition> saved = new Dictionary<SceneId, ScenePosition>();
             string? loadError = null;
             if (TryTakeHandedOverLayout(story) is { } handedOver)
             {
@@ -202,7 +230,7 @@ public partial class StoryCanvas : IAsyncDisposable
                 catch (Exception exception) when (UserFacingFailures.Includes(exception))
                 {
                     // Every scene is still placed; the map just may not look the way it was left.
-                    loadError = exception.Message;
+                    loadError = $"The scenes' places on the map couldn't be read, so they're laid out afresh. {exception.Message}";
                 }
             }
 
@@ -212,8 +240,9 @@ public partial class StoryCanvas : IAsyncDisposable
                 return;
             }
 
-            _saved = saved;
+            _positions = new Dictionary<SceneId, ScenePosition>(saved);
             _loadError = loadError;
+            _saveError = null;
             _positionsStory = story;
         }
 
@@ -227,8 +256,8 @@ public partial class StoryCanvas : IAsyncDisposable
         // The page re-renders the canvas after every edit, so scenes added, removed, or rewired
         // since the last render are placed here. Placed positions are never saved: only a creator's
         // drag records one.
-        var positions = AutoLayout.Place(Story, GraphFactory.Create(Story), _saved);
-        _model = CanvasModel.Build(Story, positions);
+        _placed = new Dictionary<SceneId, ScenePosition>(AutoLayout.Place(Story, GraphFactory.Create(Story), _positions));
+        _model = CanvasModel.Build(Story, _placed);
         FrameIfNeeded();
     }
 
@@ -270,6 +299,37 @@ public partial class StoryCanvas : IAsyncDisposable
         }
     }
 
+    // The moved node is redrawn where the pointer has it, with its links, on every frame.
+    private void Place(NodeMove move)
+    {
+        _placed[move.Scene] = move.Position;
+        _model = CanvasModel.Build(Story, _placed);
+    }
+
+    private async Task SavePositionAsync(NodeMove dropped)
+    {
+        // The page stays where it was dropped for the session either way; the store decides whether
+        // it is still there when the story reopens.
+        _positions[dropped.Scene] = dropped.Position;
+        _saveError = null;
+
+        try
+        {
+            await Layout.SaveAsync(
+                new Dictionary<SceneId, ScenePosition> { [dropped.Scene] = dropped.Position }, _disposal.Token);
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserFacingFailures.Includes(exception))
+        {
+            _saveError = $"That scene's place on the map couldn't be saved. {exception.Message}";
+        }
+
+        StateHasChanged();
+    }
+
     private void OnGroundPointerDown(PointerEventArgs args)
     {
         // Only the primary button slides the map; the shim captures the pointer for the same button.
@@ -279,6 +339,16 @@ public partial class StoryCanvas : IAsyncDisposable
         }
 
         _interaction.PointerDown(scene: null, nodePosition: null, args.ClientX, args.ClientY);
+    }
+
+    private void OnNodePointerDown(SceneId sceneId, PointerEventArgs args)
+    {
+        if (args.Button != 0)
+        {
+            return;
+        }
+
+        _interaction.PointerDown(sceneId, _placed[sceneId], args.ClientX, args.ClientY);
     }
 
     // The arrow names where the creator wants to look, so the map slides the other way. Keys with
@@ -341,11 +411,14 @@ public partial class StoryCanvas : IAsyncDisposable
                 LayoutStateKey,
                 story.Scenes.ToDictionary(
                     scene => scene.Id.Value,
-                    scene => _saved.TryGetValue(scene.Id, out var position) ? position : (ScenePosition?)null));
+                    scene => _positions.TryGetValue(scene.Id, out var position) ? position : (ScenePosition?)null));
         }
 
         return Task.CompletedTask;
     }
 
-    private Task SelectAsync(SceneId sceneId) => SelectedSceneIdChanged.InvokeAsync(sceneId);
+    // The browser fires a click for every press, the one that ended a drag included; a drag moves
+    // and a click selects, never both.
+    private Task SelectAsync(SceneId sceneId) =>
+        _interaction.ClaimClickAfterDrag() ? Task.CompletedTask : SelectedSceneIdChanged.InvokeAsync(sceneId);
 }

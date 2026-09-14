@@ -10,7 +10,7 @@ namespace Fourthwall.Web.Components.Canvas;
 /// </summary>
 /// <remarks>
 /// A press that never travels the threshold is a click, and the browser fires that click after the
-/// release; <see cref="LastGestureWasDrag"/> lets the component ignore the click that follows a
+/// release; <see cref="ClaimClickAfterDrag"/> lets the component ignore the click that follows a
 /// drag, so a drag never selects. The shim forwards every captured move, so moves while idle are
 /// ignored rather than rejected.
 /// </remarks>
@@ -29,6 +29,7 @@ public sealed class CanvasInteraction
     private double _lastY;
     private ScenePosition _nodeOrigin;
     private ScenePosition _nodePosition;
+    private bool _clickAfterDrag;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CanvasInteraction"/> class over the viewport a
@@ -52,12 +53,6 @@ public sealed class CanvasInteraction
     public SceneId? PressedScene { get; private set; }
 
     /// <summary>
-    /// Gets whether the most recent release ended a drag, so the click the browser fires for that
-    /// press must not select. Cleared by the next press.
-    /// </summary>
-    public bool LastGestureWasDrag { get; private set; }
-
-    /// <summary>
     /// Begins a gesture: on the ground when <paramref name="scene"/> is <see langword="null"/>, or
     /// on a node at <paramref name="nodePosition"/>. Ignored while another gesture is in progress.
     /// </summary>
@@ -74,7 +69,8 @@ public sealed class CanvasInteraction
             return;
         }
 
-        LastGestureWasDrag = false;
+        // A touch drag fires no click, so the mark must not outlive the next press.
+        _clickAfterDrag = false;
         PressedScene = scene;
         _pressX = _lastX = screenX;
         _pressY = _lastY = screenY;
@@ -122,10 +118,21 @@ public sealed class CanvasInteraction
             ? new NodeMove(PressedScene.GetValueOrDefault(), _nodePosition)
             : null;
 
-        LastGestureWasDrag = result is not null;
+        _clickAfterDrag = result is not null;
         Mode = CanvasInteractionMode.Idle;
         PressedScene = null;
         return result;
+    }
+
+    /// <summary>
+    /// Reports whether the click the browser fires after the most recent release belongs to a
+    /// drag, and forgets it, so it is answered exactly once: that click must not select.
+    /// </summary>
+    public bool ClaimClickAfterDrag()
+    {
+        var claimed = _clickAfterDrag;
+        _clickAfterDrag = false;
+        return claimed;
     }
 
     private double Travelled(double screenX, double screenY) =>

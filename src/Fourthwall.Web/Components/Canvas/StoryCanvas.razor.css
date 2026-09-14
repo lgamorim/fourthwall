@@ -25,7 +25,9 @@
     cursor: grabbing;
 }
 
-.canvas-panning {
+/* Nothing on the sheet is text to select while it, or a page on it, is being moved. */
+.canvas-panning,
+.canvas-dragging {
     user-select: none;
 }
 

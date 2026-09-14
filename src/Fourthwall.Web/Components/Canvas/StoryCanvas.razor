@@ -2,9 +2,9 @@
    (docs/design/0002-visual-direction.md §10). The map is a sheet larger than the window: the
    viewport slides and zooms it, and a page can be moved by hand (§11). *@
 <div class="canvas @HostStateClass" @ref="_host">
-    @if (_loadError is not null)
+    @if (Error is { } error)
     {
-        <p class="canvas-error" role="alert">@_loadError</p>
+        <p class="canvas-error" role="alert">@error</p>
     }
 
     @if (Story.Scenes.Count == 0)
@@ -56,7 +56,9 @@
                         <SceneNode @key="node.Scene.Id"
                                    Node="node"
                                    IsSelected="node.Scene.Id == SelectedSceneId"
-                                   OnSelected="() => SelectAsync(node.Scene.Id)" />
+                                   IsDragging="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DraggingNode"
+                                   OnSelected="() => SelectAsync(node.Scene.Id)"
+                                   OnPointerDown="args => OnNodePointerDown(node.Scene.Id, args)" />
                     }
                 </g>
             </g>

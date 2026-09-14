@@ -21,7 +21,7 @@ public class CanvasInteractionTests
 
         // Assert
         Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
-        Assert.False(interaction.LastGestureWasDrag);
+        Assert.False(interaction.ClaimClickAfterDrag());
     }
 
     [Fact]
@@ -105,7 +105,24 @@ public class CanvasInteractionTests
         // Assert — the final position, and the mark the click that follows a drag must not select.
         Assert.Equal(new NodeMove(Scene, new ScenePosition(70, 40)), result);
         Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
-        Assert.True(interaction.LastGestureWasDrag);
+        Assert.True(interaction.ClaimClickAfterDrag());
+    }
+
+    [Fact]
+    public void Should_ClaimTheClickOnlyOnce_When_ADragEnded()
+    {
+        // Arrange — the browser fires one click after the release; a later Enter on the node is not it.
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PointerDown(Scene, NodeAt, 100, 100);
+        interaction.PointerMove(130, 100);
+        interaction.PointerUp();
+        interaction.ClaimClickAfterDrag();
+
+        // Act
+        var claimedAgain = interaction.ClaimClickAfterDrag();
+
+        // Assert
+        Assert.False(claimedAgain);
     }
 
     [Fact]
@@ -122,7 +139,7 @@ public class CanvasInteractionTests
         // Assert
         Assert.Null(result);
         Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
-        Assert.False(interaction.LastGestureWasDrag);
+        Assert.False(interaction.ClaimClickAfterDrag());
     }
 
     [Fact]
@@ -139,7 +156,7 @@ public class CanvasInteractionTests
         // Assert
         Assert.Null(result);
         Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
-        Assert.False(interaction.LastGestureWasDrag);
+        Assert.False(interaction.ClaimClickAfterDrag());
     }
 
     [Fact]
@@ -197,11 +214,11 @@ public class CanvasInteractionTests
         interaction.PointerMove(130, 100);
         interaction.PointerUp();
 
-        // Act
+        // Act — a touch drag fires no click, so the mark must not outlive the next press.
         interaction.PointerDown(Scene, NodeAt, 100, 100);
 
         // Assert
-        Assert.False(interaction.LastGestureWasDrag);
+        Assert.False(interaction.ClaimClickAfterDrag());
     }
 
     [Fact]
