@@ -177,4 +177,19 @@ public sealed class CanvasViewport
         var (right, bottom) = ToScreen(new ScenePosition(bounds.Right, bounds.Bottom));
         return left >= 0 && top >= 0 && right <= Width && bottom <= Height;
     }
+
+    /// <summary>
+    /// Determines whether any part of the given content lies inside the measured window.
+    /// </summary>
+    public bool Touches(CanvasBounds bounds)
+    {
+        if (!IsMeasured)
+        {
+            return false;
+        }
+
+        var (left, top) = ToScreen(new ScenePosition(bounds.Left, bounds.Top));
+        var (right, bottom) = ToScreen(new ScenePosition(bounds.Right, bounds.Bottom));
+        return right > 0 && bottom > 0 && left < Width && top < Height;
+    }
 }

@@ -983,6 +983,63 @@ public class StoryCanvasTests : BunitContext
         Assert.Equal(0, _layout.SaveCount);
     }
 
+    [Fact]
+    public async Task Should_BringTheSceneIntoView_When_ItReceivesFocusOffScreen()
+    {
+        // Arrange — Tab reaches every scene in navigator order; one slid out of the window would
+        // otherwise take the focus ring with it.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        for (var press = 0; press < 7; press++)
+        {
+            cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        }
+
+        // Act
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert — the scene's centre (140, 72) lands at the window's centre; the zoom is kept.
+        Assert.Equal("translate(260 228) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheView_When_AVisibleSceneReceivesFocus()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act — a click focuses the node too, and must never move the map under the pointer.
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheView_When_APartlyVisibleSceneReceivesFocus()
+    {
+        // Arrange — a page half off the edge still shows its ring; centring it would jump the map.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        for (var press = 0; press < 3; press++)
+        {
+            cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        }
+
+        // Act
+        NodeFor(cut, storm.Id).Focus();
+
+        // Assert
+        Assert.Equal("translate(-120 0) scale(1)", WorldTransform(cut));
+    }
+
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
         cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
 

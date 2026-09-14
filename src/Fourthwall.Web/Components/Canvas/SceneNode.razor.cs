@@ -53,6 +53,13 @@ public partial class SceneNode
     [Parameter]
     public EventCallback<PointerEventArgs> OnPointerDown { get; set; }
 
+    /// <summary>
+    /// Raised when the node receives focus, so the canvas can bring a scene the keyboard landed on
+    /// into view.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnFocused { get; set; }
+
     private string Label => Scenes.Label(
         Node.Scene, Node.Scene.ImagePath is null ? LabelLength : LabelLengthBesideThumbnail);
 

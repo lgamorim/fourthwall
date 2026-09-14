@@ -12,7 +12,8 @@
    @onclick="OnSelected"
    @onkeydown="OnKeyDownAsync"
    @onpointerdown="OnPointerDown"
-   @onpointerdown:stopPropagation>
+   @onpointerdown:stopPropagation
+   @onfocus="OnFocused">
     <title>@Node.Scene.Text</title>
 
     <path class="node-shape" d="@CanvasGeometry.NodeOutline(Node.Scene.Kind)" />

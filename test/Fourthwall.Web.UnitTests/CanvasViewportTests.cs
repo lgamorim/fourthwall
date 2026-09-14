@@ -245,6 +245,30 @@ public class CanvasViewportTests
     }
 
     [Fact]
+    public void Should_ReportTheBoundsAsTouched_When_AnyPartLiesInsideTheWindow()
+    {
+        // Arrange
+        var viewport = new CanvasViewport();
+        viewport.SetSize(800, 600);
+
+        // Act & Assert — a page half off the edge is still in view; one past the edge is not.
+        Assert.True(viewport.Touches(new CanvasBounds(-100, 40, 100, 104)));
+        Assert.True(viewport.Touches(new CanvasBounds(700, 550, 900, 614)));
+        Assert.False(viewport.Touches(new CanvasBounds(-300, 40, -100, 104)));
+        Assert.False(viewport.Touches(new CanvasBounds(40, 600, 240, 664)));
+    }
+
+    [Fact]
+    public void Should_ReportNothingAsTouched_When_TheWindowIsNotMeasured()
+    {
+        // Arrange
+        var viewport = new CanvasViewport();
+
+        // Act & Assert
+        Assert.False(viewport.Touches(new CanvasBounds(0, 0, 10, 10)));
+    }
+
+    [Fact]
     public void Should_ReportNothingAsShown_When_TheWindowIsNotMeasured()
     {
         // Arrange

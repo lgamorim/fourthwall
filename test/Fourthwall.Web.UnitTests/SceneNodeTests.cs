@@ -245,6 +245,20 @@ public class SceneNodeTests : BunitContext
     }
 
     [Fact]
+    public void Should_RaiseFocus_When_Focused()
+    {
+        // Arrange — the canvas brings a scene into view when the keyboard lands on it off-screen.
+        var focused = 0;
+        var cut = RenderNode(Node(SceneKind.Choice, "A fork"), onFocused: () => focused++);
+
+        // Act
+        cut.Find(".canvas-node").Focus();
+
+        // Assert
+        Assert.Equal(1, focused);
+    }
+
+    [Fact]
     public void Should_MarkTheNode_When_ItIsBeingDragged()
     {
         // Arrange
@@ -281,11 +295,13 @@ public class SceneNodeTests : BunitContext
         bool isSelected = false,
         bool isDragging = false,
         Action? onSelected = null,
-        Action<PointerEventArgs>? onPointerDown = null) =>
+        Action<PointerEventArgs>? onPointerDown = null,
+        Action? onFocused = null) =>
         Render<SvgHost>(host => host.AddChildContent<SceneNode>(parameters => parameters
             .Add(p => p.Node, node)
             .Add(p => p.IsSelected, isSelected)
             .Add(p => p.IsDragging, isDragging)
             .Add(p => p.OnSelected, onSelected ?? (() => { }))
-            .Add(p => p.OnPointerDown, onPointerDown ?? (_ => { }))));
+            .Add(p => p.OnPointerDown, onPointerDown ?? (_ => { }))
+            .Add(p => p.OnFocused, onFocused ?? (() => { }))));
 }

@@ -351,6 +351,25 @@ public partial class StoryCanvas : IAsyncDisposable
         _interaction.PointerDown(sceneId, _placed[sceneId], args.ClientX, args.ClientY);
     }
 
+    // Tab reaches every scene in navigator order, wherever the map was left; a scene that takes
+    // focus wholly outside the window is centred so its ring can be seen (design note §11.5). One
+    // still partly in view is left alone: a click focuses too, and must never move the map under
+    // the pointer.
+    private void OnNodeFocused(SceneId sceneId)
+    {
+        var position = _placed[sceneId];
+        var bounds = new CanvasBounds(
+            position.X, position.Y, position.X + CanvasGeometry.NodeWidth, position.Y + CanvasGeometry.NodeHeight);
+
+        if (!_viewport.IsMeasured || _viewport.Touches(bounds))
+        {
+            return;
+        }
+
+        _viewport.CentreOn(new ScenePosition(
+            position.X + (CanvasGeometry.NodeWidth / 2), position.Y + (CanvasGeometry.NodeHeight / 2)));
+    }
+
     // The arrow names where the creator wants to look, so the map slides the other way. Keys with
     // a modifier are the browser's (Ctrl+- is its own zoom) and are left alone.
     private void OnKeyDown(KeyboardEventArgs args)
