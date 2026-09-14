@@ -76,10 +76,45 @@ public class CanvasGeometryTests
         // Act
         var path = CanvasGeometry.SelfLoopPath(node, parallelIndex: 0);
 
-        // Assert: the loop starts at the node's right-centre (node.X + NodeWidth); this is the
-        // only assertion that can fail if SelfLoopPath itself formats with the current culture.
-        var expectedStartX = CanvasGeometry.Invariant(node.X + CanvasGeometry.NodeWidth);
-        Assert.Contains(expectedStartX, path, StringComparison.Ordinal);
+        // Assert: the loop starts on the node's top edge, 44 units in from its right edge; the
+        // fractional x can only come out with a dot if SelfLoopPath formats invariantly.
+        Assert.StartsWith("M 166.5,20 ", path, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_RiseFromTheTopEdge_When_BuildingASelfLoopPath()
+    {
+        // A loop off the right edge collides with the links that leave from there, so the loop
+        // rises from the top edge, right of the start tag and the ribbon, and comes back down.
+
+        // Arrange
+        var node = new ScenePosition(100, 200);
+
+        // Act
+        var loop = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 0));
+
+        // Assert
+        Assert.Equal(node.Y, loop.Start.Y);
+        Assert.Equal(node.Y, loop.End.Y);
+        Assert.True(loop.ControlOneY < node.Y);
+        Assert.True(loop.Start.X > loop.End.X);
+        Assert.InRange(loop.End.X, node.X + (CanvasGeometry.NodeWidth / 2), node.X + CanvasGeometry.NodeWidth);
+    }
+
+    [Fact]
+    public void Should_NestParallelSelfLoops_When_ASceneLoopsMoreThanOnce()
+    {
+        // Arrange
+        var node = new ScenePosition(100, 200);
+
+        // Act
+        var inner = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 0));
+        var outer = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 1));
+
+        // Assert — the second loop rises higher and spans wider, so both stay visible.
+        Assert.True(outer.ControlOneY < inner.ControlOneY);
+        Assert.True(outer.Start.X > inner.Start.X);
+        Assert.True(outer.End.X < inner.End.X);
     }
 
     [Fact]
@@ -112,9 +147,9 @@ public class CanvasGeometryTests
         // Act
         var (x, y) = CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 0);
 
-        // Assert
-        Assert.Equal("258.5", x);
-        Assert.Equal("37.5", y);
+        // Assert — beside the top of the loop, above the node.
+        Assert.Equal("172.5", x);
+        Assert.Equal("-20.5", y);
     }
 
     [Fact]

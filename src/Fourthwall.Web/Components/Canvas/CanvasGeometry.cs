@@ -65,19 +65,28 @@ public static class CanvasGeometry
     private const double RibbonInset = 4;
     private const double RibbonNotch = 0.7;
     private const double ParallelGap = 28;
-    private const double SelfLoopSize = 48;
     private const double LabelLift = 10;
+
+    // A self-loop's feet stand on the top edge, the right foot this far in from the right edge;
+    // each further loop on the scene rises higher and spreads its feet wider.
+    private const double SelfLoopInset = 44;
+    private const double SelfLoopWidth = 40;
+    private const double SelfLoopSize = 40;
+    private const double SelfLoopRise = 24;
+    private const double SelfLoopSpread = 8;
+    private const double SelfLoopLabelGap = 6;
+    private const double SelfLoopLabelDrop = 4;
 
     // A cut link label (16 characters of the utility face's smallest size) with room to spare.
     private const double SelfLoopLabelRoom = 120;
 
     /// <summary>
-    /// How far a self-loop and its label reach past its node's right edge, so the drawing can be
-    /// sized to show them.
+    /// How far a self-loop's label reaches past its node's right edge, so the drawing can be sized
+    /// to show it.
     /// </summary>
     /// <param name="parallelIndex">The loop's position among the node's other self-loops.</param>
     public static double SelfLoopReach(int parallelIndex) =>
-        SelfLoopSize + (parallelIndex * ParallelGap) + SelfLoopLabelRoom;
+        (parallelIndex * SelfLoopSpread) - SelfLoopInset + SelfLoopLabelGap + SelfLoopLabelRoom;
 
     /// <summary>
     /// The path data for the ribbon bookmark that hangs from the selected node's top edge, ending in
@@ -159,20 +168,20 @@ public static class CanvasGeometry
     }
 
     /// <summary>
-    /// Builds the path data for a loop that leaves and re-enters a node's right edge, for a
-    /// transition that targets its own scene.
+    /// Builds the path data for a loop that rises from a node's top edge and comes back down into
+    /// it, for a transition that targets its own scene. The loop sits right of the start tag and
+    /// the ribbon, away from the right edge that every other outgoing link leaves from; a second
+    /// loop on the same scene rises higher and spans wider.
     /// </summary>
     public static string SelfLoopPath(ScenePosition node, int parallelIndex)
     {
-        var (x, y) = RightCentre(node);
-        var topY = y - (SelfLoopSize / 2);
-        var bottomY = y + (SelfLoopSize / 2);
-        var loopX = x + SelfLoopSize + (parallelIndex * ParallelGap);
+        var (startX, endX) = SelfLoopFeet(node, parallelIndex);
+        var controlY = node.Y - SelfLoopHeight(parallelIndex);
 
-        return $"M {Invariant(x)},{Invariant(topY)} " +
-            $"C {Invariant(loopX)},{Invariant(topY)} " +
-            $"{Invariant(loopX)},{Invariant(bottomY)} " +
-            $"{Invariant(x)},{Invariant(bottomY)}";
+        return $"M {Invariant(startX)},{Invariant(node.Y)} " +
+            $"C {Invariant(startX)},{Invariant(controlY)} " +
+            $"{Invariant(endX)},{Invariant(controlY)} " +
+            $"{Invariant(endX)},{Invariant(node.Y)}";
     }
 
     /// <summary>
@@ -195,11 +204,23 @@ public static class CanvasGeometry
     /// </summary>
     public static (string X, string Y) SelfLoopLabelPoint(ScenePosition node, int parallelIndex)
     {
-        var (x, y) = RightCentre(node);
-        var labelX = x + SelfLoopSize + (parallelIndex * ParallelGap);
+        var (startX, _) = SelfLoopFeet(node, parallelIndex);
 
-        return (Invariant(labelX), Invariant(y));
+        // A cubic's apex sits three quarters of the way to its control points; the label's
+        // baseline sits just under it, so the text reads beside the top of the loop.
+        var labelY = node.Y - (SelfLoopHeight(parallelIndex) * 0.75) + SelfLoopLabelDrop;
+
+        return (Invariant(startX + SelfLoopLabelGap), Invariant(labelY));
     }
+
+    private static (double StartX, double EndX) SelfLoopFeet(ScenePosition node, int parallelIndex)
+    {
+        var spread = parallelIndex * SelfLoopSpread;
+        var startX = node.X + NodeWidth - SelfLoopInset + spread;
+        return (startX, startX - SelfLoopWidth - (2 * spread));
+    }
+
+    private static double SelfLoopHeight(int parallelIndex) => SelfLoopSize + (parallelIndex * SelfLoopRise);
 
     private static (double X, double Y) RightCentre(ScenePosition position) =>
         (position.X + NodeWidth, position.Y + (NodeHeight / 2));
