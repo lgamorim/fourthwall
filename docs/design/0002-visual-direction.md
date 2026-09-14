@@ -473,3 +473,83 @@ own markup (no `::deep`) and consuming the `app.css` tokens. The recorded deviat
 component styles in `app.css` exists for a vocabulary shared by role across the dock's components;
 the canvas's rules — SVG strokes, markers, halos — are private to it and grow in M21–M23. So the
 canvas follows `overlays/frontend-blazor.md` instead of widening the exception.
+
+## 11. M21 — pan, zoom, and moving scenes
+
+Approved by the maintainer with the M21 plan on 2026-09-14, before any M21 code was written.
+
+**Thesis.** The map is a sheet larger than the window. The creator slides the sheet under the
+window, leans in and out, and moves pages about by hand. The sheet itself never changes: same
+paper, same ink, same pages. Nothing new is drawn for M21 except two words in the toolbar.
+
+### 11.1 The toolbar controls
+
+Two words at the toolbar's right edge, on the title's baseline: **Show whole story** and **Actual
+size**. Quiet text buttons in pencil, ink with an underline on hover — the treatment the
+navigator's row actions already use — not the ink primary: they change the view, not the story.
+Disabled at half opacity while the story has no scenes. The copy follows the §7 action table's
+form (verb plus object, no article: Close story, Validate story); "Actual size" names the state the
+map returns to, in the term every image viewer uses.
+
+```
+│ The Wreck                                          Show whole story  Actual size │
+│ ── error line, full width, only after a failed rename or save ──                   │
+```
+
+In the creator's terms: Show whole story frames every scene, centred, with the map's 40px margin
+(`CanvasGeometry.ContentMargin`), and never enlarges past actual size. Actual size puts the page's
+origin at the window's top-left corner at 1:1 — the frame M20 drew. A story opens at actual size
+when its whole map fits the window, and showing the whole story otherwise, so the first thing seen
+is the whole shape.
+
+### 11.2 Sliding the map and moving a page
+
+The wheel zooms about the cursor, between a quarter and three times actual size, one step per
+notch (×1.2 per 100px of wheel travel; the same step for a keyboard press). Pressing on paper and
+dragging slides the map. Pressing on a page and dragging past 4px moves it, and its links follow as
+it moves. Releasing writes that one position and nothing else, so a validation report survives a
+move. A press that never travels 4px stays a click and selects.
+
+A page being moved carries `node-dragging`: it keeps the desk fill the hover already gives it, and
+nothing more. No shadow, no ghost, no outline change: the links redrawing under it are the feedback.
+
+### 11.3 Cursor vocabulary
+
+Paper: `grab`, and `grabbing` while sliding. Page: `move`, which supersedes §10.1's pointer
+cursor — a page can now be moved as well as picked, and `move` says both. Toolbar words: the
+browser's button cursor. No custom cursors.
+
+### 11.4 The error line
+
+A failed save uses the same `.canvas-error` line as a failed read, at the top of the map, in the
+shared error treatment, and the page stays where it was dropped for the rest of the session. Both
+messages are framed the same way, since they share a line: read, "The scenes' places on the map
+couldn't be read, so they're laid out afresh. {message}"; save, "That scene's place on the map
+couldn't be saved. {message}". The store's own message follows, because it names the cause (a
+read-only folder, a scene that no longer exists).
+
+### 11.5 Keyboard
+
+The map is a focusable region: the §8 ring, drawn 2px inside its edge since the map fills the
+region. With the map or a scene focused, the arrow keys slide the map 40px, and `+` or `-` zoom one
+step about the window's centre. Tab still moves through the scenes in navigator order; a scene that
+receives focus while wholly outside the window is brought to its centre (M23's centre-on-scene,
+arriving early for keyboard use). Enter and Space still select. Show whole story and Actual size
+are buttons.
+
+There is no keyboard way to move a page in M21. A page's place is a convenience of the map, not
+part of the story, so a keyboard-only creator loses nothing of the story. Stated against §8 rather
+than hidden.
+
+### 11.6 Motion
+
+None on the viewport: sliding, zooming, framing, and resetting apply instantly, like turning to a
+page. §2.3's policy (colour and opacity only) stands, so reduced motion needs nothing new.
+
+### 11.7 Critique
+
+Any graph editor would add a zoom percentage, plus and minus buttons, a minimap, a scaling dotted
+grid, a floating control cluster with a shadow, a hand-tool toggle, snapping, and a lifted shadow
+on the dragged card. None of that is here: two words in the toolbar, and the pages' size shows the
+zoom. Remove-one-accessory candidates for the screenshot pass: the `node-dragging` fill (the first
+to go if the moving links suffice) and the disabled state of the two buttons on an empty story.
