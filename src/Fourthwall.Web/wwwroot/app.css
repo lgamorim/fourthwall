@@ -430,6 +430,7 @@ button:disabled {
 
 .picker-error,
 .editor-error,
+.canvas-error,
 .scene-create-error,
 .inspector-error,
 .validation-error-message,
@@ -587,7 +588,8 @@ button:disabled {
     grid-column: -2;
 }
 
-/* Editor: the toolbar over the canvas region. */
+/* Editor: the toolbar over the canvas region. The canvas's own rules live beside its components
+   (Components/Canvas/*.razor.css): they are private to it, not shared vocabulary. */
 
 .editor-toolbar {
     flex-shrink: 0;
@@ -621,20 +623,6 @@ button:disabled {
 .editor-toolbar .editor-error {
     max-width: 40rem;
     margin: var(--fw-space-3) 0 0;
-}
-
-.canvas-placeholder {
-    flex: 1;
-    display: grid;
-    place-items: center;
-    padding: var(--fw-space-6);
-}
-
-.canvas-placeholder p {
-    max-width: 26rem;
-    margin: 0;
-    text-align: center;
-    color: var(--fw-pencil);
 }
 
 /* Navigator: compact rows in the dock, the ribbon on the selected one. */

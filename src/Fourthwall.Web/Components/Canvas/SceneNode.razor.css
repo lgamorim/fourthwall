@@ -1,0 +1,67 @@
+/* A scene node: a page drawn in ink, its right edge the shape of its kind, the ribbon when it is
+   the selected scene. Direction: docs/design/0002-visual-direction.md §10.1–10.2. */
+
+.canvas-node {
+    cursor: pointer;
+}
+
+/* A click focuses the node too; only keyboard focus draws the app's ribbon ring (app.css). */
+.canvas-node:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.canvas-node text {
+    user-select: none;
+}
+
+.node-shape {
+    fill: var(--fw-paper);
+    stroke: var(--fw-ink);
+    stroke-width: 1px;
+    transition: fill var(--fw-motion);
+}
+
+.canvas-node:hover .node-shape {
+    fill: var(--fw-desk);
+}
+
+.node-selected .node-shape {
+    stroke-width: 2px;
+}
+
+.node-label {
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-s);
+    fill: var(--fw-ink);
+}
+
+.node-caption {
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-xs);
+    letter-spacing: var(--fw-tracking-caps);
+    text-transform: uppercase;
+    fill: var(--fw-pencil);
+}
+
+.node-thumbnail-frame {
+    fill: none;
+    stroke: var(--fw-rule);
+    stroke-width: 1px;
+}
+
+.node-start rect {
+    fill: var(--fw-ink);
+}
+
+.node-start text {
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-xs);
+    letter-spacing: var(--fw-tracking-caps);
+    text-anchor: middle;
+    text-transform: uppercase;
+    fill: var(--fw-paper);
+}
+
+.node-ribbon {
+    fill: var(--fw-ribbon);
+}
