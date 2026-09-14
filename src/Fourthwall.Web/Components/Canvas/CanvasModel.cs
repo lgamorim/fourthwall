@@ -10,36 +10,16 @@ namespace Fourthwall.Web.Components.Canvas;
 /// </summary>
 public sealed class CanvasModel
 {
-    private CanvasModel(IReadOnlyList<CanvasNode> nodes, IReadOnlyList<CanvasEdge> edges)
+    private CanvasModel(IReadOnlyList<CanvasNode> nodes, IReadOnlyList<CanvasEdge> edges, CanvasBounds bounds)
     {
         Nodes = nodes;
         Edges = edges;
-
-        if (nodes.Count > 0)
-        {
-            var loops = edges.Where(edge => edge.IsSelfLoop).ToList();
-            var loopReach = loops
-                .Select(loop => nodes.First(node => node.Scene.Id == loop.Source).Position.X
-                    + CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(loop.ParallelIndex))
-                .DefaultIfEmpty(double.NegativeInfinity)
-                .Max();
-            var loopTop = loops
-                .Select(loop => nodes.First(node => node.Scene.Id == loop.Source).Position.Y
-                    - CanvasGeometry.SelfLoopRise(loop.ParallelIndex))
-                .DefaultIfEmpty(double.PositiveInfinity)
-                .Min();
-
-            Bounds = new CanvasBounds(
-                nodes.Min(node => node.Position.X),
-                Math.Min(nodes.Min(node => node.Position.Y), loopTop),
-                Math.Max(nodes.Max(node => node.Position.X + CanvasGeometry.NodeWidth), loopReach),
-                nodes.Max(node => node.Position.Y + CanvasGeometry.NodeHeight));
-        }
+        Bounds = bounds;
     }
 
     /// <summary>
-    /// Gets the edges the drawing reaches, tight to its nodes and their self-loops; empty with no
-    /// nodes. The viewport adds its own margin when it frames the content.
+    /// Gets the edges the drawing reaches, tight to its nodes, their self-loops, and the bow of
+    /// every link; empty with no nodes. The viewport adds its own margin when it frames the content.
     /// </summary>
     public CanvasBounds Bounds { get; }
 
@@ -76,26 +56,37 @@ public sealed class CanvasModel
 
         var parallelCounts = new Dictionary<(SceneId Source, SceneId Target), int>();
         var edges = new List<CanvasEdge>();
+        var reach = nodes.Count == 0
+            ? CanvasBounds.Empty
+            : new CanvasBounds(
+                nodes.Min(node => node.Position.X),
+                nodes.Min(node => node.Position.Y),
+                nodes.Max(node => node.Position.X + CanvasGeometry.NodeWidth),
+                nodes.Max(node => node.Position.Y + CanvasGeometry.NodeHeight));
 
         foreach (var scene in orderedScenes)
         {
             for (var index = 0; index < scene.Choices.Count; index++)
             {
                 var choice = scene.Choices[index];
-                edges.Add(BuildEdge(
+                var edge = BuildEdge(
                     new CanvasEdgeKey(scene.Id, index), scene.Id, choice.TargetSceneId, choice.Label,
-                    positions, parallelCounts));
+                    positions, parallelCounts);
+                edges.Add(edge);
+                reach = Union(reach, Extent(edge, positions));
             }
 
             if (scene.FollowUpSceneId is { } followUp)
             {
-                edges.Add(BuildEdge(
+                var edge = BuildEdge(
                     new CanvasEdgeKey(scene.Id, null), scene.Id, followUp, string.Empty,
-                    positions, parallelCounts));
+                    positions, parallelCounts);
+                edges.Add(edge);
+                reach = Union(reach, Extent(edge, positions));
             }
         }
 
-        return new CanvasModel(nodes, edges);
+        return new CanvasModel(nodes, edges, reach);
     }
 
     /// <summary>
@@ -124,6 +115,31 @@ public sealed class CanvasModel
 
         return null;
     }
+
+    // How far an edge's drawing reaches: a self-loop rises above its node and its label runs past
+    // the right edge; any other link bows as far as its curve does.
+    private static CanvasBounds Extent(CanvasEdge edge, IReadOnlyDictionary<SceneId, ScenePosition> positions)
+    {
+        var source = positions[edge.Source];
+
+        if (edge.IsSelfLoop)
+        {
+            return new CanvasBounds(
+                source.X,
+                source.Y - CanvasGeometry.SelfLoopRise(edge.ParallelIndex),
+                source.X + CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(edge.ParallelIndex),
+                source.Y);
+        }
+
+        return CanvasGeometry.EdgeExtent(source, positions[edge.Target], edge.ParallelIndex);
+    }
+
+    private static CanvasBounds Union(CanvasBounds first, CanvasBounds second) =>
+        new(
+            Math.Min(first.Left, second.Left),
+            Math.Min(first.Top, second.Top),
+            Math.Max(first.Right, second.Right),
+            Math.Max(first.Bottom, second.Bottom));
 
     private static CanvasEdge BuildEdge(
         CanvasEdgeKey key,

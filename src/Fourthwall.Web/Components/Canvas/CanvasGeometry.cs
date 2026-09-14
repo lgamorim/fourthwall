@@ -156,20 +156,24 @@ public static class CanvasGeometry
     /// </summary>
     public static string EdgePath(ScenePosition from, ScenePosition to, int parallelIndex)
     {
-        var (startX, startY) = RightCentre(from);
-        var (endX, endY) = LeftCentre(to);
-        var offset = parallelIndex * ParallelGap;
-        var handle = Math.Max(Math.Abs(endX - startX) / 2, NodeWidth / 2);
+        var curve = EdgeCurve(from, to, parallelIndex);
 
-        var controlOneX = startX + handle;
-        var controlOneY = startY + offset;
-        var controlTwoX = endX - handle;
-        var controlTwoY = endY + offset;
+        return $"M {Invariant(curve.StartX)},{Invariant(curve.StartY)} " +
+            $"C {Invariant(curve.ControlOneX)},{Invariant(curve.ControlOneY)} " +
+            $"{Invariant(curve.ControlTwoX)},{Invariant(curve.ControlTwoY)} " +
+            $"{Invariant(curve.EndX)},{Invariant(curve.EndY)}";
+    }
 
-        return $"M {Invariant(startX)},{Invariant(startY)} " +
-            $"C {Invariant(controlOneX)},{Invariant(controlOneY)} " +
-            $"{Invariant(controlTwoX)},{Invariant(controlTwoY)} " +
-            $"{Invariant(endX)},{Invariant(endY)}";
+    /// <summary>
+    /// The exact box the curve of <see cref="EdgePath"/> reaches. A link that doubles back bows
+    /// past both of its ends, and the drawing's bounds must hold the bow to show the whole story.
+    /// </summary>
+    public static CanvasBounds EdgeExtent(ScenePosition from, ScenePosition to, int parallelIndex)
+    {
+        var curve = EdgeCurve(from, to, parallelIndex);
+        var (left, right) = CubicExtent(curve.StartX, curve.ControlOneX, curve.ControlTwoX, curve.EndX);
+        var (top, bottom) = CubicExtent(curve.StartY, curve.ControlOneY, curve.ControlTwoY, curve.EndY);
+        return new CanvasBounds(left, top, right, bottom);
     }
 
     /// <summary>
@@ -225,6 +229,72 @@ public static class CanvasGeometry
     /// <param name="parallelIndex">The loop's position among the node's other self-loops.</param>
     public static double SelfLoopRise(int parallelIndex) => SelfLoopSize + (parallelIndex * SelfLoopStep);
 
+    // The cubic from one node's right-centre to another's left-centre, with horizontal handles
+    // offset vertically by the parallel index so links sharing a pair of nodes fan out.
+    private static EdgeCurve EdgeCurve(ScenePosition from, ScenePosition to, int parallelIndex)
+    {
+        var (startX, startY) = RightCentre(from);
+        var (endX, endY) = LeftCentre(to);
+        var offset = parallelIndex * ParallelGap;
+        var handle = Math.Max(Math.Abs(endX - startX) / 2, NodeWidth / 2);
+
+        return new EdgeCurve(
+            startX, startY, startX + handle, startY + offset, endX - handle, endY + offset, endX, endY);
+    }
+
+    // One axis of a cubic Bézier reaches its extremes at an end, or where its derivative — a
+    // quadratic in t — is zero inside (0, 1).
+    private static (double Min, double Max) CubicExtent(double p0, double p1, double p2, double p3)
+    {
+        var min = Math.Min(p0, p3);
+        var max = Math.Max(p0, p3);
+
+        var u = p1 - p0;
+        var v = p2 - p1;
+        var w = p3 - p2;
+        var a = u - (2 * v) + w;
+        var b = 2 * (v - u);
+        var c = u;
+
+        foreach (var t in QuadraticRoots(a, b, c))
+        {
+            if (t > 0 && t < 1)
+            {
+                var s = 1 - t;
+                var value = (s * s * s * p0) + (3 * s * s * t * p1) + (3 * s * t * t * p2) + (t * t * t * p3);
+                min = Math.Min(min, value);
+                max = Math.Max(max, value);
+            }
+        }
+
+        return (min, max);
+    }
+
+    private static IEnumerable<double> QuadraticRoots(double a, double b, double c)
+    {
+        const double Flat = 1e-9;
+
+        if (Math.Abs(a) < Flat)
+        {
+            if (Math.Abs(b) >= Flat)
+            {
+                yield return -c / b;
+            }
+
+            yield break;
+        }
+
+        var discriminant = (b * b) - (4 * a * c);
+        if (discriminant < 0)
+        {
+            yield break;
+        }
+
+        var root = Math.Sqrt(discriminant);
+        yield return (-b + root) / (2 * a);
+        yield return (-b - root) / (2 * a);
+    }
+
     private static (double StartX, double EndX) SelfLoopFeet(ScenePosition node, int parallelIndex)
     {
         var spread = parallelIndex * SelfLoopSpread;
@@ -239,3 +309,16 @@ public static class CanvasGeometry
     private static (double X, double Y) LeftCentre(ScenePosition position) =>
         (position.X, position.Y + (NodeHeight / 2));
 }
+
+/// <summary>
+/// The control points of a link's cubic curve, before formatting.
+/// </summary>
+internal readonly record struct EdgeCurve(
+    double StartX,
+    double StartY,
+    double ControlOneX,
+    double ControlOneY,
+    double ControlTwoX,
+    double ControlTwoY,
+    double EndX,
+    double EndY);

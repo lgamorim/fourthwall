@@ -230,6 +230,30 @@ public class CanvasModelTests
     }
 
     [Fact]
+    public void Should_ReachPastTheBow_When_ALinkDoublesBack()
+    {
+        // Arrange — "Show whole story" must show the link that returns to the start, not cut its bow.
+        var story = new Story("Story");
+        var harbour = story.AddScene(SceneKind.Choice, "The harbour");
+        var island = story.AddScene(SceneKind.Choice, "The island");
+        story.WireChoice(harbour.Id, "Sail out", island.Id);
+        story.WireChoice(island.Id, "Turn back", harbour.Id);
+        var positions = new Dictionary<SceneId, ScenePosition>
+        {
+            [harbour.Id] = new ScenePosition(0, 0),
+            [island.Id] = new ScenePosition(600, 0),
+        };
+
+        // Act
+        var model = CanvasModel.Build(story, positions);
+
+        // Assert
+        var bow = CanvasGeometry.EdgeExtent(positions[island.Id], positions[harbour.Id], parallelIndex: 0);
+        Assert.Equal(bow.Left, model.Bounds.Left);
+        Assert.Equal(bow.Right, model.Bounds.Right);
+    }
+
+    [Fact]
     public void Should_HaveEmptyBounds_When_TheStoryHasNoScenes()
     {
         // Arrange

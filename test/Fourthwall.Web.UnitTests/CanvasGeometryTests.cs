@@ -253,6 +253,41 @@ public class CanvasGeometryTests
         Assert.Contains("L 8,15.4 ", ribbon, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Should_BoundALinkByItsEnds_When_ItRunsForward()
+    {
+        // Arrange — a curve whose handles point the way it travels never leaves the box its ends span.
+        var from = new ScenePosition(0, 0);
+        var to = new ScenePosition(300, 100);
+
+        // Act
+        var extent = CanvasGeometry.EdgeExtent(from, to, parallelIndex: 0);
+
+        // Assert
+        Assert.Equal(new CanvasBounds(CanvasGeometry.NodeWidth, CanvasGeometry.NodeHeight / 2, 300, 100 + (CanvasGeometry.NodeHeight / 2)), extent);
+    }
+
+    [Fact]
+    public void Should_BoundTheBow_When_ALinkDoublesBack()
+    {
+        // Arrange — a link from a later column back to an earlier one bows past both ends; the
+        // extent is the curve's own, checked against a dense walk along it.
+        var from = new ScenePosition(600, 0);
+        var to = new ScenePosition(0, 0);
+
+        // Act
+        var extent = CanvasGeometry.EdgeExtent(from, to, parallelIndex: 1);
+
+        // Assert
+        var walked = WalkEdge(CanvasGeometry.EdgePath(from, to, parallelIndex: 1));
+        Assert.True(extent.Right > 800, "the bow reaches past the source's right edge");
+        Assert.True(extent.Left < 0, "the bow reaches past the target's left edge");
+        Assert.Equal(walked.Left, extent.Left, 0.5);
+        Assert.Equal(walked.Right, extent.Right, 0.5);
+        Assert.Equal(walked.Top, extent.Top, 0.5);
+        Assert.Equal(walked.Bottom, extent.Bottom, 0.5);
+    }
+
     [Theory]
     [InlineData(0, 40)]
     [InlineData(1, 64)]
@@ -263,6 +298,30 @@ public class CanvasGeometryTests
 
         // Assert — how far above the top edge a loop's control points sit, so the bounds can hold it.
         Assert.Equal(expectedRise, rise);
+    }
+
+    // Samples the cubic in an edge's path data at a thousand points and boxes them.
+    private static CanvasBounds WalkEdge(string path)
+    {
+        var numbers = path.Replace("M", " ").Replace("C", " ").Replace(",", " ")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(token => double.Parse(token, CultureInfo.InvariantCulture))
+            .ToArray();
+        double left = double.MaxValue, top = double.MaxValue, right = double.MinValue, bottom = double.MinValue;
+
+        for (var step = 0; step <= 1000; step++)
+        {
+            var t = step / 1000.0;
+            var u = 1 - t;
+            var x = (u * u * u * numbers[0]) + (3 * u * u * t * numbers[2]) + (3 * u * t * t * numbers[4]) + (t * t * t * numbers[6]);
+            var y = (u * u * u * numbers[1]) + (3 * u * u * t * numbers[3]) + (3 * u * t * t * numbers[5]) + (t * t * t * numbers[7]);
+            left = Math.Min(left, x);
+            right = Math.Max(right, x);
+            top = Math.Min(top, y);
+            bottom = Math.Max(bottom, y);
+        }
+
+        return new CanvasBounds(left, top, right, bottom);
     }
 
     private static (
