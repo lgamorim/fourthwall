@@ -1091,7 +1091,9 @@ public class StoryCanvasTests : BunitContext
         // Assert
         Assert.Null(cut.Find(".canvas-error").Closest(".canvas-sheet"));
         Assert.NotNull(cut.Find(".canvas-svg").Closest(".canvas-sheet"));
-        Assert.Contains("canvas", cut.Find(".canvas-sheet").ParentElement!.ClassList);
+        var sheetParent = cut.Find(".canvas-sheet").ParentElement;
+        Assert.NotNull(sheetParent);
+        Assert.Contains("canvas", sheetParent.ClassList);
     }
 
     [Fact]
