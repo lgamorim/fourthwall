@@ -350,7 +350,9 @@ record of the direction.
 
 ## 10. M20 — the canvas: nodes, links, and ground
 
-Approved by the maintainer with the M20 plan on 2026-09-14, before any M20 code was written.
+Approved by the maintainer with the M20 plan on 2026-09-14, before any M20 code was written. §10.2,
+§10.3, and §10.5 were revised after the screenshot pass; §10.6 records each change against the
+approved text.
 
 **Thesis.** The canvas is the reader's pencil map. Every scene is a page drawn in ink on plain
 paper, and *its right edge is how you leave it*: links enter through a straight left edge, and the
