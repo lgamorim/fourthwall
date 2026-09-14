@@ -53,11 +53,13 @@ public sealed partial class SqliteSceneLayoutStore : ISceneLayoutStore
         ArgumentNullException.ThrowIfNull(positions);
 
         // One transaction for the batch, so a position naming a scene the story has not saved
-        // rolls back the ones that went before it rather than leaving half a layout behind.
-        await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-
+        // rolls back the ones that went before it rather than leaving half a layout behind. The
+        // transaction begins inside the try: it takes the write lock at once, so a database held
+        // by another process fails here, before any statement runs.
         try
         {
+            await using var transaction = await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
             foreach (var (sceneId, position) in positions)
             {
                 await UpsertPositionAsync(
