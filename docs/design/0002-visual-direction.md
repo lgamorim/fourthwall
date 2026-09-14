@@ -401,16 +401,22 @@ the reading direction.
 
 The §4 ribbon, as an SVG `<path>` in `--fw-ribbon`: 8×22 with the same fishtail notch (at 70% of its
 length), hanging from the top edge at x=4 — the margin position it takes in the navigator row,
-which is why the label starts at x=20. The outline thickens to 2px ink. No coloured fill, no glow:
-the ribbon alone says "you are here". Because SVG path data cannot read `var()`, the ribbon's size is
+which is why the label starts at x=20. The outline thickens to 2px ink. No coloured fill, no glow, no
+bold label (§10.6): the ribbon alone says "you are here". Because SVG path data cannot read `var()`, the ribbon's size is
 mirrored as `CanvasGeometry.RibbonWidth`/`RibbonLength` beside the `--fw-ribbon-*` tokens.
 
 ### 10.3 Links
 
 - **Choice.** A 1.5px `--fw-pencil` curve ending in a small solid pencil arrowhead
   (`#canvas-arrow`, sized in user space so its tip lands exactly on the target's left edge). The
-  label is utility `--fw-text-xs` in pencil over a paper halo (`paint-order: stroke`, a 4px paper
-  stroke with round joins), cut to 16 characters with the full label in its `<title>`.
+  label is utility `--fw-text-xs` in pencil over a paper halo (`paint-order: stroke`, an 8px paper
+  stroke with round joins — wide enough to close a word space), cut to 16 characters with the full
+  label in its `<title>`. Labels are drawn in their own layer, above every line and below the
+  nodes, so no link strikes through another link's label where a fan-out's labels stack in the
+  gutter.
+- **Self-loop.** A small arch rising from the node's top edge near its right corner — right of the
+  start tag and the ribbon, away from the right edge every other link leaves from — with its label
+  beside the top of the arch. A second loop on the same scene nests higher and wider.
 - **Follow-up.** The same curve drawn as dots — round caps on a `0 6` dash — the leader dots of a
   book's contents page ("… turn to"). There is no decision and no label; the dots are the second
   channel beside the missing label, so a follow-up never reads as an unlabelled choice.
@@ -430,7 +436,8 @@ right."
 `ThumbnailSize` 40. `AutoLayout` leaves a 120px gutter between columns for link labels
 (`ColumnGap` 320) and 40px between rows (`RowGap` 104). At a 1280px window the main column is
 896px and three columns span 880px, so a three-column story fits without scrolling. Until M21's pan,
-the canvas scrolls: the drawing is sized to its content.
+the canvas scrolls: the drawing reaches its furthest node or self-loop label plus a 40px margin
+(`ContentMargin`), the same margin the layout leaves at the origin.
 
 ### 10.6 Critique
 
@@ -443,9 +450,23 @@ the canvas scrolls: the drawing is sized to its content.
   thumbnail frame. The caption stays under §5's rule that kind never reads by shape alone; the
   frame is the first to go if the screenshots read busy.
 
+**What the screenshot pass changed** (screenshots under `docs/design/screenshots/m20/`):
+
+- The first build set the selected node's label in bold, after the navigator row. With the ribbon
+  and the heavier outline that was a third selection cue; the bold went.
+- The self-loop first left and re-entered the right edge, where it ran into the scene's other
+  links and their labels overprinted. It moved to the top edge (§10.3).
+- Link labels drawn with their own line were struck through by later lines, and a 4px halo left
+  lines showing between words. Labels moved to their own layer and the halo widened to 8px.
+- An 80px drawing margin scrolled a three-column story that fits the main column; the margin is
+  now 40px, measured past self-loop labels too.
+- A mouse click drew the browser's default focus rectangle around a node; only keyboard focus
+  draws the ribbon ring now.
+
 ### 10.7 Where the canvas's styles live
 
-In `StoryCanvas.razor.css`, `SceneNode.razor.css`, and `SceneEdge.razor.css`, each styling only its
+In `StoryCanvas.razor.css`, `SceneNode.razor.css`, `SceneEdge.razor.css`, and
+`SceneEdgeLabel.razor.css`, each styling only its
 own markup (no `::deep`) and consuming the `app.css` tokens. The recorded deviation that keeps
 component styles in `app.css` exists for a vocabulary shared by role across the dock's components;
 the canvas's rules — SVG strokes, markers, halos — are private to it and grow in M21–M23. So the
