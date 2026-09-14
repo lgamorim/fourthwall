@@ -172,6 +172,41 @@ public class CanvasModelTests
     }
 
     [Fact]
+    public void Should_ReachPastTheFurthestNode_When_SizingTheDrawing()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var near = story.AddScene(SceneKind.Linear, "near");
+        var far = story.AddScene(SceneKind.Linear, "far");
+        var positions = new Dictionary<SceneId, ScenePosition>
+        {
+            [near.Id] = new ScenePosition(0, 500),
+            [far.Id] = new ScenePosition(300, 0),
+        };
+
+        // Act
+        var model = CanvasModel.Build(story, positions);
+
+        // Assert — the furthest right edge and bottom edge, plus room for a self-loop and its label.
+        Assert.Equal(300 + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin, model.Width);
+        Assert.Equal(500 + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin, model.Height);
+    }
+
+    [Fact]
+    public void Should_HaveNoSize_When_TheStoryHasNoScenes()
+    {
+        // Arrange
+        var story = new Story("Story");
+
+        // Act
+        var model = CanvasModel.Build(story, new Dictionary<SceneId, ScenePosition>());
+
+        // Assert
+        Assert.Equal(0, model.Width);
+        Assert.Equal(0, model.Height);
+    }
+
+    [Fact]
     public void Should_Throw_When_StoryIsNull()
     {
         // Arrange

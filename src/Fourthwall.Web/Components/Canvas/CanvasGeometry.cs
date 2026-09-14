@@ -1,25 +1,112 @@
 using System.Globalization;
 using Fourthwall.Application;
+using Fourthwall.Domain;
 
 namespace Fourthwall.Web.Components.Canvas;
 
+/// <summary>
+/// Every size and shape the canvas draws, in canvas units, with the SVG path data built from them.
+/// </summary>
+/// <remarks>
+/// The values come from the visual direction's canvas section (docs/design/0002-visual-direction.md
+/// §10): the node is a page whose right edge is the shape of its kind.
+/// </remarks>
 public static class CanvasGeometry
 {
     /// <summary>
-    /// The width, in canvas units, of a scene node's bounding box. Provisional until M20's design
-    /// plan sets the node's final size.
+    /// The width, in canvas units, of a scene node's bounding box.
     /// </summary>
-    public const double NodeWidth = 180;
+    public const double NodeWidth = 200;
 
     /// <summary>
-    /// The height, in canvas units, of a scene node's bounding box. Provisional until M20's design
-    /// plan sets the node's final size.
+    /// The height, in canvas units, of a scene node's bounding box.
     /// </summary>
-    public const double NodeHeight = 72;
+    public const double NodeHeight = 64;
 
+    /// <summary>
+    /// How far a Linear node's point reaches, and a Choice node's notch cuts, into the right edge.
+    /// </summary>
+    public const double ExitDepth = 14;
+
+    /// <summary>
+    /// The side of a node's square image thumbnail.
+    /// </summary>
+    public const double ThumbnailSize = 40;
+
+    /// <summary>
+    /// The room left past the furthest node when sizing the drawing, enough for a self-loop and its
+    /// label.
+    /// </summary>
+    public const double ContentMargin = 80;
+
+    /// <summary>
+    /// The ribbon bookmark's width. Mirrors the <c>--fw-ribbon-width</c> token, which SVG path data
+    /// cannot read.
+    /// </summary>
+    public const double RibbonWidth = 8;
+
+    /// <summary>
+    /// The ribbon bookmark's length. Mirrors the <c>--fw-ribbon-length</c> token, which SVG path data
+    /// cannot read.
+    /// </summary>
+    public const double RibbonLength = 22;
+
+    private const double CornerRadius = 2;
+    private const double RibbonInset = 4;
+    private const double RibbonNotch = 0.7;
     private const double ParallelGap = 28;
     private const double SelfLoopSize = 48;
     private const double LabelLift = 10;
+
+    /// <summary>
+    /// The path data for the ribbon bookmark that hangs from the selected node's top edge, ending in
+    /// the same fishtail notch as the navigator's ribbon.
+    /// </summary>
+    public static string RibbonPath { get; } =
+        $"M {Invariant(RibbonInset)},0 " +
+        $"H {Invariant(RibbonInset + RibbonWidth)} " +
+        $"V {Invariant(RibbonLength)} " +
+        $"L {Invariant(RibbonInset + (RibbonWidth / 2))},{Invariant(RibbonLength * RibbonNotch)} " +
+        $"L {Invariant(RibbonInset)},{Invariant(RibbonLength)} Z";
+
+    /// <summary>
+    /// Builds the outline of a node of the given kind, relative to the node's top-left corner: a
+    /// straight left edge where links enter, and a right edge shaped like the kind's mark.
+    /// </summary>
+    /// <param name="kind">The scene kind to outline.</param>
+    /// <returns>SVG path data, formatted independently of the current culture.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="kind"/> is not a known kind.</exception>
+    public static string NodeOutline(SceneKind kind)
+    {
+        var middle = NodeHeight / 2;
+        var rightEdge = kind switch
+        {
+            // The arrow: one way on, leaving from the point.
+            SceneKind.Linear =>
+                $"H {Invariant(NodeWidth - ExitDepth)} L {Invariant(NodeWidth)},{Invariant(middle)} " +
+                $"L {Invariant(NodeWidth - ExitDepth)},{Invariant(NodeHeight)} ",
+
+            // The fork: the edge cuts in to a crook the links fan out from.
+            SceneKind.Choice =>
+                $"H {Invariant(NodeWidth)} L {Invariant(NodeWidth - ExitDepth)},{Invariant(middle)} " +
+                $"L {Invariant(NodeWidth)},{Invariant(NodeHeight)} ",
+
+            // The full stop: a half-circle as tall as the node.
+            SceneKind.Ending =>
+                $"H {Invariant(NodeWidth - middle)} " +
+                $"A {Invariant(middle)},{Invariant(middle)} 0 0 1 {Invariant(NodeWidth - middle)},{Invariant(NodeHeight)} ",
+
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown scene kind."),
+        };
+
+        var corner = Invariant(CornerRadius);
+        return $"M {corner},0 " +
+            rightEdge +
+            $"H {corner} " +
+            $"A {corner},{corner} 0 0 1 0,{Invariant(NodeHeight - CornerRadius)} " +
+            $"V {corner} " +
+            $"A {corner},{corner} 0 0 1 {corner},0 Z";
+    }
 
     /// <summary>
     /// Formats a coordinate for SVG markup independently of the thread's current culture, so a

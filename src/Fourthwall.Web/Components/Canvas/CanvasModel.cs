@@ -14,7 +14,25 @@ public sealed class CanvasModel
     {
         Nodes = nodes;
         Edges = edges;
+
+        if (nodes.Count > 0)
+        {
+            Width = nodes.Max(node => node.Position.X) + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin;
+            Height = nodes.Max(node => node.Position.Y) + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin;
+        }
     }
+
+    /// <summary>
+    /// Gets how wide the drawing must be to show every node, measured from the origin; zero with no
+    /// nodes.
+    /// </summary>
+    public double Width { get; }
+
+    /// <summary>
+    /// Gets how tall the drawing must be to show every node, measured from the origin; zero with no
+    /// nodes.
+    /// </summary>
+    public double Height { get; }
 
     /// <summary>
     /// Gets every node, in paint order — later nodes sit on top of earlier ones.

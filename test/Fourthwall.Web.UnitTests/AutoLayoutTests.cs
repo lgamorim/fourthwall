@@ -99,6 +99,24 @@ public class AutoLayoutTests
     }
 
     [Fact]
+    public void Should_LeaveAGutterForLinkLabels_When_ColumnsAreAdjacent()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var start = story.AddScene(SceneKind.Linear, "start");
+        var next = story.AddScene(SceneKind.Linear, "next");
+        story.SetFollowUp(start.Id, next.Id);
+        story.SetStartScene(start.Id);
+        var graph = CreateGraph(story);
+
+        // Act
+        var positions = AutoLayout.Place(story, graph, NoSavedPositions);
+
+        // Assert — the space between one node's right edge and the next column holds a label.
+        Assert.Equal(120, positions[next.Id].X - (positions[start.Id].X + CanvasGeometry.NodeWidth));
+    }
+
+    [Fact]
     public void Should_NotReserveARowForASavedPosition_When_AnAutoPlacedSceneSharesItsColumn()
     {
         // AutoLayout does not try to dodge a saved position when placing an unsaved scene into the

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Fourthwall.Application;
+using Fourthwall.Domain;
 using Fourthwall.Web.Components.Canvas;
 
 namespace Fourthwall.Web.UnitTests;
@@ -97,8 +98,8 @@ public class CanvasGeometryTests
         var (x, y) = CanvasGeometry.LabelPoint(from, to, parallelIndex: 0);
 
         // Assert
-        Assert.Equal("245.25", x);
-        Assert.Equal("31.5", y);
+        Assert.Equal("255.25", x);
+        Assert.Equal("27.5", y);
     }
 
     [Fact]
@@ -112,8 +113,77 @@ public class CanvasGeometryTests
         var (x, y) = CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 0);
 
         // Assert
-        Assert.Equal("238.5", x);
-        Assert.Equal("41.5", y);
+        Assert.Equal("258.5", x);
+        Assert.Equal("37.5", y);
+    }
+
+    [Fact]
+    public void Should_PointTheRightEdge_When_OutliningALinearScene()
+    {
+        // Arrange
+        var tip = $"L {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth)},{CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2)}";
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Linear);
+
+        // Assert — one way on: the right edge comes to a point at the node's right-centre, where
+        // the link leaves.
+        Assert.Contains(tip, outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_NotchTheRightEdge_When_OutliningAChoiceScene()
+    {
+        // Arrange
+        var crook = $"L {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth - CanvasGeometry.ExitDepth)},{CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2)}";
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Choice);
+
+        // Assert — the fork: the right edge cuts inward to its crook at the centre.
+        Assert.Contains(crook, outline, StringComparison.Ordinal);
+        Assert.Contains($"H {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth)}", outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_RoundTheRightEdge_When_OutliningAnEndingScene()
+    {
+        // Arrange
+        var radius = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2);
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Ending);
+
+        // Assert — the full stop: a half-circle as tall as the node.
+        Assert.Contains($"A {radius},{radius} 0 0 1", outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_GiveEachKindItsOwnOutline_When_KindsDiffer()
+    {
+        // Arrange & Act
+        var outlines = Enum.GetValues<SceneKind>().Select(CanvasGeometry.NodeOutline).ToList();
+
+        // Assert
+        Assert.Equal(outlines.Count, outlines.Distinct().Count());
+    }
+
+    [Fact]
+    public void Should_Throw_When_OutliningAnUnknownKind()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => CanvasGeometry.NodeOutline((SceneKind)99));
+    }
+
+    [Fact]
+    public void Should_HangTheRibbonFromTheTopEdge_When_ItIsDrawn()
+    {
+        // Arrange & Act
+        var ribbon = CanvasGeometry.RibbonPath;
+
+        // Assert — starts on the node's top edge and reaches the ribbon's full length.
+        Assert.StartsWith("M 4,0 ", ribbon, StringComparison.Ordinal);
+        Assert.Contains($",{CanvasGeometry.Invariant(CanvasGeometry.RibbonLength)}", ribbon, StringComparison.Ordinal);
     }
 
     private static (
