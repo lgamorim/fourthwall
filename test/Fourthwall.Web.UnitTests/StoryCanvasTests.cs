@@ -42,8 +42,8 @@ public class StoryCanvasTests : BunitContext
 
         // Assert
         Assert.Equal(
-            new[] { storm.Id, fork.Id }.Select(id => id.Value.ToString()).Order(),
-            cut.FindAll(".canvas-node").Select(node => node.GetAttribute("data-scene-id")!).Order());
+            new string?[] { storm.Id.Value.ToString(), fork.Id.Value.ToString() }.Order(),
+            cut.FindAll(".canvas-node").Select(node => node.GetAttribute("data-scene-id")).Order());
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class StoryCanvasTests : BunitContext
         // Assert
         Assert.Equal(
             StoryAssetEndpoint.UrlPrefix + "assets/storm.png",
-            NodeFor(cut, storm.Id).QuerySelector(".node-thumbnail image")!.GetAttribute("href"));
+            cut.Find($".canvas-node[data-scene-id='{storm.Id.Value}'] .node-thumbnail image").GetAttribute("href"));
     }
 
     [Fact]
@@ -293,7 +293,23 @@ public class StoryCanvasTests : BunitContext
 
         // Assert — an auto-placed map now would jump when the saved one lands.
         Assert.Empty(cut.FindAll(".canvas-node"));
+    }
+
+    [Fact]
+    public async Task Should_DrawTheSavedPositions_When_TheyArriveAfterTheCanvasRenderedAgain()
+    {
+        // Arrange — a re-render while the read is in flight must not cost the read its result.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(900, 900));
+        _layout.LoadGate = new TaskCompletionSource();
+        var cut = RenderCanvas(story);
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+
+        // Act
         await cut.InvokeAsync(() => _layout.LoadGate.SetResult());
+
+        // Assert
         Assert.Equal("translate(900 900)", NodeFor(cut, storm.Id).GetAttribute("transform"));
     }
 

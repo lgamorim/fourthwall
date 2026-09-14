@@ -235,6 +235,24 @@ public class CanvasGeometryTests
         Assert.Contains($",{CanvasGeometry.Invariant(CanvasGeometry.RibbonLength)}", ribbon, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Should_FormatTheRibbonNotchInvariantly_When_CurrentCultureUsesCommaDecimals()
+    {
+        // The notch sits at 70% of the ribbon's length (15.4), the one fractional coordinate in the
+        // ribbon. RibbonPath is built once, so the pin alone cannot prove when it was formatted; the
+        // exact ",15.4 " does, since a culture-sensitive build on a comma-decimal machine writes
+        // "15,4" and splits the coordinate pair.
+
+        // Arrange
+        using var _ = new CulturePin("pt-PT");
+
+        // Act
+        var ribbon = CanvasGeometry.RibbonPath;
+
+        // Assert
+        Assert.Contains("L 8,15.4 ", ribbon, StringComparison.Ordinal);
+    }
+
     private static (
         (double X, double Y) Start,
         double ControlOneY,

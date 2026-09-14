@@ -90,13 +90,45 @@ public class ScenesTests
         Assert.Equal("Swim", label);
     }
 
-    [Fact]
-    public void Should_Throw_When_TheMaximumLengthIsNotPositive()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Should_Throw_When_TheMaximumLengthIsNotPositive(int maxLength)
     {
         // Arrange
         var scene = new Scene(SceneId.New(), SceneKind.Linear, "A storm");
 
         // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => Scenes.Label(scene, maxLength: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Scenes.Label(scene, maxLength));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Should_Throw_When_TruncatingToANonPositiveLength(int maxLength)
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => Scenes.Truncate("Swim", maxLength));
+    }
+
+    [Fact]
+    public void Should_Throw_When_TheTextToTruncateIsNull()
+    {
+        // Act & Assert — null!: the parameter is non-nullable, and passing null anyway is the case
+        // under test.
+        Assert.Throws<ArgumentNullException>(() => Scenes.Truncate(null!, maxLength: 8));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Should_ReturnEmpty_When_TheTextToTruncateIsEmptyOrWhitespace(string text)
+    {
+        // Arrange & Act — unlike a scene label, a truncated label has no stand-in: an empty choice
+        // label is the domain's to reject, not this helper's to disguise.
+        var label = Scenes.Truncate(text, maxLength: 8);
+
+        // Assert
+        Assert.Equal(string.Empty, label);
     }
 }
