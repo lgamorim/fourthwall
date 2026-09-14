@@ -234,6 +234,24 @@ public class StoryEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_EmptyTheDock_When_TheLayoutRendersAfterTheStoryCloses()
+    {
+        // Arrange — closing the story sends this page to the picker without re-rendering it, but
+        // the layout re-renders on the same Changed event, and its outlet runs the dock fragment
+        // again. The page's outer check never sees that render, so the fragment must check itself.
+        await OpenStoryAsync();
+        var cut = RenderEditor();
+        await _workspace.CloseAsync(TestContext.Current.CancellationToken);
+
+        // Act — the host stands in for MainLayout re-rendering its outlet.
+        var exception = Record.Exception(() => cut.Render());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Empty(cut.FindAll(".app-dock > *"));
+    }
+
+    [Fact]
     public async Task Should_ReturnToThePicker_When_TheStoryIsClosed()
     {
         // Arrange

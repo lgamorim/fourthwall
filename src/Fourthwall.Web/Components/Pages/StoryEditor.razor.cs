@@ -54,7 +54,9 @@ public partial class StoryEditor : IDisposable
 
     private void RenderDock(RenderTreeBuilder builder)
     {
-        // The story can close on another circuit between this page's render and the outlet's.
+        // The outlet runs this whenever the layout re-renders, not only when this page does. Closing
+        // the story re-renders the layout but sends this page away without rendering it, so the
+        // page's own check never sees that render.
         if (Workspace.Current is not { } story)
         {
             return;
