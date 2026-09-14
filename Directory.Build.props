@@ -22,11 +22,11 @@
        active development; the phase-closing commit drops it to the clean X.Y.0.
        Phase 4 (Interactive Canvas) is in progress on the 0.4.0-preview line, and
        the preview number advances once per milestone in that milestone's first
-       commit (preview.4 is M20, the static canvas). The closing commit drops the
-       suffix to 0.4.0 and is tagged v0.4.0, so the tag always matches the version
-       it marks exactly. -->
+       commit (preview.5 is M21: pan, zoom, and node drag with persisted
+       positions). The closing commit drops the suffix to 0.4.0 and is tagged
+       v0.4.0, so the tag always matches the version it marks exactly. -->
   <PropertyGroup>
-    <Version>0.4.0-preview.4</Version>
+    <Version>0.4.0-preview.5</Version>
   </PropertyGroup>
 
 </Project>
