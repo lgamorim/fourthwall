@@ -17,7 +17,15 @@ public sealed class CanvasModel
 
         if (nodes.Count > 0)
         {
-            Width = nodes.Max(node => node.Position.X) + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin;
+            var nodeReach = nodes.Max(node => node.Position.X + CanvasGeometry.NodeWidth);
+            var loopReach = edges
+                .Where(edge => edge.IsSelfLoop)
+                .Select(edge => nodes.First(node => node.Scene.Id == edge.Source).Position.X
+                    + CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(edge.ParallelIndex))
+                .DefaultIfEmpty(0)
+                .Max();
+
+            Width = Math.Max(nodeReach, loopReach) + CanvasGeometry.ContentMargin;
             Height = nodes.Max(node => node.Position.Y) + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin;
         }
     }

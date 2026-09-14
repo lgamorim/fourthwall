@@ -176,6 +176,20 @@ public class CanvasGeometryTests
     }
 
     [Fact]
+    public void Should_ReachPastTheLoopsLabelPoint_When_MeasuringASelfLoop()
+    {
+        // Arrange
+        var node = new ScenePosition(0, 0);
+
+        // Act
+        var reach = CanvasGeometry.SelfLoopReach(parallelIndex: 2);
+
+        // Assert — the label starts at the loop's outermost point and runs right from it.
+        var labelX = double.Parse(CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 2).X, CultureInfo.InvariantCulture);
+        Assert.True(CanvasGeometry.NodeWidth + reach > labelX);
+    }
+
+    [Fact]
     public void Should_HangTheRibbonFromTheTopEdge_When_ItIsDrawn()
     {
         // Arrange & Act

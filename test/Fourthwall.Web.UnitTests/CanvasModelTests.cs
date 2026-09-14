@@ -187,9 +187,28 @@ public class CanvasModelTests
         // Act
         var model = CanvasModel.Build(story, positions);
 
-        // Assert — the furthest right edge and bottom edge, plus room for a self-loop and its label.
+        // Assert — the furthest right edge and bottom edge, plus the same margin the layout leaves at the origin.
         Assert.Equal(300 + CanvasGeometry.NodeWidth + CanvasGeometry.ContentMargin, model.Width);
         Assert.Equal(500 + CanvasGeometry.NodeHeight + CanvasGeometry.ContentMargin, model.Height);
+    }
+
+    [Fact]
+    public void Should_ReachPastASelfLoop_When_TheFurthestNodeHasOne()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var loop = story.AddScene(SceneKind.Choice, "A round room");
+        story.WireChoice(loop.Id, "Keep walking", loop.Id);
+        story.WireChoice(loop.Id, "Walk on", loop.Id);
+        var positions = new Dictionary<SceneId, ScenePosition> { [loop.Id] = new ScenePosition(0, 0) };
+
+        // Act
+        var model = CanvasModel.Build(story, positions);
+
+        // Assert — the outermost of two loops and its label stay inside the drawing.
+        Assert.Equal(
+            CanvasGeometry.NodeWidth + CanvasGeometry.SelfLoopReach(parallelIndex: 1) + CanvasGeometry.ContentMargin,
+            model.Width);
     }
 
     [Fact]

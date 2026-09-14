@@ -44,10 +44,10 @@ public static class CanvasGeometry
     public const double ThumbnailY = (NodeHeight - ThumbnailSize) / 2;
 
     /// <summary>
-    /// The room left past the furthest node when sizing the drawing, enough for a self-loop and its
-    /// label.
+    /// The room left past the furthest node or self-loop when sizing the drawing — the same margin
+    /// the auto-layout leaves at the origin.
     /// </summary>
-    public const double ContentMargin = 80;
+    public const double ContentMargin = 40;
 
     /// <summary>
     /// The ribbon bookmark's width. Mirrors the <c>--fw-ribbon-width</c> token, which SVG path data
@@ -67,6 +67,17 @@ public static class CanvasGeometry
     private const double ParallelGap = 28;
     private const double SelfLoopSize = 48;
     private const double LabelLift = 10;
+
+    // A cut link label (16 characters of the utility face's smallest size) with room to spare.
+    private const double SelfLoopLabelRoom = 120;
+
+    /// <summary>
+    /// How far a self-loop and its label reach past its node's right edge, so the drawing can be
+    /// sized to show them.
+    /// </summary>
+    /// <param name="parallelIndex">The loop's position among the node's other self-loops.</param>
+    public static double SelfLoopReach(int parallelIndex) =>
+        SelfLoopSize + (parallelIndex * ParallelGap) + SelfLoopLabelRoom;
 
     /// <summary>
     /// The path data for the ribbon bookmark that hangs from the selected node's top edge, ending in
