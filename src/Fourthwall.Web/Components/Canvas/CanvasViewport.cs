@@ -1,3 +1,4 @@
+using System.Globalization;
 using Fourthwall.Application;
 
 namespace Fourthwall.Web.Components.Canvas;
@@ -61,11 +62,12 @@ public sealed class CanvasViewport
 
     /// <summary>
     /// Gets the SVG transform that places the map in the window, formatted independently of the
-    /// current culture.
+    /// current culture. The scale carries four decimals: two would draw a point a thousand units
+    /// from the origin several pixels away from where the maths keeps it.
     /// </summary>
     public string Transform =>
         $"translate({CanvasGeometry.Invariant(TranslateX)} {CanvasGeometry.Invariant(TranslateY)}) " +
-        $"scale({CanvasGeometry.Invariant(Scale)})";
+        $"scale({Scale.ToString("0.####", CultureInfo.InvariantCulture)})";
 
     /// <summary>
     /// Records the window's size, as the browser measures it.

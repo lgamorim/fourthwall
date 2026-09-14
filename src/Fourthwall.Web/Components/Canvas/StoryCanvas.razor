@@ -1,6 +1,7 @@
 @* The story as a pencil map: plain paper, pages for scenes, pencil for links
-   (docs/design/0002-visual-direction.md §10). Read-only until M21 adds pan, zoom, and drag. *@
-<div class="canvas">
+   (docs/design/0002-visual-direction.md §10). The map is a sheet larger than the window: the
+   viewport slides and zooms it, and a page can be moved by hand (§11). *@
+<div class="canvas @HostStateClass" @ref="_host">
     @if (_loadError is not null)
     {
         <p class="canvas-error" role="alert">@_loadError</p>
@@ -12,9 +13,14 @@
     }
     else if (_model is { } model)
     {
+        @* The map is a focusable region: the arrow keys slide it and + / - zoom it (§11.5). A press
+           on the paper slides it with the pointer; nodes stop their own presses from reaching here. *@
         <svg class="canvas-svg"
              role="group"
-             aria-label="Map of the story">
+             aria-label="Map of the story"
+             tabindex="0"
+             @onpointerdown="OnGroundPointerDown"
+             @onkeydown="OnKeyDown">
             <defs>
                 <marker id="canvas-arrow" class="canvas-arrow"
                         viewBox="0 0 8 8" refX="8" refY="4"
@@ -30,8 +36,7 @@
                 </clipPath>
             </defs>
 
-            @* The world's transform stays identity until M21's viewport moves it. *@
-            <g class="canvas-world">
+            <g class="canvas-world" transform="@_viewport.Transform">
                 <g class="canvas-edges">
                     @foreach (var edge in model.Edges)
                     {

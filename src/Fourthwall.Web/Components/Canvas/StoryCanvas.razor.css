@@ -10,12 +10,33 @@
     background: var(--fw-paper);
 }
 
-/* The drawing fills whatever the error line leaves; the viewport transform frames the map. */
+/* The drawing fills whatever the error line leaves; the viewport transform frames the map. The
+   paper is held to slide it (§11.3), and the browser's own touch gestures are kept off the map. */
 .canvas-svg {
     display: block;
     flex: 1;
     min-height: 0;
     width: 100%;
+    touch-action: none;
+    cursor: grab;
+}
+
+.canvas-panning .canvas-svg {
+    cursor: grabbing;
+}
+
+.canvas-panning {
+    user-select: none;
+}
+
+/* A click focuses the map too; only keyboard focus draws the app's ring (app.css), inside the
+   edge because the map fills its region. */
+.canvas-svg:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.canvas-svg:focus-visible {
+    outline-offset: -2px;
 }
 
 .canvas-arrow path {

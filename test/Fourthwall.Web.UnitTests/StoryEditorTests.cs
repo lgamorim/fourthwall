@@ -24,6 +24,9 @@ public class StoryEditorTests : BunitContext
         // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does not,
         // and the canvas hands its positions across the prerender with it.
         Services.AddSingleton(new ComponentStatePersistenceManager(NullLogger<ComponentStatePersistenceManager>.Instance).State);
+
+        // The canvas imports its shim on first render; the shim is an accepted untestable boundary.
+        JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
     [Fact]
