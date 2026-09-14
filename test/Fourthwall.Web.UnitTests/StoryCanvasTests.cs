@@ -98,7 +98,7 @@ public class StoryCanvasTests : BunitContext
         // Assert
         Assert.Equal(
             ["Climb down", "Go below"],
-            cut.FindAll(".edge-choice .edge-label").Select(label => label.TextContent).Order());
+            cut.FindAll(".canvas-edge-labels .edge-label-text").Select(label => label.TextContent).Order());
     }
 
     [Fact]
@@ -116,11 +116,11 @@ public class StoryCanvasTests : BunitContext
         // Assert
         var link = Assert.Single(cut.FindAll(".canvas-edge"));
         Assert.Contains("edge-follow-up", link.ClassList);
-        Assert.Null(link.QuerySelector(".edge-label"));
+        Assert.Empty(cut.FindAll(".edge-label"));
     }
 
     [Fact]
-    public void Should_PaintLinksBeneathNodes_When_Rendered()
+    public void Should_PaintLabelsOverLinksAndNodesOverBoth_When_Rendered()
     {
         // Arrange
         var story = new Story("The Wreck");
@@ -131,9 +131,10 @@ public class StoryCanvasTests : BunitContext
         // Act
         var cut = RenderCanvas(story);
 
-        // Assert — SVG paints in document order, so links come first and nodes sit on top.
+        // Assert — SVG paints in document order: every line first, so no line strikes through
+        // another link's label, then the labels, then the nodes on top.
         Assert.Equal(
-            ["canvas-edges", "canvas-nodes"],
+            ["canvas-edges", "canvas-edge-labels", "canvas-nodes"],
             cut.FindAll(".canvas-world > g").Select(group => group.ClassName));
     }
 

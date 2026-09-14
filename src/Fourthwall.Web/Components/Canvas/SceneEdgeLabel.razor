@@ -1,0 +1,16 @@
+@* A choice's label, drawn in the layer above every link's line so no line strikes through it
+   (docs/design/0002-visual-direction.md §10.3). A follow-up has no label. *@
+@if (Edge.Key.ChoiceIndex is not null)
+{
+    @* Razor reads a <text> that opens a code block as its own transition tag, so the label sits
+       inside a group. *@
+    <g>
+        <text class="edge-label"
+              x="@Edge.LabelX"
+              y="@Edge.LabelY"
+              text-anchor="@(Edge.IsSelfLoop ? "start" : "middle")">
+            <title>@Edge.Label</title>
+            <tspan class="edge-label-text">@Scenes.Truncate(Edge.Label, LabelLength)</tspan>
+        </text>
+    </g>
+}

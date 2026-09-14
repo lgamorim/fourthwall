@@ -1,5 +1,6 @@
-@* A link on the pencil map: a choice is a labelled pencil curve, a follow-up the same curve in
-   leader dots (docs/design/0002-visual-direction.md §10.3). *@
+@* A link's line on the pencil map: a pencil curve for a choice, the same curve in leader dots for a
+   follow-up (docs/design/0002-visual-direction.md §10.3). Its label is SceneEdgeLabel, drawn in a
+   layer above every line. *@
 <g class="canvas-edge @(IsChoice ? "edge-choice" : "edge-follow-up")">
     @if (IsChoice)
     {
@@ -7,16 +8,4 @@
     }
 
     <path class="edge-line" d="@Edge.PathData" marker-end="url(#canvas-arrow)" />
-
-    @if (IsChoice)
-    {
-        @* Razor reads a <text> that opens a code block as its own transition tag, so the label sits
-           inside a group. *@
-        <g>
-            <text class="edge-label"
-                  x="@Edge.LabelX"
-                  y="@Edge.LabelY"
-                  text-anchor="@(Edge.IsSelfLoop ? "start" : "middle")">@Scenes.Truncate(Edge.Label, LabelLength)</text>
-        </g>
-    }
 </g>

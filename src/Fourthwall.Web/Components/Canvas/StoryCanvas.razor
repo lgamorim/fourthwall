@@ -40,6 +40,13 @@
                         <SceneEdge @key="edge.Key" Edge="edge" />
                     }
                 </g>
+                @* Every label above every line, so a later link never strikes through an earlier label. *@
+                <g class="canvas-edge-labels">
+                    @foreach (var edge in model.Edges)
+                    {
+                        <SceneEdgeLabel @key="edge.Key" Edge="edge" />
+                    }
+                </g>
                 <g class="canvas-nodes">
                     @foreach (var node in model.Nodes)
                     {
