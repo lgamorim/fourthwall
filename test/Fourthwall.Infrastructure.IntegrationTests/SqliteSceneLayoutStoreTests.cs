@@ -126,6 +126,9 @@ public sealed class SqliteSceneLayoutStoreTests : IDisposable
             () => store.SaveAsync(
                 new Dictionary<SceneId, ScenePosition> { [scene.Id] = new(1, 2) }, cancellationToken));
 
+        // The cause reaches the creator: the provider's reason follows the plain sentence.
+        Assert.StartsWith("The story file couldn't be written. ", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("locked", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.IsType<SqliteException>(exception.InnerException);
     }
 
@@ -141,7 +144,8 @@ public sealed class SqliteSceneLayoutStoreTests : IDisposable
             () => store.SaveAsync(
                 new Dictionary<SceneId, ScenePosition> { [SceneId.New()] = new(1, 2) }, cancellationToken));
 
-        Assert.Contains("scene", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Written for the creator, who reads it after "That scene's place on the map couldn't be saved."
+        Assert.Equal("The scene isn't in the saved story yet.", exception.Message);
     }
 
     [Fact]
