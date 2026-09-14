@@ -7,7 +7,9 @@
     fill: var(--fw-pencil);
     paint-order: stroke;
     stroke: var(--fw-paper);
-    stroke-width: 4px;
+    /* Wide enough to close a word space, so a line passing under the label never shows between
+       its words. */
+    stroke-width: 8px;
     stroke-linejoin: round;
     user-select: none;
 }
