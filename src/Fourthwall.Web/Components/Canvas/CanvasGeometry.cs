@@ -34,6 +34,16 @@ public static class CanvasGeometry
     public const double ThumbnailSize = 40;
 
     /// <summary>
+    /// The thumbnail's left edge: inside the right edge, clear of the point or notch.
+    /// </summary>
+    public const double ThumbnailX = NodeWidth - ExitDepth - 8 - ThumbnailSize;
+
+    /// <summary>
+    /// The thumbnail's top edge, centring it on the node's height.
+    /// </summary>
+    public const double ThumbnailY = (NodeHeight - ThumbnailSize) / 2;
+
+    /// <summary>
     /// The room left past the furthest node when sizing the drawing, enough for a self-loop and its
     /// label.
     /// </summary>

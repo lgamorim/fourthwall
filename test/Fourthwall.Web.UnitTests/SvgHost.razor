@@ -1,0 +1,8 @@
+@* Hosts a canvas child component inside an <svg>, so the markup parser keeps SVG elements as SVG:
+   outside it, HTML parsing turns <image> into <img>. *@
+<svg>@ChildContent</svg>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
