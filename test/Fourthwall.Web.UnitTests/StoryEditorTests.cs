@@ -2,9 +2,12 @@ using Fourthwall.Application;
 using Fourthwall.Domain;
 using Fourthwall.Infrastructure;
 
+using Fourthwall.Web.Components.Canvas;
+
 using Bunit.TestDoubles;
 
 using Microsoft.AspNetCore.Components.Infrastructure;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -394,6 +397,114 @@ public class StoryEditorTests : BunitContext
         Assert.Equal(1, _workspace.SaveCount);
         Assert.Empty(cut.FindAll(".validation-violation"));
         Assert.NotNull(cut.Find(".validation-idle"));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheValidationReport_When_ANodeIsDragged()
+    {
+        // Arrange — moving a page changes nothing about the story, so the report still describes it.
+        var orphan = await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+
+        // Act
+        await DragNodeAsync(cut, orphan.Id);
+
+        // Assert
+        Assert.Single(cut.FindAll(".validation-violation"));
+    }
+
+    [Fact]
+    public async Task Should_NotSaveTheStory_When_ANodeIsDragged()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderEditor();
+
+        // Act
+        await DragNodeAsync(cut, storm.Id);
+
+        // Assert — the position goes to the layout store; the story is not rewritten.
+        Assert.Equal(0, _workspace.SaveCount);
+        Assert.Equal(1, _workspace.LayoutStore.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_ShowTheWholeStory_When_TheToolbarSaysSo()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderEditor();
+        var canvas = cut.FindComponent<StoryCanvas>().Instance;
+        await canvas.ResizeAsync(800, 600);
+        await canvas.ZoomAsync(0, 0, deltaY: 300);
+
+        // Act
+        cut.Find("#canvas-fit").Click();
+
+        // Assert
+        Assert.Equal("translate(260 228) scale(1)", cut.Find(".canvas-world").GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_RestoreActualSize_When_TheToolbarSaysSo()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderEditor();
+        var canvas = cut.FindComponent<StoryCanvas>().Instance;
+        await canvas.ResizeAsync(800, 600);
+        await canvas.ZoomAsync(100, 100, deltaY: -100);
+
+        // Act
+        cut.Find("#canvas-reset").Click();
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", cut.Find(".canvas-world").GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_NameTheViewControlsForTheCreator_When_AStoryIsOpen()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert — words at the toolbar's right edge (design note §11.1), enabled with scenes to show.
+        var fit = cut.Find(".editor-toolbar .canvas-controls #canvas-fit");
+        var reset = cut.Find(".editor-toolbar .canvas-controls #canvas-reset");
+        Assert.Equal("Show whole story", fit.TextContent.Trim());
+        Assert.Equal("Actual size", reset.TextContent.Trim());
+        Assert.False(fit.HasAttribute("disabled"));
+        Assert.False(reset.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Should_DisableTheViewControls_When_TheStoryHasNoScenes()
+    {
+        // Arrange
+        await OpenStoryAsync();
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert — nothing to show or to size.
+        Assert.True(cut.Find("#canvas-fit").HasAttribute("disabled"));
+        Assert.True(cut.Find("#canvas-reset").HasAttribute("disabled"));
+    }
+
+    private static async Task DragNodeAsync(IRenderedComponent<DockHost> cut, SceneId sceneId)
+    {
+        var canvas = cut.FindComponent<StoryCanvas>().Instance;
+        NodeFor(cut, sceneId).PointerDown(new PointerEventArgs { Button = 0, PointerId = 1, ClientX = 100, ClientY = 100 });
+        await canvas.MoveAsync(130, 120);
+        await canvas.UpAsync(130, 120);
     }
 
     private async Task<Scene> OpenStoryWithAReportNamingASceneAsync()

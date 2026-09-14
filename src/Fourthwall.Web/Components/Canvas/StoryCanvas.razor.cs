@@ -198,6 +198,26 @@ public partial class StoryCanvas : IAsyncDisposable
         StateHasChanged();
     });
 
+    /// <summary>
+    /// Frames every scene in the window, centred, never enlarging past actual size: the toolbar's
+    /// "Show whole story". Nothing to show returns the map to actual size.
+    /// </summary>
+    public void FitToStory()
+    {
+        _viewport.Fit(_model?.Bounds ?? CanvasBounds.Empty, CanvasGeometry.ContentMargin);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Returns the map to actual size with the page's origin at the window's top-left corner: the
+    /// toolbar's "Actual size".
+    /// </summary>
+    public void ResetView()
+    {
+        _viewport.Reset();
+        StateHasChanged();
+    }
+
     protected override void OnInitialized() => _persisting = State.RegisterOnPersisting(PersistLayoutAsync);
 
     protected override async Task OnParametersSetAsync()

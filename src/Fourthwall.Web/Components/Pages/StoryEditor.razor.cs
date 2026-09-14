@@ -1,5 +1,6 @@
 using Fourthwall.Application;
 using Fourthwall.Domain;
+using Fourthwall.Web.Components.Canvas;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -9,6 +10,9 @@ namespace Fourthwall.Web.Components.Pages;
 public partial class StoryEditor : IDisposable
 {
     private readonly RenderFragment _dock;
+
+    // The toolbar's view controls act on the canvas; it is null while no story is open.
+    private StoryCanvas? _canvas;
     private SceneId? _selectedSceneId;
     private string _title = string.Empty;
     private string? _error;

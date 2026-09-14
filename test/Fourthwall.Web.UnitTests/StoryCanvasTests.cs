@@ -1040,6 +1040,41 @@ public class StoryCanvasTests : BunitContext
         Assert.Equal("translate(-120 0) scale(1)", WorldTransform(cut));
     }
 
+    [Fact]
+    public async Task Should_ShowTheWholeStory_When_Asked()
+    {
+        // Arrange — the toolbar's "Show whole story" reaches the canvas through this method.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(0, 0, deltaY: 300);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.FitToStory);
+
+        // Assert — one page at (40, 40) fits at actual size, so it is centred at 1:1.
+        Assert.Equal("translate(260 228) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_RestoreActualSize_When_Asked()
+    {
+        // Arrange — the toolbar's "Actual size" reaches the canvas through this method.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(100, 100, deltaY: -100);
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.ResetView);
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
         cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
 
