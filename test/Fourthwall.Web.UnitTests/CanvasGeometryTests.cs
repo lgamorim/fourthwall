@@ -1,5 +1,6 @@
 using System.Globalization;
 using Fourthwall.Application;
+using Fourthwall.Domain;
 using Fourthwall.Web.Components.Canvas;
 
 namespace Fourthwall.Web.UnitTests;
@@ -75,10 +76,45 @@ public class CanvasGeometryTests
         // Act
         var path = CanvasGeometry.SelfLoopPath(node, parallelIndex: 0);
 
-        // Assert: the loop starts at the node's right-centre (node.X + NodeWidth); this is the
-        // only assertion that can fail if SelfLoopPath itself formats with the current culture.
-        var expectedStartX = CanvasGeometry.Invariant(node.X + CanvasGeometry.NodeWidth);
-        Assert.Contains(expectedStartX, path, StringComparison.Ordinal);
+        // Assert: the loop starts on the node's top edge, 44 units in from its right edge; the
+        // fractional x can only come out with a dot if SelfLoopPath formats invariantly.
+        Assert.StartsWith("M 166.5,20 ", path, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_RiseFromTheTopEdge_When_BuildingASelfLoopPath()
+    {
+        // A loop off the right edge collides with the links that leave from there, so the loop
+        // rises from the top edge, right of the start tag and the ribbon, and comes back down.
+
+        // Arrange
+        var node = new ScenePosition(100, 200);
+
+        // Act
+        var loop = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 0));
+
+        // Assert
+        Assert.Equal(node.Y, loop.Start.Y);
+        Assert.Equal(node.Y, loop.End.Y);
+        Assert.True(loop.ControlOneY < node.Y);
+        Assert.True(loop.Start.X > loop.End.X);
+        Assert.InRange(loop.End.X, node.X + (CanvasGeometry.NodeWidth / 2), node.X + CanvasGeometry.NodeWidth);
+    }
+
+    [Fact]
+    public void Should_NestParallelSelfLoops_When_ASceneLoopsMoreThanOnce()
+    {
+        // Arrange
+        var node = new ScenePosition(100, 200);
+
+        // Act
+        var inner = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 0));
+        var outer = ParseEdgePath(CanvasGeometry.SelfLoopPath(node, parallelIndex: 1));
+
+        // Assert — the second loop rises higher and spans wider, so both stay visible.
+        Assert.True(outer.ControlOneY < inner.ControlOneY);
+        Assert.True(outer.Start.X > inner.Start.X);
+        Assert.True(outer.End.X < inner.End.X);
     }
 
     [Fact]
@@ -97,8 +133,8 @@ public class CanvasGeometryTests
         var (x, y) = CanvasGeometry.LabelPoint(from, to, parallelIndex: 0);
 
         // Assert
-        Assert.Equal("245.25", x);
-        Assert.Equal("31.5", y);
+        Assert.Equal("255.25", x);
+        Assert.Equal("27.5", y);
     }
 
     [Fact]
@@ -111,9 +147,110 @@ public class CanvasGeometryTests
         // Act
         var (x, y) = CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 0);
 
+        // Assert — beside the top of the loop, above the node.
+        Assert.Equal("172.5", x);
+        Assert.Equal("-20.5", y);
+    }
+
+    [Fact]
+    public void Should_PointTheRightEdge_When_OutliningALinearScene()
+    {
+        // Arrange
+        var tip = $"L {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth)},{CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2)}";
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Linear);
+
+        // Assert — one way on: the right edge comes to a point at the node's right-centre, where
+        // the link leaves.
+        Assert.Contains(tip, outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_NotchTheRightEdge_When_OutliningAChoiceScene()
+    {
+        // Arrange
+        var crook = $"L {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth - CanvasGeometry.ExitDepth)},{CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2)}";
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Choice);
+
+        // Assert — the fork: the right edge cuts inward to its crook at the centre.
+        Assert.Contains(crook, outline, StringComparison.Ordinal);
+        Assert.Contains($"H {CanvasGeometry.Invariant(CanvasGeometry.NodeWidth)}", outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_RoundTheRightEdge_When_OutliningAnEndingScene()
+    {
+        // Arrange
+        var radius = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2);
+
+        // Act
+        var outline = CanvasGeometry.NodeOutline(SceneKind.Ending);
+
+        // Assert — the full stop: a half-circle as tall as the node.
+        Assert.Contains($"A {radius},{radius} 0 0 1", outline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_GiveEachKindItsOwnOutline_When_KindsDiffer()
+    {
+        // Arrange & Act
+        var outlines = Enum.GetValues<SceneKind>().Select(CanvasGeometry.NodeOutline).ToList();
+
         // Assert
-        Assert.Equal("238.5", x);
-        Assert.Equal("41.5", y);
+        Assert.Equal(outlines.Count, outlines.Distinct().Count());
+    }
+
+    [Fact]
+    public void Should_Throw_When_OutliningAnUnknownKind()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => CanvasGeometry.NodeOutline((SceneKind)99));
+    }
+
+    [Fact]
+    public void Should_ReachPastTheLoopsLabelPoint_When_MeasuringASelfLoop()
+    {
+        // Arrange
+        var node = new ScenePosition(0, 0);
+
+        // Act
+        var reach = CanvasGeometry.SelfLoopReach(parallelIndex: 2);
+
+        // Assert — the label starts at the loop's outermost point and runs right from it.
+        var labelX = double.Parse(CanvasGeometry.SelfLoopLabelPoint(node, parallelIndex: 2).X, CultureInfo.InvariantCulture);
+        Assert.True(CanvasGeometry.NodeWidth + reach > labelX);
+    }
+
+    [Fact]
+    public void Should_HangTheRibbonFromTheTopEdge_When_ItIsDrawn()
+    {
+        // Arrange & Act
+        var ribbon = CanvasGeometry.RibbonPath;
+
+        // Assert — starts on the node's top edge and reaches the ribbon's full length.
+        Assert.StartsWith("M 4,0 ", ribbon, StringComparison.Ordinal);
+        Assert.Contains($",{CanvasGeometry.Invariant(CanvasGeometry.RibbonLength)}", ribbon, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_FormatTheRibbonNotchInvariantly_When_CurrentCultureUsesCommaDecimals()
+    {
+        // The notch sits at 70% of the ribbon's length (15.4), the one fractional coordinate in the
+        // ribbon. RibbonPath is built once, so the pin alone cannot prove when it was formatted; the
+        // exact ",15.4 " does, since a culture-sensitive build on a comma-decimal machine writes
+        // "15,4" and splits the coordinate pair.
+
+        // Arrange
+        using var _ = new CulturePin("pt-PT");
+
+        // Act
+        var ribbon = CanvasGeometry.RibbonPath;
+
+        // Assert
+        Assert.Contains("L 8,15.4 ", ribbon, StringComparison.Ordinal);
     }
 
     private static (

@@ -1,0 +1,15 @@
+/* A choice's label over a paper halo, in the layer above every line.
+   Direction: docs/design/0002-visual-direction.md §10.3. */
+
+.edge-label {
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-xs);
+    fill: var(--fw-pencil);
+    paint-order: stroke;
+    stroke: var(--fw-paper);
+    /* Wide enough to close a word space, so a line passing under the label never shows between
+       its words. */
+    stroke-width: 8px;
+    stroke-linejoin: round;
+    user-select: none;
+}

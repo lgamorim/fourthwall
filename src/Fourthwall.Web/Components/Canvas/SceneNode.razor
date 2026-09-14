@@ -1,0 +1,46 @@
+@using Fourthwall.Web.Composition
+
+@* A scene on the pencil map: a page whose right edge is the shape of its kind
+   (docs/design/0002-visual-direction.md §10.1). *@
+<g class="canvas-node @KindClass @(IsSelected ? "node-selected" : null)"
+   data-scene-id="@Node.Scene.Id.Value"
+   transform="@Node.Transform"
+   tabindex="0"
+   role="button"
+   aria-label="@AccessibleName"
+   aria-current="@(IsSelected ? "true" : null)"
+   @onclick="OnSelected"
+   @onkeydown="OnKeyDownAsync">
+    <title>@Node.Scene.Text</title>
+
+    <path class="node-shape" d="@CanvasGeometry.NodeOutline(Node.Scene.Kind)" />
+
+    @if (Node.Scene.ImagePath is { } imagePath)
+    {
+        <g class="node-thumbnail">
+            <image href="@(StoryAssetEndpoint.UrlPrefix + imagePath)"
+                   x="@ThumbnailX" y="@ThumbnailY" width="@ThumbnailSize" height="@ThumbnailSize"
+                   preserveAspectRatio="xMidYMid slice"
+                   clip-path="url(#canvas-node-image)" />
+            <rect class="node-thumbnail-frame"
+                  x="@ThumbnailX" y="@ThumbnailY" width="@ThumbnailSize" height="@ThumbnailSize"
+                  rx="@CornerRadius" />
+        </g>
+    }
+
+    <text class="node-label" x="@TextX" y="@LabelY">@Label</text>
+    <text class="node-caption" x="@TextX" y="@CaptionY">@Node.Scene.Kind</text>
+
+    @if (Node.IsStart)
+    {
+        <g class="node-start">
+            <rect x="0" y="@StartTagY" width="@StartTagWidth" height="@StartTagHeight" rx="@CornerRadius" />
+            <text x="@StartTagTextX" y="@StartTagTextY">Start</text>
+        </g>
+    }
+
+    @if (IsSelected)
+    {
+        <path class="node-ribbon" d="@CanvasGeometry.RibbonPath" />
+    }
+</g>

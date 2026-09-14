@@ -1,9 +1,12 @@
 using Fourthwall.Application;
 using Fourthwall.Domain;
+using Fourthwall.Infrastructure;
 
 using Bunit.TestDoubles;
 
+using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Fourthwall.Web.UnitTests;
 
@@ -16,6 +19,11 @@ public class StoryEditorTests : BunitContext
     {
         Services.AddSingleton<IStoryWorkspace>(_workspace);
         Services.AddSingleton<IStoryValidation>(_validation);
+        Services.AddSingleton<IStoryGraphFactory>(new Graph1xStoryGraphFactory());
+
+        // The host registers PersistentComponentState as part of AddRazorComponents; bUnit does not,
+        // and the canvas hands its positions across the prerender with it.
+        Services.AddSingleton(new ComponentStatePersistenceManager(NullLogger<ComponentStatePersistenceManager>.Instance).State);
     }
 
     [Fact]
@@ -67,26 +75,80 @@ public class StoryEditorTests : BunitContext
         // Act
         var cut = RenderEditor();
 
-        // Assert — nothing to pick yet, so the main region points at the one thing to do.
+        // Assert — nothing to draw yet, so the canvas points at the one thing to do.
         Assert.Equal(
             "This story has no scenes yet. Add the one it opens with, in the navigator on the right.",
-            cut.Find(".canvas-placeholder").TextContent.Trim());
+            cut.Find(".canvas .canvas-empty").TextContent.Trim());
     }
 
     [Fact]
-    public async Task Should_InviteToPickAScene_When_TheStoryHasScenes()
+    public async Task Should_ShowTheCanvas_When_AStoryWithScenesIsOpen()
     {
         // Arrange
         var story = await OpenStoryAsync();
-        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var scene = story.AddScene(SceneKind.Linear, "A storm gathers");
 
         // Act
         var cut = RenderEditor();
 
+        // Assert — in the main region, not the dock.
+        var node = cut.Find($".canvas-node[data-scene-id='{scene.Id.Value}']");
+        Assert.Null(node.Closest(".app-dock"));
+    }
+
+    [Fact]
+    public async Task Should_ShowTheInspector_When_ANodeIsClicked()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var scene = story.AddScene(SceneKind.Choice, "A fork");
+        var cut = RenderEditor();
+
+        // Act
+        NodeFor(cut, scene.Id).Click();
+
+        // Assert — the canvas and the navigator select through the same page field.
+        Assert.NotNull(cut.Find("#inspector-text"));
+        Assert.Contains("scene-row-selected", cut.Find($".scene-row[data-scene-id='{scene.Id.Value}']").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_HighlightTheNode_When_ASceneIsPickedInTheNavigator()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var cut = RenderEditor();
+
+        // Act
+        cut.Find($".scene-row[data-scene-id='{fork.Id.Value}'] .scene-select").Click();
+
         // Assert
-        Assert.Equal(
-            "Your scenes live in the navigator on the right. Pick one to edit it, or add a new one below the list.",
-            cut.Find(".canvas-placeholder").TextContent.Trim());
+        Assert.Contains("node-selected", NodeFor(cut, fork.Id).ClassList);
+        Assert.DoesNotContain("node-selected", NodeFor(cut, storm.Id).ClassList);
+    }
+
+    [Fact]
+    public async Task Should_HighlightTheNode_When_AValidationChipIsClicked()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var orphan = story.AddScene(SceneKind.Linear, "Adrift");
+        _validation.Report = new ValidationReport(
+        [
+            new ValidationViolation(
+                ValidationRule.AllScenesReachable, ValidationSeverity.Error, "1 scene cannot be reached.", [orphan.Id]),
+        ]);
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+
+        // Act
+        cut.Find(".validation-scene").Click();
+
+        // Assert
+        Assert.Contains("node-selected", NodeFor(cut, orphan.Id).ClassList);
     }
 
     [Fact]
@@ -343,6 +405,9 @@ public class StoryEditorTests : BunitContext
         ]);
         return orphan;
     }
+
+    private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<DockHost> cut, SceneId sceneId) =>
+        cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
 
     private BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
 

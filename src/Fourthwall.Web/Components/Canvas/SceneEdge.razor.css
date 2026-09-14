@@ -1,0 +1,14 @@
+/* A link's line: a pencil curve for a choice, leader dots for a follow-up.
+   Direction: docs/design/0002-visual-direction.md §10.3. */
+
+.edge-line {
+    fill: none;
+    stroke: var(--fw-pencil);
+    stroke-width: 1.5px;
+}
+
+.edge-follow-up .edge-line {
+    stroke-width: 2.5px;
+    stroke-dasharray: 0 6;
+    stroke-linecap: round;
+}

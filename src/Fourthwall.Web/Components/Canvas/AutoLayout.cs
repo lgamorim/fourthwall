@@ -13,7 +13,8 @@ public static class AutoLayout
 {
     private const double OriginX = 40;
     private const double OriginY = 40;
-    private const double ColumnGap = CanvasGeometry.NodeWidth + 60;
+    // The gutter between columns holds a link's label; the row gap only separates nodes.
+    private const double ColumnGap = CanvasGeometry.NodeWidth + 120;
     private const double RowGap = CanvasGeometry.NodeHeight + 40;
 
     /// <summary>

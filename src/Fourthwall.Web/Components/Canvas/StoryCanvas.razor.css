@@ -1,0 +1,37 @@
+/* The canvas region: plain paper, scrolling to its furthest node until M21 brings pan.
+   Direction: docs/design/0002-visual-direction.md §10.4. */
+
+.canvas {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    background: var(--fw-paper);
+}
+
+.canvas-svg {
+    display: block;
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+.canvas-arrow path {
+    fill: var(--fw-pencil);
+}
+
+/* Sits in the shared error treatment from app.css; this places it at the top of the map. */
+.canvas-error {
+    flex-shrink: 0;
+    align-self: flex-start;
+    max-width: 40rem;
+    margin: var(--fw-space-3) var(--fw-space-5) 0;
+}
+
+.canvas-empty {
+    max-width: 26rem;
+    margin: auto;
+    padding: var(--fw-space-6);
+    text-align: center;
+    color: var(--fw-pencil);
+}

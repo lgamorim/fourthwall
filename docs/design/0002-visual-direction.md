@@ -347,3 +347,129 @@ Copy changes M19 makes (current → new):
 
 Each of those milestones adds its design plan as a short section here, so this note stays the one
 record of the direction.
+
+## 10. M20 — the canvas: nodes, links, and ground
+
+Approved by the maintainer with the M20 plan on 2026-09-14, before any M20 code was written. §10.2,
+§10.3, and §10.5 were revised after the screenshot pass; §10.6 records each change against the
+approved text.
+
+**Thesis.** The canvas is the reader's pencil map. Every scene is a page drawn in ink on plain
+paper, and *its right edge is how you leave it*: links enter through a straight left edge, and the
+kind is the shape of the way out. Each silhouette is the navigator's kind mark (§5) turned to face
+the reading direction.
+
+### 10.1 Node
+
+```
+   START                                  ← ink tag on the start node's top edge
+  ┌▼──────────────────────────┐           ← ▼ the ribbon, on the selected node only
+  │  A storm gathers over…     >           Linear: the right edge comes to a point — one way
+  │  LINEAR            [img]  /            on, and the link leaves from the tip.
+  └──────────────────────────┘
+
+  ┌───────────────────────────┐
+  │  A fork in the passage…    <           Choice: a notch cut into the right edge — the fork;
+  │  CHOICE                   \            links fan out from its crook.
+  └───────────────────────────┘
+
+  ┌──────────────────────────╮
+  │  You drown in the da…     )            Ending: a half-circle — the full stop; nothing
+  │  ENDING                   ╯            leaves.
+  └──────────────────────────╯
+```
+
+- **Shape.** A `--fw-paper` fill with a 1px `--fw-ink` outline; the left corners carry
+  `--fw-radius-s` (2px), and the left edge is always straight. The point and the notch are 14px deep
+  (`CanvasGeometry.ExitDepth`); the Ending's arc has a radius of half the node's height.
+- **Kind never by colour alone.** Every node is the same ink and paper. Kind reads by silhouette and
+  by the caption word under the label — `CHOICE`, `LINEAR`, `ENDING` in `--fw-text-xs` utility caps,
+  pencil — the same mark-plus-word pair the navigator uses. Kind never reads by shape alone either.
+- **Label.** One line of the scene's text in the utility face, `--fw-text-s`, ink, from
+  `Scenes.Label(scene, maxLength)`: 22 characters, or 15 beside a thumbnail. SVG text does not wrap,
+  so the node's `<title>` carries the full text for hover and assistive technology.
+- **Thumbnail.** When the scene has an image: a 40×40 plate inside the right edge, before the exit
+  shape, `preserveAspectRatio="xMidYMid slice"` through one shared `clipPath` (2px radius) and framed
+  in one pixel of `--fw-rule` — an illustration plate in a gamebook. Images keep their colour; they
+  are the creator's art.
+- **Start marker.** The navigator's ink tag — `START`, paper on ink — sits on the node's top edge at
+  the left, like the tab of an index card. It stays the one inverted tag in the app.
+- **Hover.** Pointer cursor; the fill becomes `--fw-desk`, the same one-step lift the navigator rows
+  use in reverse.
+- **Keyboard.** Each node is a focusable `role="button"` in navigator order; Enter or Space selects.
+  Focus shows the §8 ring: a 2px ribbon outline.
+
+### 10.2 The selected node carries the ribbon
+
+The §4 ribbon, as an SVG `<path>` in `--fw-ribbon`: 8×22 with the same fishtail notch (at 70% of its
+length), hanging from the top edge at x=4 — the margin position it takes in the navigator row,
+which is why the label starts at x=20. The outline thickens to 2px ink. No coloured fill, no glow, no
+bold label (§10.6): the ribbon alone says "you are here". Because SVG path data cannot read `var()`, the ribbon's size is
+mirrored as `CanvasGeometry.RibbonWidth`/`RibbonLength` beside the `--fw-ribbon-*` tokens.
+
+### 10.3 Links
+
+- **Choice.** A 1.5px `--fw-pencil` curve ending in a small solid pencil arrowhead
+  (`#canvas-arrow`, sized in user space so its tip lands exactly on the target's left edge). The
+  label is utility `--fw-text-xs` in pencil over a paper halo (`paint-order: stroke`, an 8px paper
+  stroke with round joins — wide enough to close a word space), cut to 16 characters with the full
+  label in its `<title>`. Labels are drawn in their own layer, above every line and below the
+  nodes, so no link strikes through another link's label where a fan-out's labels stack in the
+  gutter.
+- **Self-loop.** A small arch rising from the node's top edge near its right corner — right of the
+  start tag and the ribbon, away from the right edge every other link leaves from — with its label
+  beside the top of the arch. A second loop on the same scene nests higher and wider.
+- **Follow-up.** The same curve drawn as dots — round caps on a `0 6` dash — the leader dots of a
+  book's contents page ("… turn to"). There is no decision and no label; the dots are the second
+  channel beside the missing label, so a follow-up never reads as an unlabelled choice.
+- Links carry no emphasis in M20. Link selection and its marker arrive in M22, severity markers in
+  M23.
+
+### 10.4 Ground
+
+Plain `--fw-paper`. A grid would bring back the blueprint look §1 rejects, and the reader's map is
+drawn on a blank sheet. An empty story shows a centred invitation inside the canvas, in the body
+face and pencil: "This story has no scenes yet. Add the one it opens with, in the navigator on the
+right."
+
+### 10.5 Geometry
+
+`CanvasGeometry.NodeWidth` 200 and `NodeHeight` 64 (M18's 180×72 were placeholders), `ExitDepth` 14,
+`ThumbnailSize` 40. `AutoLayout` leaves a 120px gutter between columns for link labels
+(`ColumnGap` 320) and 40px between rows (`RowGap` 104). At a 1280px window the main column is
+896px and three columns span 880px, so a three-column story fits without scrolling. Until M21's pan,
+the canvas scrolls: the drawing reaches its furthest node or self-loop label plus a 40px margin
+(`ContentMargin`), the same margin the layout leaves at the origin.
+
+### 10.6 Critique
+
+- *Any graph editor* would give nodes coloured header bars, kind pills, or rounded cards with
+  shadows. Here kind is a silhouette plus a word, in ink; there is one fill for every node.
+- *The notch and the ribbon.* The Choice notch resembles the ribbon's fishtail. Kept: they differ
+  in colour, scale (14px deep on a 64px edge against a 22px strip), and axis, and the family
+  resemblance is honest — both are cuts in paper.
+- *Remove one accessory.* The candidates were the kind caption (it repeats the silhouette) and the
+  thumbnail frame. The caption stays under §5's rule that kind never reads by shape alone; the
+  frame is the first to go if the screenshots read busy.
+
+**What the screenshot pass changed** (screenshots under `docs/design/screenshots/m20/`):
+
+- The first build set the selected node's label in bold, after the navigator row. With the ribbon
+  and the heavier outline that was a third selection cue; the bold went.
+- The self-loop first left and re-entered the right edge, where it ran into the scene's other
+  links and their labels overprinted. It moved to the top edge (§10.3).
+- Link labels drawn with their own line were struck through by later lines, and a 4px halo left
+  lines showing between words. Labels moved to their own layer and the halo widened to 8px.
+- An 80px drawing margin scrolled a three-column story that fits the main column; the margin is
+  now 40px, measured past self-loop labels too.
+- A mouse click drew the browser's default focus rectangle around a node; only keyboard focus
+  draws the ribbon ring now.
+
+### 10.7 Where the canvas's styles live
+
+In `StoryCanvas.razor.css`, `SceneNode.razor.css`, `SceneEdge.razor.css`, and
+`SceneEdgeLabel.razor.css`, each styling only its
+own markup (no `::deep`) and consuming the `app.css` tokens. The recorded deviation that keeps
+component styles in `app.css` exists for a vocabulary shared by role across the dock's components;
+the canvas's rules — SVG strokes, markers, halos — are private to it and grow in M21–M23. So the
+canvas follows `overlays/frontend-blazor.md` instead of widening the exception.
