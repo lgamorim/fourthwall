@@ -498,7 +498,8 @@ map returns to, in the term every image viewer uses.
 ```
 
 In the creator's terms: Show whole story frames every scene, centred, with the map's 40px margin
-(`CanvasGeometry.ContentMargin`), and never enlarges past actual size. Actual size puts the page's
+(`CanvasGeometry.ContentMargin`), and never enlarges past actual size; a story too large for the
+wheel's floor (§11.2) is framed below it. Actual size puts the page's
 origin at the window's top-left corner at 1:1 — the frame M20 drew. A story opens at actual size
 when its whole map fits the window, and showing the whole story otherwise, so the first thing seen
 is the whole shape.
@@ -506,7 +507,8 @@ is the whole shape.
 ### 11.2 Sliding the map and moving a page
 
 The wheel zooms about the cursor, between a quarter and three times actual size, one step per
-notch (×1.2 per 100px of wheel travel; the same step for a keyboard press). Pressing on paper and
+notch (×1.2 per 100px of wheel travel; the same step for a keyboard press). From a frame below the
+quarter the wheel zooms in only: it never jumps the map back to the floor. Pressing on paper and
 dragging slides the map. Pressing on a page and dragging past 4px moves it, and its links follow as
 it moves. Releasing writes that one position and nothing else, so a validation report survives a
 move. A press that never travels 4px stays a click and selects.
@@ -577,3 +579,9 @@ Screenshots under `docs/design/screenshots/m21/`, all at 1280px with the dock op
   than discovered.
 - The zoom step stays at ×1.2: five notches take a page from actual size to two and a half times
   it, and thirteen span the whole range, which felt right under the wheel.
+
+**What the review changed** (PR #27): the error line moved out of the box the shim measures, so a
+showing line never shifts the wheel's anchor or the frame; Show whole story goes below the wheel's
+quarter for a story that needs it (§11.1, §11.2); and the store's two failure messages were
+reworded in the creator's vocabulary, carrying the provider's reason, so §11.4's "names the cause"
+holds for every failure.

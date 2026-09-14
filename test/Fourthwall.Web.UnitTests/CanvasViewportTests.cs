@@ -135,6 +135,52 @@ public class CanvasViewportTests
     }
 
     [Fact]
+    public void Should_GoBelowTheWheelsFloor_When_FittingAVeryLargeStory()
+    {
+        // Arrange — "Show whole story" means the whole story, however large; the quarter is the
+        // wheel's floor, not the frame's.
+        var viewport = new CanvasViewport();
+        viewport.SetSize(800, 600);
+
+        // Act
+        viewport.Fit(new CanvasBounds(0, 0, 16000, 600), padding: 40);
+
+        // Assert
+        Assert.Equal(0.045, viewport.Scale, Tolerance);
+        Assert.Equal(40, viewport.TranslateX, Tolerance);
+    }
+
+    [Fact]
+    public void Should_NotZoomOutFurther_When_AlreadyBelowTheFloor()
+    {
+        // Arrange — a wheel notch out from a frame under the floor must not jump the map back in.
+        var viewport = new CanvasViewport();
+        viewport.SetSize(800, 600);
+        viewport.Fit(new CanvasBounds(0, 0, 16000, 600), padding: 40);
+
+        // Act
+        viewport.ZoomAt(400, 300, steps: -1);
+
+        // Assert
+        Assert.Equal(0.045, viewport.Scale, Tolerance);
+    }
+
+    [Fact]
+    public void Should_ZoomIn_When_BelowTheFloor()
+    {
+        // Arrange
+        var viewport = new CanvasViewport();
+        viewport.SetSize(800, 600);
+        viewport.Fit(new CanvasBounds(0, 0, 16000, 600), padding: 40);
+
+        // Act
+        viewport.ZoomAt(400, 300, steps: 1);
+
+        // Assert
+        Assert.Equal(0.045 * CanvasViewport.ZoomStep, viewport.Scale, Tolerance);
+    }
+
+    [Fact]
     public void Should_KeepTheView_When_FittingBeforeTheWindowIsMeasured()
     {
         // Arrange

@@ -16,7 +16,8 @@ namespace Fourthwall.Web.Components.Canvas;
 public sealed class CanvasViewport
 {
     /// <summary>
-    /// The furthest the map zooms out: a quarter of actual size.
+    /// The furthest the wheel zooms out: a quarter of actual size. Framing a very large story can
+    /// take the map below it; from there the wheel only zooms in.
     /// </summary>
     public const double MinScale = 0.25;
 
@@ -96,12 +97,14 @@ public sealed class CanvasViewport
     /// <summary>
     /// Zooms by a number of steps (positive in, negative out, fractional for a wheel's partial
     /// notch), keeping the canvas point under the given window point where it is. The scale stops
-    /// at <see cref="MinScale"/> and <see cref="MaxScale"/>.
+    /// at <see cref="MinScale"/> and <see cref="MaxScale"/>; a map already framed below the floor
+    /// stays where it is rather than jumping back in.
     /// </summary>
     public void ZoomAt(double screenX, double screenY, double steps)
     {
         var anchor = ToWorld(screenX, screenY);
-        Scale = Math.Clamp(Scale * Math.Pow(ZoomStep, steps), MinScale, MaxScale);
+        var floor = Math.Min(MinScale, Scale);
+        Scale = Math.Clamp(Scale * Math.Pow(ZoomStep, steps), floor, MaxScale);
         TranslateX = screenX - (anchor.X * Scale);
         TranslateY = screenY - (anchor.Y * Scale);
     }
@@ -122,8 +125,9 @@ public sealed class CanvasViewport
 
     /// <summary>
     /// Frames the given content in the window: centred, with <paramref name="padding"/> pixels of
-    /// room on every side, zoomed out as far as needed and never past actual size. Empty bounds
-    /// return the map to actual size at the origin; an unmeasured window leaves the view alone.
+    /// room on every side, zoomed out as far as needed — below the wheel's floor if the story is
+    /// that large — and never past actual size. Empty bounds return the map to actual size at the
+    /// origin; an unmeasured window leaves the view alone.
     /// </summary>
     public void Fit(CanvasBounds bounds, double padding)
     {
@@ -138,8 +142,7 @@ public sealed class CanvasViewport
             return;
         }
 
-        var scale = Math.Min(1, Math.Min((Width - (2 * padding)) / bounds.Width, (Height - (2 * padding)) / bounds.Height));
-        Scale = Math.Clamp(scale, MinScale, MaxScale);
+        Scale = Math.Min(1, Math.Min((Width - (2 * padding)) / bounds.Width, (Height - (2 * padding)) / bounds.Height));
         TranslateX = ((Width - (bounds.Width * Scale)) / 2) - (bounds.Left * Scale);
         TranslateY = ((Height - (bounds.Height * Scale)) / 2) - (bounds.Top * Scale);
     }
