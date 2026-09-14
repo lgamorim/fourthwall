@@ -33,30 +33,7 @@
         }
     </div>
 
-    <SectionContent SectionId="LayoutSections.Dock">
-        @* Story-level, so it sits above the detail of whichever scene is selected. *@
-        <ValidationPanel OnSceneSelected="OnSceneSelected" />
-
-        <section class="navigator" aria-label="Scenes">
-            <h2>Scenes</h2>
-            <SceneList Story="story"
-                       SelectedSceneId="_selectedSceneId"
-                       SelectedSceneIdChanged="OnSceneSelected"
-                       OnChanged="SaveAsync" />
-        </section>
-
-        <section class="inspector" aria-label="Selected scene">
-            @if (SelectedScene is { } scene)
-            {
-                <SceneInspector Scene="scene" OnChanged="SaveAsync" />
-                <SceneImage Scene="scene" OnChanged="SaveAsync" />
-                <SceneTransitions Story="story" Scene="scene" OnChanged="SaveAsync" />
-            }
-            else
-            {
-                <h2>Scene</h2>
-                <p class="inspector-empty">Pick a scene in the navigator to edit its text, kind, image, and links.</p>
-            }
-        </section>
-    </SectionContent>
+    @* The dock content is one fragment for the page's whole life: the outlet rebuilds whatever it
+       holds when handed a different one. See _dock in the code-behind. *@
+    <SectionContent SectionId="LayoutSections.Dock" ChildContent="_dock" />
 }

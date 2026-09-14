@@ -2,14 +2,27 @@ using Fourthwall.Application;
 using Fourthwall.Domain;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fourthwall.Web.Components.Pages;
 
 public partial class StoryEditor : IDisposable
 {
+    private readonly RenderFragment _dock;
     private SceneId? _selectedSceneId;
     private string _title = string.Empty;
     private string? _error;
+
+    public StoryEditor()
+    {
+        // SectionOutlet keys what it renders by the RenderFragment it is handed, so a different
+        // delegate tears down and recreates every component in the dock. Markup written inline
+        // under <SectionContent> compiles to a new lambda on every render of this page, which wiped
+        // the validation report, the scene draft, and any pending prompt whenever a scene was
+        // selected. One delegate, created once and reading the page's current state each time it
+        // runs, keeps the key stable; the outlet still re-renders it, so the dock sees every change.
+        _dock = RenderDock;
+    }
 
     // default!: the framework assigns every [Inject] property before any member of the component
     // runs, so these are never observed null.
@@ -18,9 +31,6 @@ public partial class StoryEditor : IDisposable
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
-
-    private Scene? SelectedScene =>
-        _selectedSceneId is { } id ? Workspace.Current?.FindScene(id) : null;
 
     public void Dispose()
     {
@@ -40,6 +50,25 @@ public partial class StoryEditor : IDisposable
         }
 
         _title = Workspace.Current.Title;
+    }
+
+    private void RenderDock(RenderTreeBuilder builder)
+    {
+        // The outlet runs this whenever the layout re-renders, not only when this page does. Closing
+        // the story re-renders the layout but sends this page away without rendering it, so the
+        // page's own check never sees that render.
+        if (Workspace.Current is not { } story)
+        {
+            return;
+        }
+
+        builder.OpenComponent<EditorDock>(0);
+        builder.AddComponentParameter(1, nameof(EditorDock.Story), story);
+        builder.AddComponentParameter(2, nameof(EditorDock.SelectedSceneId), _selectedSceneId);
+        builder.AddComponentParameter(
+            3, nameof(EditorDock.OnSceneSelected), EventCallback.Factory.Create<SceneId?>(this, OnSceneSelected));
+        builder.AddComponentParameter(4, nameof(EditorDock.OnChanged), EventCallback.Factory.Create(this, SaveAsync));
+        builder.CloseComponent();
     }
 
     private void OnSceneSelected(SceneId? sceneId) => _selectedSceneId = sceneId;
