@@ -461,6 +461,11 @@ public partial class StoryCanvas : IAsyncDisposable
             return;
         }
 
+        // The page reports its own save failures and the callback carries no result, so this save
+        // runs even after a failed story save. What keeps it from recording a position for an
+        // unsaved scene is the database: the connection enables foreign keys (Foreign Keys=True in
+        // SqliteConnectionFactory), editor_scene_layout.scene_id references scenes(id), and the
+        // store reports the violation as "The scene isn't in the saved story yet."
         await SavePositionAsync(scene.Id, position);
         if (!_disposal.IsCancellationRequested)
         {
@@ -494,7 +499,12 @@ public partial class StoryCanvas : IAsyncDisposable
 
         PlaceScenes();
         await OnChanged.InvokeAsync();
-        await SelectAsync(source.Id, edge: null);
+
+        // The story can close while the page saves; as in AddSceneAtAsync, nobody is left to select for.
+        if (!_disposal.IsCancellationRequested)
+        {
+            await SelectAsync(source.Id, edge: null);
+        }
     }
 
     private async Task SavePositionAsync(SceneId sceneId, ScenePosition position)

@@ -1182,6 +1182,52 @@ public class StoryCanvasTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_AddNothing_When_PositionsAreStillLoading()
+    {
+        // Arrange — until the story's positions arrive there is no map to place a scene on; a scene
+        // placed now would be laid out again when the saved positions land.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.LoadGate = new TaskCompletionSource();
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert
+        Assert.Single(story.Scenes);
+        Assert.Equal(0, changed);
+        Assert.Equal(0, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_NotSelectTheSource_When_TheCanvasIsDisposedWhileTheLinkIsSaved()
+    {
+        // Arrange — the story can close while the page saves a link drawn on the map.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var storySave = new TaskCompletionSource();
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id, onChangedAsync: () => storySave.Task);
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        var releasing = cut.Instance.UpAsync(240, 100);
+
+        // Act
+        await DisposeComponentsAsync();
+        storySave.SetResult();
+        await releasing;
+
+        // Assert — nobody is left to select for.
+        Assert.Single(fork.Choices);
+        Assert.Null(selected);
+    }
+
+    [Fact]
     public async Task Should_SaveTheStoryBeforeThePosition_When_ASceneIsAdded()
     {
         // Arrange — a position names its scene, so the scene's row must be saved first.
@@ -1211,7 +1257,7 @@ public class StoryCanvasTests : BunitContext
     [Fact]
     public async Task Should_ReportTheFailure_When_ThePositionSaveIsRejected()
     {
-        // Arrange — the story save failed on the page, so the store has no row for the new scene.
+        // Arrange — the store has no row for the new scene and rejects its position.
         var story = new Story("The Wreck");
         story.AddScene(SceneKind.Linear, "A storm gathers");
         SceneId? selected = null;
