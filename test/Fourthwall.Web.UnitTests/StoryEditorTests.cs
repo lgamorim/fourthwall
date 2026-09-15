@@ -81,10 +81,53 @@ public class StoryEditorTests : BunitContext
         // Act
         var cut = RenderEditor();
 
-        // Assert — nothing to draw yet, so the canvas points at the one thing to do.
+        // Assert — nothing to draw yet, so the canvas points at the one thing to do, by its name.
         Assert.Equal(
-            "This story has no scenes yet. Add the one it opens with, in the navigator on the right.",
+            "This story has no scenes yet. Choose Add scene above to write the one it opens with.",
             cut.Find(".canvas .canvas-empty").TextContent.Trim());
+        Assert.Equal("Add scene", cut.Find(".editor-toolbar #canvas-add-scene").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Should_SaveAndOpenTheNewScene_When_AddSceneIsClickedInTheToolbar()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        var cut = RenderEditor();
+        await cut.FindComponent<StoryCanvas>().Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.Find("#canvas-add-scene").ClickAsync(new MouseEventArgs());
+
+        // Assert — saved before its place, selected, and open in the inspector with its prompt.
+        var added = Assert.Single(story.Scenes);
+        Assert.Equal(1, _workspace.SaveCount);
+        Assert.Equal(1, _workspace.LayoutStore.SaveCount);
+        Assert.Contains("node-selected", NodeFor(cut, added.Id).ClassList);
+        Assert.Equal("What happens in this scene?", cut.Find("#inspector-text").GetAttribute("placeholder"));
+    }
+
+    [Fact]
+    public async Task Should_ShowTheTransitionsEditor_When_ALinkIsWiredOnTheCanvas()
+    {
+        // Arrange — the fork opens the first column at (40, 40); the deck is placed at (360, 40).
+        var story = await OpenStoryAsync();
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var cut = RenderEditor();
+        var canvas = cut.FindComponent<StoryCanvas>().Instance;
+
+        // Act — from the fork's port (240, 72) into the deck.
+        cut.Find($".canvas-node[data-scene-id='{fork.Id.Value}'] .node-port")
+            .PointerDown(new PointerEventArgs { Button = 0, PointerId = 1, ClientX = 100, ClientY = 100 });
+        await canvas.MoveAsync(240, 100);
+        await canvas.UpAsync(240, 100);
+
+        // Assert — saved, and the new row waits in the dock to be renamed.
+        Assert.Equal(1, _workspace.SaveCount);
+        Assert.Equal("Name this choice", cut.Find(".choice-row .choice-label").GetAttribute("value"));
+        Assert.Contains("node-selected", NodeFor(cut, fork.Id).ClassList);
     }
 
     [Fact]

@@ -77,6 +77,8 @@ public partial class StoryEditor : IDisposable
 
     private void OnSceneSelected(SceneId? sceneId) => _selectedSceneId = sceneId;
 
+    private Task AddSceneAsync() => _canvas?.AddSceneAsync() ?? Task.CompletedTask;
+
     private async Task RenameAsync()
     {
         _error = null;

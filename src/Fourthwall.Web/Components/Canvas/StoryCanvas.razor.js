@@ -113,13 +113,14 @@ function onPointerUp(session, event) {
         return;
     }
 
-    // A cancel or a lost capture carries no useful coordinates; the release ends where the pointer
-    // was last seen.
+    // A cancel or a lost capture carries no useful coordinates; the gesture ends where the pointer
+    // was last seen. A cancel is told apart, because a link being drawn is abandoned rather than
+    // dropped; C# decides what it means for every other gesture.
     const point = event.type === "pointerup" ? [event.clientX, event.clientY] : session.lastPoint;
     session.pointerId = null;
     session.lastPoint = null;
     session.pending.delete("MoveAsync");
-    invoke(session, "UpAsync", point);
+    invoke(session, event.type === "pointercancel" ? "CancelAsync" : "UpAsync", point);
 }
 
 function queue(session, method, args) {
