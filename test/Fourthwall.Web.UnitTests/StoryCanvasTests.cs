@@ -1182,6 +1182,41 @@ public class StoryCanvasTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_SayTheMapIsReady_When_TheStorysPositionsHaveLoaded()
+    {
+        // Arrange — the page enables "Add scene" only for the story whose map is drawn.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.LoadGate = new TaskCompletionSource();
+        Story? ready = null;
+        var cut = RenderCanvas(story, onReady: loaded => ready = loaded);
+        var readyWhileLoading = ready;
+
+        // Act
+        await cut.InvokeAsync(() => _layout.LoadGate.SetResult());
+
+        // Assert
+        Assert.Null(readyWhileLoading);
+        Assert.Same(story, ready);
+    }
+
+    [Fact]
+    public void Should_SayTheMapIsReady_When_ThePositionsCouldNotBeRead()
+    {
+        // Arrange — a failed read still lays every scene out afresh, so the map can take a new scene.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.FailNextLoad = new IOException("The story folder can't be read.");
+        Story? ready = null;
+
+        // Act
+        RenderCanvas(story, onReady: loaded => ready = loaded);
+
+        // Assert
+        Assert.Same(story, ready);
+    }
+
+    [Fact]
     public async Task Should_AddNothing_When_PositionsAreStillLoading()
     {
         // Arrange — until the story's positions arrive there is no map to place a scene on; a scene
@@ -1762,12 +1797,14 @@ public class StoryCanvasTests : BunitContext
         SceneId? selected = null,
         Action<SceneId?>? onSelected = null,
         Action? onChanged = null,
-        Func<Task>? onChangedAsync = null) =>
+        Func<Task>? onChangedAsync = null,
+        Action<Story>? onReady = null) =>
         Render<StoryCanvas>(parameters => parameters
             .Add(p => p.Story, story)
             .Add(p => p.Layout, _layout)
             .Add(p => p.SelectedSceneId, selected)
             .Add(p => p.SelectedSceneIdChanged, onSelected ?? (_ => { }))
+            .Add(p => p.OnReady, onReady ?? (_ => { }))
             .Add(p => p.OnChanged, onChangedAsync ?? (() =>
             {
                 onChanged?.Invoke();

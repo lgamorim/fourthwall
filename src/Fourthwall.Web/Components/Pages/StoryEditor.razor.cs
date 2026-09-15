@@ -14,6 +14,10 @@ public partial class StoryEditor : IDisposable
     // The toolbar's view controls act on the canvas; it is null while no story is open.
     private StoryCanvas? _canvas;
     private SceneId? _selectedSceneId;
+
+    // The story whose map the canvas has drawn from its saved positions. "Add scene" waits for it,
+    // and a story opened later waits for its own.
+    private Story? _mapReadyFor;
     private string _title = string.Empty;
     private string? _error;
 
@@ -76,6 +80,8 @@ public partial class StoryEditor : IDisposable
     }
 
     private void OnSceneSelected(SceneId? sceneId) => _selectedSceneId = sceneId;
+
+    private void OnMapReady(Story story) => _mapReadyFor = story;
 
     private Task AddSceneAsync() => _canvas?.AddSceneAsync() ?? Task.CompletedTask;
 

@@ -542,6 +542,51 @@ public class StoryEditorTests : BunitContext
         Assert.True(cut.Find("#canvas-reset").HasAttribute("disabled"));
     }
 
+    [Fact]
+    public async Task Should_DisableAddScene_When_ThePositionsAreStillLoading()
+    {
+        // Arrange — until the story's places on the map arrive there is no map to add a scene to,
+        // which is better said than discovered (design note §12.4).
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _workspace.LayoutStore.LoadGate = new TaskCompletionSource();
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert
+        Assert.True(cut.Find("#canvas-add-scene").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Should_EnableAddScene_When_ThePositionsHaveLoaded()
+    {
+        // Arrange
+        var story = await OpenStoryAsync();
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _workspace.LayoutStore.LoadGate = new TaskCompletionSource();
+        var cut = RenderEditor();
+
+        // Act
+        await cut.InvokeAsync(() => _workspace.LayoutStore.LoadGate.SetResult());
+
+        // Assert
+        Assert.False(cut.Find("#canvas-add-scene").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Should_EnableAddScene_When_AnEmptyStoryIsOpen()
+    {
+        // Arrange — an empty story has no positions to wait for once the read returns.
+        await OpenStoryAsync();
+
+        // Act
+        var cut = RenderEditor();
+
+        // Assert — the invitation points at it, so it must work.
+        Assert.False(cut.Find("#canvas-add-scene").HasAttribute("disabled"));
+    }
+
     private static async Task DragNodeAsync(IRenderedComponent<DockHost> cut, SceneId sceneId)
     {
         var canvas = cut.FindComponent<StoryCanvas>().Instance;

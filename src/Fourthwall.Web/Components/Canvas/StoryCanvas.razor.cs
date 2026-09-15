@@ -93,6 +93,13 @@ public partial class StoryCanvas : IAsyncDisposable
     [Parameter]
     public EventCallback OnChanged { get; set; }
 
+    /// <summary>
+    /// Raised with the story once its positions have been read (or could not be, and its scenes
+    /// were laid out afresh), so the page knows the map can take a new scene.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Story> OnReady { get; set; }
+
     [Inject]
     private IStoryGraphFactory GraphFactory { get; set; } = default!;
 
@@ -334,6 +341,7 @@ public partial class StoryCanvas : IAsyncDisposable
             _loadError = loadError;
             _saveError = null;
             _positionsStory = story;
+            await OnReady.InvokeAsync(story);
         }
 
         // Still loading this story's positions: placing its scenes now would flash a layout that
