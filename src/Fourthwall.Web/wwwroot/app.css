@@ -367,6 +367,7 @@ button:disabled {
 #scene-create-submit,
 #validate,
 #choice-add-submit,
+#canvas-add-scene,
 .inspector-kind-confirm {
     padding: var(--fw-space-2) var(--fw-space-4);
     border: 1px solid var(--fw-ink);
@@ -382,6 +383,7 @@ button:disabled {
 #scene-create-submit:hover:enabled,
 #validate:hover:enabled,
 #choice-add-submit:hover:enabled,
+#canvas-add-scene:hover:enabled,
 .inspector-kind-confirm:hover:enabled {
     border-color: var(--fw-ribbon);
     background: var(--fw-ribbon);
@@ -634,8 +636,16 @@ button:disabled {
    (docs/design/0002-visual-direction.md §11.1). */
 .canvas-controls {
     display: flex;
+    align-items: baseline;
     gap: var(--fw-space-5);
     margin-left: auto;
+}
+
+/* The one story action in the toolbar: the ink button, smaller than a form's, standing apart from
+   the view words so the two never read as one phrase (§12.4). */
+#canvas-add-scene {
+    margin-right: calc(var(--fw-space-6) - var(--fw-space-5));
+    padding: var(--fw-space-1) var(--fw-space-3);
 }
 
 .editor-toolbar .editor-error {

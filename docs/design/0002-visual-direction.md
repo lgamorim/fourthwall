@@ -585,3 +585,127 @@ showing line never shifts the wheel's anchor or the frame; Show whole story goes
 quarter for a story that needs it (§11.1, §11.2); and the store's two failure messages were
 reworded in the creator's vocabulary, carrying the provider's reason, so §11.4's "names the cause"
 holds for every failure.
+
+## 12. M22 — authoring on the map
+
+Approved by the maintainer with the M22 plan on 2026-09-15, before any M22 code was written. §12.3
+was revised after the screenshot pass; §12.8 records the change against the approved text.
+
+**Thesis.** The pencil map becomes something the creator draws on. A page's right edge is already
+how you leave it (§10); M22 puts a pencil point on that edge, and drawing from it pulls a ribbon
+to where the reader goes next. The ribbon already means "you are here" (§4); while a link is
+being drawn it means "this is the link you are making", and once dropped the line becomes an
+ordinary pencil link.
+
+### 12.1 The port
+
+```
+  ┌──────────────────────────┐              ┌───────────────────────────┐
+  │  A storm gathers…         >◯            │  A fork in the passage…    ◯   ← in the notch's mouth
+  │  LINEAR                  /              │  CHOICE                   \
+  └──────────────────────────┘              └───────────────────────────┘
+   at rest: ring, paper fill, 1.5px ink       hover on the port: an ink disc, larger
+```
+
+- **Where.** At the node's right centre, where every link already leaves (§10.3): the tip of the
+  Linear point, the mouth of the Choice notch. An Ending has no port — nothing leaves a full stop.
+- **At rest** a ring of radius 4 (`CanvasGeometry.PortRadius`) in 1.5px ink on paper: visible
+  without hovering, no bigger than a pencil dot. **Hovered** it fills with ink and grows to radius
+  6, with the `crosshair` cursor. An invisible circle of radius 10 takes the press, so the dot is
+  easy to catch.
+- Its `<title>` reads "Drag to a scene to link it". While a link is drawn from it, the source's
+  port stays filled.
+
+### 12.2 The draft link
+
+- A 1.5px line in `--fw-ribbon` ending in a ribbon arrowhead (`#canvas-arrow-draft`). It previews
+  what it will become: from a Choice, the solid curve; from a Linear scene, §10.3's leader dots.
+- Over paper it follows the pointer along the same curve a link ending there would take. **Over a
+  scene it can link to, it snaps** to that scene's left edge at the parallel offset the new link
+  will take, so what is shown is exactly the link that will be made.
+- It is drawn above every line and below the labels and the pages.
+
+### 12.3 The drop target
+
+The page under the snapped tip carries `node-drop-target`: a 2px ribbon outline, so both ends of
+the gesture are in ribbon. The source is never a target — a link
+back into its own scene stays an inspector action — so dragging over it neither snaps nor
+outlines.
+
+### 12.4 Adding a scene
+
+```
+│ The Wreck                              [Add scene]     Show whole story   Actual size │
+```
+
+- **Add scene** — the §7 action name, the navigator's button's words — is the small ink primary
+  button: unlike the two view words (§11.1) it changes the story. It stands left of them, a
+  `--fw-space-6` gap apart, so the story action and the view actions never read as one phrase.
+  While a story's places on the map are still being read it is disabled at half opacity, as the
+  view words are with nothing to show: there is no map to add to yet, which is better said than
+  discovered (decided in the review of the M22 PR).
+- **Double-clicking the paper** adds a scene centred on that point; the button centres it in the
+  window. Both add a Linear scene with no text. Overlap with a page already there is left for the
+  creator to drag apart.
+- **First appearance.** No animation (§11.6). The new page arrives selected, carrying the ribbon,
+  and the inspector opens on it.
+- A page with no text reads **Write this scene**, in pencil italic, until text exists: a prompt,
+  not a name. Its accessible name says the same ("Write this scene, Linear"), so what a screen
+  reader announces, or a voice command speaks, is what is shown. The inspector's text box asks
+  "What happens in this scene?". The navigator's rows and the target dropdowns keep "(no text)" —
+  a list needs a name to pick, not an instruction.
+- **A new choice** is labelled **Name this choice**: the domain accepts no blank label, the words
+  tell the creator what the label wants, and at 16 characters it shows uncut (§10.3). The link's
+  scene is selected after the drop, so its row waits in the dock to be renamed.
+- The empty story's invitation points at the button: "This story has no scenes yet. Choose Add
+  scene above to write the one it opens with."
+
+### 12.5 The selected link
+
+Clicking a link's line or its label selects the link and its scene: the line turns ribbon — 2px on
+a choice, heavier dots on a follow-up — and ends in `#canvas-arrow-selected`, and a choice's label
+turns ribbon. The scene's page carries its ribbon at the same time. The link's highlight goes as
+soon as the selection moves off its scene. Each line takes a transparent 12px stroke for the
+press, and links take the `pointer` cursor.
+
+### 12.6 Keyboard
+
+Ports and links are for the pointer. Every link the map can draw, the inspector's transitions
+editor makes too (Add choice, Flows into), with the keyboard alone; links are not focusable, and a
+keyboard creator reaches a link through its scene. Nothing in the story needs a pointer — stated
+against §8 rather than hidden, as §11.5 did for moving a page. **Add scene** is a button, and
+Escape abandons a link being drawn.
+
+### 12.7 Critique
+
+Any graph editor would put coloured dots on both sides of every node, a floating "+" button,
+snap-to-grid, and a rubber band that ignores what kind of link it is. Here: one port on the exit
+edge, one word in the toolbar, and a draft that previews the link's kind and snaps to the exact
+link it will make. Remove-one-accessory candidates for the screenshot pass: the source's filled
+port while drawing, and the drop target's ribbon outline if the snap alone reads.
+
+### 12.8 What the screenshot pass changed
+
+Screenshots under `docs/design/screenshots/m22/`, all at 1280px with the dock open.
+
+- **Removed: the drop target's desk fill.** The first build lifted the target with the desk fill
+  under its ribbon outline. The source page is held under the pointer while a link is drawn, so
+  it already carries the hover's desk fill, and the two lifted pages read as one gesture with no
+  direction. The target keeps only the ribbon outline; with the snapped ribbon draft ending at it,
+  the pair says "from here, to there".
+- **Kept: the drop target's outline.** With the fill gone it is the only mark on the receiving
+  page; the snapped arrowhead lands on a left edge that other links into that page reach too, so
+  the arrowhead alone does not single the page out.
+- **Kept: the source's filled port.** In a mouse drag the port stays filled anyway, because the
+  captured pointer keeps it hovered; with a pen or a finger there is no hover, and the filled port
+  is the only mark at the source.
+- **Accepted: a short draft bows.** Near its own port, a draft over paper takes the S-shaped bow
+  that any link doubling back takes (§11.8), since it follows the same curve. Special-casing it
+  would break "what is shown is the link that will be made" the moment it snaps; it straightens as
+  soon as the pointer moves away.
+- **Kept: Add scene as the ink button.** Under the ink header it reads as the toolbar's one story
+  action, not as a second header block.
+- **Noted, not changed:** a scene added or selected on the map opens the inspector below the fold
+  of the dock when the navigator is long, so the dock must be scrolled to the text box. This is the
+  dock's behaviour from M19 for any selection; bringing the inspector into view is left for a later
+  milestone.

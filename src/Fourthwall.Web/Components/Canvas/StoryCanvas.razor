@@ -1,6 +1,7 @@
 @* The story as a pencil map: plain paper, pages for scenes, pencil for links
    (docs/design/0002-visual-direction.md §10). The map is a sheet larger than the window: the
-   viewport slides and zooms it, and a page can be moved by hand (§11). *@
+   viewport slides and zooms it, and a page can be moved by hand (§11). The creator adds scenes and
+   draws links on it (§12). *@
 <div class="canvas @HostStateClass">
     @if (Error is { } error)
     {
@@ -13,20 +14,34 @@
     <div class="canvas-sheet" @ref="_host">
     @if (Story.Scenes.Count == 0)
     {
-        <p class="canvas-empty">This story has no scenes yet. Add the one it opens with, in the navigator on the right.</p>
+        <p class="canvas-empty">This story has no scenes yet. Choose Add scene above to write the one it opens with.</p>
     }
     else if (_model is { } model)
     {
         @* The map is a focusable region: the arrow keys slide it and + / - zoom it (§11.5). A press
-           on the paper slides it with the pointer; nodes stop their own presses from reaching here. *@
+           on the paper slides it with the pointer, and a double-click on it adds a scene there;
+           nodes and links stop their own presses and double-clicks from reaching here. *@
         <svg class="canvas-svg"
              role="group"
              aria-label="Map of the story"
              tabindex="0"
              @onpointerdown="OnGroundPointerDown"
+             @ondblclick="OnGroundDoubleClickAsync"
              @onkeydown="OnKeyDown">
             <defs>
                 <marker id="canvas-arrow" class="canvas-arrow"
+                        viewBox="0 0 8 8" refX="8" refY="4"
+                        markerWidth="8" markerHeight="8"
+                        markerUnits="userSpaceOnUse" orient="auto">
+                    <path d="M 0,0 L 8,4 L 0,8 Z" />
+                </marker>
+                <marker id="canvas-arrow-selected" class="canvas-arrow-selected"
+                        viewBox="0 0 8 8" refX="8" refY="4"
+                        markerWidth="8" markerHeight="8"
+                        markerUnits="userSpaceOnUse" orient="auto">
+                    <path d="M 0,0 L 8,4 L 0,8 Z" />
+                </marker>
+                <marker id="canvas-arrow-draft" class="canvas-arrow-draft"
                         viewBox="0 0 8 8" refX="8" refY="4"
                         markerWidth="8" markerHeight="8"
                         markerUnits="userSpaceOnUse" orient="auto">
@@ -44,14 +59,25 @@
                 <g class="canvas-edges">
                     @foreach (var edge in model.Edges)
                     {
-                        <SceneEdge @key="edge.Key" Edge="edge" />
+                        <SceneEdge @key="edge.Key"
+                                   Edge="edge"
+                                   IsSelected="IsSelectedEdge(edge)"
+                                   OnSelected="() => ClickEdgeAsync(edge.Key)" />
                     }
                 </g>
+                @* The link being drawn: over every line, under the labels and the pages (§12.2). *@
+                @if (DraftPath is { } draftPath)
+                {
+                    <path class="@DraftClass" d="@draftPath" marker-end="url(#canvas-arrow-draft)" />
+                }
                 @* Every label above every line, so a later link never strikes through an earlier label. *@
                 <g class="canvas-edge-labels">
                     @foreach (var edge in model.Edges)
                     {
-                        <SceneEdgeLabel @key="edge.Key" Edge="edge" />
+                        <SceneEdgeLabel @key="edge.Key"
+                                        Edge="edge"
+                                        IsSelected="IsSelectedEdge(edge)"
+                                        OnSelected="() => ClickEdgeAsync(edge.Key)" />
                     }
                 </g>
                 <g class="canvas-nodes">
@@ -61,8 +87,12 @@
                                    Node="node"
                                    IsSelected="node.Scene.Id == SelectedSceneId"
                                    IsDragging="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DraggingNode"
-                                   OnSelected="() => SelectAsync(node.Scene.Id)"
+                                   IsDropTarget="node.Scene.Id == _interaction.DropTarget"
+                                   IsDrawingSource="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DrawingEdge"
+                                   OnSelected="() => SelectAsync(node.Scene.Id, null)"
+                                   OnClicked="() => ClickSceneAsync(node.Scene.Id)"
                                    OnPointerDown="args => OnNodePointerDown(node.Scene.Id, args)"
+                                   OnPortPointerDown="args => OnPortPointerDown(node.Scene.Id, args)"
                                    OnFocused="() => OnNodeFocused(node.Scene.Id)" />
                     }
                 </g>

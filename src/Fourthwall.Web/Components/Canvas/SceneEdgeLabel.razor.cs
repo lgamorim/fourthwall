@@ -12,4 +12,16 @@ public partial class SceneEdgeLabel
     [Parameter]
     [EditorRequired]
     public CanvasEdge Edge { get; set; } = default!;
+
+    /// <summary>
+    /// Whether this label's link is the selected one.
+    /// </summary>
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Raised when the label is clicked; the canvas decides whether the click selects its link.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSelected { get; set; }
 }

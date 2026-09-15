@@ -1,5 +1,16 @@
-/* A link's line: a pencil curve for a choice, leader dots for a follow-up.
-   Direction: docs/design/0002-visual-direction.md §10.3. */
+/* A link's line: a pencil curve for a choice, leader dots for a follow-up, ribbon while selected.
+   Direction: docs/design/0002-visual-direction.md §10.3 and §12.5. */
+
+.canvas-edge {
+    cursor: pointer;
+}
+
+/* A 1.5px line is hard to hit; this invisible stroke along it takes the click. */
+.edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 12px;
+}
 
 .edge-line {
     fill: none;
@@ -11,4 +22,13 @@
     stroke-width: 2.5px;
     stroke-dasharray: 0 6;
     stroke-linecap: round;
+}
+
+.edge-selected .edge-line {
+    stroke: var(--fw-ribbon);
+    stroke-width: 2px;
+}
+
+.edge-follow-up.edge-selected .edge-line {
+    stroke-width: 3px;
 }

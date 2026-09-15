@@ -25,6 +25,10 @@ public partial class StoryCanvas : IAsyncDisposable
     private const double KeyboardPanStep = 40;
     private const double WheelNotch = 100;
 
+    // The domain accepts no blank choice label, so a choice drawn on the map is labelled with what
+    // the label wants from the creator (design note §12.4); its scene is selected to rename it.
+    private const string DefaultChoiceLabel = "Name this choice";
+
     private static readonly string ThumbnailX = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailX);
     private static readonly string ThumbnailY = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailY);
     private static readonly string ThumbnailSize = CanvasGeometry.Invariant(CanvasGeometry.ThumbnailSize);
@@ -49,6 +53,10 @@ public partial class StoryCanvas : IAsyncDisposable
     // updates one entry and rebuilds the model without running the layout again.
     private Dictionary<SceneId, ScenePosition> _placed = [];
     private CanvasModel? _model;
+
+    // The link the creator last clicked. Page selection stays a scene; the link keeps its ribbon
+    // only while its scene is the selected one.
+    private CanvasEdgeKey? _selectedEdge;
     private string? _loadError;
     private string? _saveError;
     private PersistingComponentStateSubscription _persisting;
@@ -78,6 +86,20 @@ public partial class StoryCanvas : IAsyncDisposable
     [Parameter]
     public EventCallback<SceneId?> SelectedSceneIdChanged { get; set; }
 
+    /// <summary>
+    /// Raised after the canvas changes the story — a scene added, a link drawn — so the page saves
+    /// it. Awaited before a new scene's position is saved, which needs the scene's saved row.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    /// <summary>
+    /// Raised with the story once its positions have been read (or could not be, and its scenes
+    /// were laid out afresh), so the page knows the map can take a new scene.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Story> OnReady { get; set; }
+
     [Inject]
     private IStoryGraphFactory GraphFactory { get; set; } = default!;
 
@@ -95,8 +117,41 @@ public partial class StoryCanvas : IAsyncDisposable
     {
         CanvasInteractionMode.Panning => "canvas-panning",
         CanvasInteractionMode.DraggingNode => "canvas-dragging",
+        CanvasInteractionMode.DrawingEdge => "canvas-drawing",
         _ => null,
     };
+
+    // The link being drawn: along the pointer over paper, and snapped to exactly the link it will
+    // make over a scene it can link to (design note §12.2).
+    private string? DraftPath
+    {
+        get
+        {
+            if (_interaction.Mode != CanvasInteractionMode.DrawingEdge
+                || _interaction.PressedScene is not { } sourceId
+                || _interaction.DraftEnd is not { } end
+                || !_placed.TryGetValue(sourceId, out var from))
+            {
+                return null;
+            }
+
+            if (_interaction.DropTarget is { } targetId && _placed.TryGetValue(targetId, out var to))
+            {
+                // A new choice takes the next offset among its scene's choices to that target; a
+                // follow-up replaces the one there is, so it is always the first.
+                var parallelIndex = Story.FindScene(sourceId)?.Choices.Count(choice => choice.TargetSceneId == targetId) ?? 0;
+                return CanvasGeometry.EdgePath(from, to, parallelIndex);
+            }
+
+            return CanvasGeometry.DraftPath(from, end);
+        }
+    }
+
+    // The draft previews what it will become: a choice's line, or a follow-up's leader dots.
+    private string DraftClass =>
+        _interaction.PressedScene is { } sourceId && Story.FindScene(sourceId)?.Kind == SceneKind.Linear
+            ? "canvas-ghost-edge ghost-follow-up"
+            : "canvas-ghost-edge ghost-choice";
 
     public async ValueTask DisposeAsync()
     {
@@ -159,29 +214,40 @@ public partial class StoryCanvas : IAsyncDisposable
 
     /// <summary>
     /// Releases the captured pointer at its final window position. A drag ends by saving the moved
-    /// scene's position, and nothing else, so the story and its validation report are untouched.
+    /// scene's position, and nothing else, so the story and its validation report are untouched; a
+    /// link dropped on a scene is made, and the story saved.
     /// </summary>
     [JSInvokable]
-    public Task UpAsync(double clientX, double clientY) => InvokeAsync(async () =>
+    public Task UpAsync(double clientX, double clientY) => InvokeAsync(() => ReleaseAsync(clientX, clientY));
+
+    /// <summary>
+    /// The browser took the captured pointer back. A link being drawn is abandoned; any other
+    /// gesture ends where the pointer was last seen, as a release does.
+    /// </summary>
+    [JSInvokable]
+    public Task CancelAsync(double clientX, double clientY) => InvokeAsync(async () =>
     {
+        if (_interaction.Mode != CanvasInteractionMode.DrawingEdge)
+        {
+            await ReleaseAsync(clientX, clientY);
+            return;
+        }
+
         if (_disposal.IsCancellationRequested)
         {
             return;
         }
 
-        if (_interaction.PointerMove(clientX, clientY) is { } move)
-        {
-            Place(move);
-        }
-
-        var dropped = _interaction.PointerUp();
+        _interaction.Cancel();
         StateHasChanged();
-
-        if (dropped is not null)
-        {
-            await SavePositionAsync(dropped);
-        }
     });
+
+    /// <summary>
+    /// Adds an empty Linear scene centred in the window, saves the story and then the scene's place,
+    /// and selects it: the toolbar's "Add scene".
+    /// </summary>
+    public Task AddSceneAsync() =>
+        AddSceneAtAsync(_viewport.ToWorld(_viewport.Width / 2, _viewport.Height / 2));
 
     /// <summary>
     /// Zooms about a point of the window, by wheel travel in pixels: towards the creator zooms in.
@@ -227,6 +293,12 @@ public partial class StoryCanvas : IAsyncDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        // The selection moved off the clicked link's scene: that link is no longer what is shown.
+        if (_selectedEdge is { } selectedEdge && selectedEdge.Source != SelectedSceneId)
+        {
+            _selectedEdge = null;
+        }
+
         if (!ReferenceEquals(Story, _requestedStory))
         {
             // Drop the previous story's map first, so a slow load never shows it under the new title.
@@ -269,6 +341,12 @@ public partial class StoryCanvas : IAsyncDisposable
             _loadError = loadError;
             _saveError = null;
             _positionsStory = story;
+
+            // The page re-renders on this callback, and after a truly asynchronous load that render
+            // re-enters this method before the call below returns. That is expected: the story's
+            // positions are already recorded above, so the nested call takes the loaded path, and
+            // placing and framing the scenes twice changes nothing.
+            await OnReady.InvokeAsync(story);
         }
 
         // Still loading this story's positions: placing its scenes now would flash a layout that
@@ -280,13 +358,12 @@ public partial class StoryCanvas : IAsyncDisposable
 
         // The page re-renders the canvas after every edit, so scenes added, removed, or rewired
         // since the last render are placed here. Placed positions are never saved: only a creator's
-        // drag records one.
-        _placed = new Dictionary<SceneId, ScenePosition>(AutoLayout.Place(Story, GraphFactory.Create(Story), _positions));
-        _model = CanvasModel.Build(Story, _placed);
+        // drag or a scene added on the map records one.
+        PlaceScenes();
         FrameIfNeeded();
 
-        // The held scene can be deleted from another tab mid-drag; the release that follows has
-        // nothing left to place or to save.
+        // The held scene, or the one a link is drawn from, can be deleted from another tab mid-
+        // gesture; the release that follows has nothing left to place, save, or link.
         if (_interaction.PressedScene is { } pressed && Story.FindScene(pressed) is null)
         {
             _interaction.Cancel();
@@ -331,6 +408,14 @@ public partial class StoryCanvas : IAsyncDisposable
         }
     }
 
+    // Every scene placed afresh around the positions the creator chose, and the model rebuilt from
+    // them: after a load, after the page's edits, and after the canvas's own.
+    private void PlaceScenes()
+    {
+        _placed = new Dictionary<SceneId, ScenePosition>(AutoLayout.Place(Story, GraphFactory.Create(Story), _positions));
+        _model = CanvasModel.Build(Story, _placed);
+    }
+
     // The moved node is redrawn where the pointer has it, with its links, on every frame.
     private void Place(NodeMove move)
     {
@@ -338,17 +423,114 @@ public partial class StoryCanvas : IAsyncDisposable
         _model = CanvasModel.Build(Story, _placed);
     }
 
-    private async Task SavePositionAsync(NodeMove dropped)
+    private async Task ReleaseAsync(double clientX, double clientY)
+    {
+        if (_disposal.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (_interaction.PointerMove(clientX, clientY) is { } move)
+        {
+            Place(move);
+        }
+
+        var released = _interaction.PointerUp();
+        StateHasChanged();
+
+        switch (released)
+        {
+            case NodeMove dropped:
+                await SavePositionAsync(dropped.Scene, dropped.Position);
+                break;
+            case EdgeDrawResult drawn:
+                await LinkAsync(drawn);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // The order is the foreign key's: the story is saved first, because a position names a scene
+    // row that must exist. If that save failed, the store rejects the position and says so on the
+    // error line; the page stays where it was placed for the session either way.
+    private async Task AddSceneAtAsync(ScenePosition centre)
+    {
+        // Still reading this story's positions: there is no map to place a scene on yet.
+        if (!ReferenceEquals(Story, _positionsStory))
+        {
+            return;
+        }
+
+        var position = new ScenePosition(
+            centre.X - (CanvasGeometry.NodeWidth / 2), centre.Y - (CanvasGeometry.NodeHeight / 2));
+        var scene = Story.AddScene(SceneKind.Linear, string.Empty);
+        _positions[scene.Id] = position;
+        PlaceScenes();
+
+        await OnChanged.InvokeAsync();
+        if (_disposal.IsCancellationRequested)
+        {
+            return;
+        }
+
+        // The page reports its own save failures and the callback carries no result, so this save
+        // runs even after a failed story save. What keeps it from recording a position for an
+        // unsaved scene is the database: the connection enables foreign keys (Foreign Keys=True in
+        // SqliteConnectionFactory), editor_scene_layout.scene_id references scenes(id), and the
+        // store reports the violation as "The scene isn't in the saved story yet."
+        await SavePositionAsync(scene.Id, position);
+        if (!_disposal.IsCancellationRequested)
+        {
+            await SelectAsync(scene.Id, edge: null);
+        }
+    }
+
+    // A Choice gains a choice to the target; a Linear scene flows into it, replacing the follow-up
+    // it had, as the inspector's dropdown does. The source is checked again: another tab can delete
+    // it or make it an Ending while the link is drawn, and nothing leaves an Ending.
+    private async Task LinkAsync(EdgeDrawResult drawn)
+    {
+        if (Story.FindScene(drawn.Source) is not { } source || Story.FindScene(drawn.Target) is null)
+        {
+            return;
+        }
+
+        switch (source.Kind)
+        {
+            case SceneKind.Choice:
+                Story.WireChoice(source.Id, DefaultChoiceLabel, drawn.Target);
+                break;
+            case SceneKind.Linear:
+                Story.SetFollowUp(source.Id, drawn.Target);
+                break;
+            case SceneKind.Ending:
+                return;
+            default:
+                throw new InvalidOperationException($"Unknown scene kind '{source.Kind}'.");
+        }
+
+        PlaceScenes();
+        await OnChanged.InvokeAsync();
+
+        // The story can close while the page saves; as in AddSceneAtAsync, nobody is left to select for.
+        if (!_disposal.IsCancellationRequested)
+        {
+            await SelectAsync(source.Id, edge: null);
+        }
+    }
+
+    private async Task SavePositionAsync(SceneId sceneId, ScenePosition position)
     {
         // The page stays where it was dropped for the session either way; the store decides whether
         // it is still there when the story reopens.
-        _positions[dropped.Scene] = dropped.Position;
+        _positions[sceneId] = position;
         _saveError = null;
 
         try
         {
             await Layout.SaveAsync(
-                new Dictionary<SceneId, ScenePosition> { [dropped.Scene] = dropped.Position }, _disposal.Token);
+                new Dictionary<SceneId, ScenePosition> { [sceneId] = position }, _disposal.Token);
         }
         catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
         {
@@ -382,6 +564,26 @@ public partial class StoryCanvas : IAsyncDisposable
 
         _interaction.PointerDown(sceneId, _placed[sceneId], args.ClientX, args.ClientY);
     }
+
+    // The draft starts at the port's centre and follows the pointer's travel, so no window-to-map
+    // origin is needed from the browser; the scenes under its end are found against the map as it
+    // is drawn at that moment.
+    private void OnPortPointerDown(SceneId sceneId, PointerEventArgs args)
+    {
+        if (args.Button != 0)
+        {
+            return;
+        }
+
+        _interaction.PortDown(
+            sceneId, CanvasGeometry.PortCentre(_placed[sceneId]), args.ClientX, args.ClientY,
+            world => _model?.HitTest(world));
+    }
+
+    // Nodes and links stop their own double-clicks, so this one is on the paper and its offset is
+    // measured from the svg, which fills the sheet the viewport reasons with.
+    private Task OnGroundDoubleClickAsync(MouseEventArgs args) =>
+        AddSceneAtAsync(_viewport.ToWorld(args.OffsetX, args.OffsetY));
 
     // Tab reaches every scene in navigator order, wherever the map was left; a scene that takes
     // focus wholly outside the window is centred so its ring can be seen (design note §11.5). One
@@ -431,6 +633,10 @@ public partial class StoryCanvas : IAsyncDisposable
             case "-":
                 _viewport.ZoomBy(-1);
                 break;
+            case "Escape" when _interaction.Mode == CanvasInteractionMode.DrawingEdge:
+                // The release still arrives from the shim and finds nothing to end.
+                _interaction.Cancel();
+                break;
             default:
                 break;
         }
@@ -468,8 +674,19 @@ public partial class StoryCanvas : IAsyncDisposable
         return Task.CompletedTask;
     }
 
-    // The browser fires a click for every press, the one that ended a drag included; a drag moves
-    // and a click selects, never both.
-    private Task SelectAsync(SceneId sceneId) =>
-        _interaction.ClaimClickAfterDrag() ? Task.CompletedTask : SelectedSceneIdChanged.InvokeAsync(sceneId);
+    // The browser fires a click for every press, the one that ended a drag or a pan included; a
+    // drag moves and a click selects, never both.
+    private Task ClickSceneAsync(SceneId sceneId) =>
+        _interaction.ClaimClickAfterDrag() ? Task.CompletedTask : SelectAsync(sceneId, edge: null);
+
+    private Task ClickEdgeAsync(CanvasEdgeKey edge) =>
+        _interaction.ClaimClickAfterDrag() ? Task.CompletedTask : SelectAsync(edge.Source, edge);
+
+    private bool IsSelectedEdge(CanvasEdge edge) => edge.Key == _selectedEdge && edge.Source == SelectedSceneId;
+
+    private Task SelectAsync(SceneId sceneId, CanvasEdgeKey? edge)
+    {
+        _selectedEdge = edge;
+        return SelectedSceneIdChanged.InvokeAsync(sceneId);
+    }
 }

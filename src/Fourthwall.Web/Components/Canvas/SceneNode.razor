@@ -1,7 +1,8 @@
 @using Fourthwall.Web.Composition
 
 @* A scene on the pencil map: a page whose right edge is the shape of its kind
-   (docs/design/0002-visual-direction.md §10.1), moved by hand from M21 (§11.2). *@
+   (docs/design/0002-visual-direction.md §10.1), moved by hand from M21 (§11.2), linked from its
+   port from M22 (§12.1). A double-click here is the page's, not the paper's: it adds no scene. *@
 <g class="canvas-node @KindClass @StateClasses"
    data-scene-id="@Node.Scene.Id.Value"
    transform="@Node.Transform"
@@ -9,7 +10,8 @@
    role="button"
    aria-label="@AccessibleName"
    aria-current="@(IsSelected ? "true" : null)"
-   @onclick="OnSelected"
+   @onclick="OnClicked"
+   @ondblclick:stopPropagation
    @onkeydown="OnKeyDownAsync"
    @onpointerdown="OnPointerDown"
    @onpointerdown:stopPropagation
@@ -31,7 +33,7 @@
         </g>
     }
 
-    <text class="node-label" x="@TextX" y="@LabelY">@Label</text>
+    <text class="@(HasText ? "node-label" : "node-label node-label-prompt")" x="@TextX" y="@LabelY">@Label</text>
     <text class="node-caption" x="@TextX" y="@CaptionY">@Node.Scene.Kind</text>
 
     @if (Node.IsStart)
@@ -45,5 +47,20 @@
     @if (IsSelected)
     {
         <path class="node-ribbon" d="@CanvasGeometry.RibbonPath" />
+    }
+
+    @* The port is for the pointer: every link it draws, the inspector makes with the keyboard too
+       (§12.6). Its press is its own, and so is the click the browser fires after a drawn link. *@
+    @if (Node.Scene.Kind != SceneKind.Ending)
+    {
+        <g class="node-port"
+           aria-hidden="true"
+           @onpointerdown="OnPortPointerDown"
+           @onpointerdown:stopPropagation
+           @onclick:stopPropagation>
+            <title>Drag to a scene to link it</title>
+            <circle class="node-port-hit" cx="@PortX" cy="@PortY" r="@PortHitRadius" />
+            <circle class="node-port-mark" cx="@PortX" cy="@PortY" r="@PortRadius" />
+        </g>
     }
 </g>

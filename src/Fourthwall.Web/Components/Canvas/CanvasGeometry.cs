@@ -67,6 +67,17 @@ public static class CanvasGeometry
     /// </summary>
     public const double CornerRadius = 2;
 
+    /// <summary>
+    /// The radius of the ring drawn for a node's port at rest.
+    /// </summary>
+    public const double PortRadius = 4;
+
+    /// <summary>
+    /// The radius of the invisible circle that takes a press on a node's port, larger than the
+    /// ring so the port is easy to catch.
+    /// </summary>
+    public const double PortHitRadius = 10;
+
     private const double RibbonInset = 4;
     private const double RibbonNotch = 0.7;
     private const double ParallelGap = 28;
@@ -163,6 +174,22 @@ public static class CanvasGeometry
             $"{Invariant(curve.ControlTwoX)},{Invariant(curve.ControlTwoY)} " +
             $"{Invariant(curve.EndX)},{Invariant(curve.EndY)}";
     }
+
+    /// <summary>
+    /// Where a node's port sits, in canvas units: its right centre, where every link leaves.
+    /// </summary>
+    public static ScenePosition PortCentre(ScenePosition node)
+    {
+        var (x, y) = RightCentre(node);
+        return new ScenePosition(x, y);
+    }
+
+    /// <summary>
+    /// Builds the path data for a link being drawn from a node to a point on the paper: the curve a
+    /// link to a scene whose left centre sat at <paramref name="end"/> would take.
+    /// </summary>
+    public static string DraftPath(ScenePosition from, ScenePosition end) =>
+        EdgePath(from, new ScenePosition(end.X, end.Y - (NodeHeight / 2)), parallelIndex: 0);
 
     /// <summary>
     /// The exact box the curve of <see cref="EdgePath"/> reaches. A link that doubles back bows

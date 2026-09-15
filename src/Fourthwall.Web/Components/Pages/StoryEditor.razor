@@ -14,9 +14,11 @@
                @bind="_title"
                @bind:after="RenameAsync" />
 
-        @* The map's two view controls, as words at the toolbar's right edge
-           (docs/design/0002-visual-direction.md §11.1). They change the view, never the story. *@
+        @* Add scene changes the story, so it is the ink button (docs/design/0002-visual-direction.md
+           §12.4); the map's two view controls are words at the toolbar's right edge (§11.1), and
+           change the view, never the story. *@
         <div class="canvas-controls">
+            <button id="canvas-add-scene" type="button" disabled="@(!ReferenceEquals(_mapReadyFor, story))" @onclick="AddSceneAsync">Add scene</button>
             <button id="canvas-fit" type="button" disabled="@(story.Scenes.Count == 0)" @onclick="() => _canvas?.FitToStory()">Show whole story</button>
             <button id="canvas-reset" type="button" disabled="@(story.Scenes.Count == 0)" @onclick="() => _canvas?.ResetView()">Actual size</button>
         </div>
@@ -35,7 +37,9 @@
                      Story="story"
                      Layout="layout"
                      SelectedSceneId="_selectedSceneId"
-                     SelectedSceneIdChanged="OnSceneSelected" />
+                     SelectedSceneIdChanged="OnSceneSelected"
+                     OnChanged="SaveAsync"
+                     OnReady="OnMapReady" />
     }
 
     @* The dock content is one fragment for the page's whole life: the outlet rebuilds whatever it

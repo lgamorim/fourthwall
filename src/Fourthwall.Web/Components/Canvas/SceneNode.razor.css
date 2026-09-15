@@ -38,6 +38,12 @@
     fill: var(--fw-ink);
 }
 
+/* A scene with no text asks to be written (§12.4): the words are the creator's to replace. */
+.node-label-prompt {
+    font-style: italic;
+    fill: var(--fw-pencil);
+}
+
 .node-caption {
     font-family: var(--fw-font-utility);
     font-size: var(--fw-text-xs);
@@ -67,4 +73,35 @@
 
 .node-ribbon {
     fill: var(--fw-ribbon);
+}
+
+/* The page under a link being drawn, outlined in the draft's ribbon (§12.3). No lift: the source,
+   held under the pointer, already carries the hover's desk fill, and two lifted pages read as one
+   gesture with no direction (§12.8). */
+.node-drop-target .node-shape {
+    stroke: var(--fw-ribbon);
+    stroke-width: 2px;
+}
+
+/* The port: a pencil dot on the exit edge at rest, an ink disc to take hold of (§12.1). The hit
+   circle is transparent rather than unfilled, so it still takes the press. */
+.node-port {
+    cursor: crosshair;
+}
+
+.node-port-hit {
+    fill: transparent;
+}
+
+.node-port-mark {
+    fill: var(--fw-paper);
+    stroke: var(--fw-ink);
+    stroke-width: 1.5px;
+    transition: fill var(--fw-motion);
+}
+
+.node-port:hover .node-port-mark,
+.node-drawing-source .node-port-mark {
+    r: 6px;
+    fill: var(--fw-ink);
 }

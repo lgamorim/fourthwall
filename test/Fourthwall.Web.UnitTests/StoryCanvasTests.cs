@@ -424,7 +424,7 @@ public class StoryCanvasTests : BunitContext
 
         // Assert
         Assert.Equal(
-            "This story has no scenes yet. Add the one it opens with, in the navigator on the right.",
+            "This story has no scenes yet. Choose Add scene above to write the one it opens with.",
             cut.Find(".canvas .canvas-empty").TextContent.Trim());
         Assert.Empty(cut.FindAll(".canvas-svg"));
     }
@@ -1120,8 +1120,662 @@ public class StoryCanvasTests : BunitContext
         Assert.Empty(cut.FindAll(".canvas-error"));
     }
 
+    [Fact]
+    public async Task Should_AddALinearScene_When_AddSceneIsClicked()
+    {
+        // Arrange — the toolbar's "Add scene" reaches the canvas through this method.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var changed = 0;
+        var cut = RenderCanvas(story, onSelected: id => selected = id, onChanged: () => changed++);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert — an empty Linear scene centred in the window, saved, selected, and its place kept.
+        Assert.Equal(2, story.Scenes.Count);
+        var added = Assert.Single(story.Scenes, scene => scene.Text.Length == 0);
+        Assert.Equal(SceneKind.Linear, added.Kind);
+        Assert.Equal(added.Id, selected);
+        Assert.Equal(1, changed);
+        Assert.Equal("translate(300 268)", NodeFor(cut, added.Id).GetAttribute("transform"));
+        var saved = await _layout.LoadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(new ScenePosition(300, 268), Assert.Single(saved).Value);
+    }
+
+    [Fact]
+    public async Task Should_CentreTheNewSceneOnTheMapsCentre_When_TheMapIsZoomedAndSlid()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(0, 0, deltaY: -100);
+        cut.Find(".canvas-svg").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert — the window's centre (400, 300) is (366.67, 250) on the map at ×1.2 slid 40 left.
+        var added = story.Scenes.Single(scene => scene.Text.Length == 0);
+        Assert.Equal("translate(266.67 218)", NodeFor(cut, added.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_AddTheFirstScene_When_TheStoryHasNone()
+    {
+        // Arrange — the empty map's invitation points at "Add scene".
+        var story = new Story("The Wreck");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert
+        var added = Assert.Single(story.Scenes);
+        Assert.Equal("translate(300 268)", NodeFor(cut, added.Id).GetAttribute("transform"));
+        Assert.Empty(cut.FindAll(".canvas-empty"));
+    }
+
+    [Fact]
+    public async Task Should_SayTheMapIsReady_When_TheStorysPositionsHaveLoaded()
+    {
+        // Arrange — the page enables "Add scene" only for the story whose map is drawn.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.LoadGate = new TaskCompletionSource();
+        Story? ready = null;
+        var cut = RenderCanvas(story, onReady: loaded => ready = loaded);
+        var readyWhileLoading = ready;
+
+        // Act
+        await cut.InvokeAsync(() => _layout.LoadGate.SetResult());
+
+        // Assert
+        Assert.Null(readyWhileLoading);
+        Assert.Same(story, ready);
+    }
+
+    [Fact]
+    public void Should_SayTheMapIsReady_When_ThePositionsCouldNotBeRead()
+    {
+        // Arrange — a failed read still lays every scene out afresh, so the map can take a new scene.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.FailNextLoad = new IOException("The story folder can't be read.");
+        Story? ready = null;
+
+        // Act
+        RenderCanvas(story, onReady: loaded => ready = loaded);
+
+        // Assert
+        Assert.Same(story, ready);
+    }
+
+    [Fact]
+    public async Task Should_AddNothing_When_PositionsAreStillLoading()
+    {
+        // Arrange — until the story's positions arrive there is no map to place a scene on; a scene
+        // placed now would be laid out again when the saved positions land.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        _layout.LoadGate = new TaskCompletionSource();
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert
+        Assert.Single(story.Scenes);
+        Assert.Equal(0, changed);
+        Assert.Equal(0, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_NotSelectTheSource_When_TheCanvasIsDisposedWhileTheLinkIsSaved()
+    {
+        // Arrange — the story can close while the page saves a link drawn on the map.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var storySave = new TaskCompletionSource();
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id, onChangedAsync: () => storySave.Task);
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        var releasing = cut.Instance.UpAsync(240, 100);
+
+        // Act
+        await DisposeComponentsAsync();
+        storySave.SetResult();
+        await releasing;
+
+        // Assert — nobody is left to select for.
+        Assert.Single(fork.Choices);
+        Assert.Null(selected);
+    }
+
+    [Fact]
+    public async Task Should_SaveTheStoryBeforeThePosition_When_ASceneIsAdded()
+    {
+        // Arrange — a position names its scene, so the scene's row must be saved first.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var storySave = new TaskCompletionSource();
+        var positionSavesWhileTheStorySaved = -1;
+        var cut = RenderCanvas(story, onChangedAsync: async () =>
+        {
+            positionSavesWhileTheStorySaved = _layout.SaveCount;
+            await storySave.Task;
+        });
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        var adding = cut.InvokeAsync(cut.Instance.AddSceneAsync);
+        var positionSavesBeforeTheStorySaveFinished = _layout.SaveCount;
+        storySave.SetResult();
+        await adding;
+
+        // Assert
+        Assert.Equal(0, positionSavesWhileTheStorySaved);
+        Assert.Equal(0, positionSavesBeforeTheStorySaveFinished);
+        Assert.Equal(1, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_ReportTheFailure_When_ThePositionSaveIsRejected()
+    {
+        // Arrange — the store has no row for the new scene and rejects its position.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+        await cut.Instance.ResizeAsync(800, 600);
+        _layout.FailNextSave = new InvalidOperationException("The scene isn't in the saved story yet.");
+
+        // Act
+        await cut.InvokeAsync(cut.Instance.AddSceneAsync);
+
+        // Assert — the line says why; the page stays where it was placed, selected, for the session.
+        Assert.Equal(
+            "That scene's place on the map couldn't be saved. The scene isn't in the saved story yet.",
+            cut.Find(".canvas-error").TextContent);
+        var added = story.Scenes.Single(scene => scene.Text.Length == 0);
+        Assert.Equal("translate(300 268)", NodeFor(cut, added.Id).GetAttribute("transform"));
+        Assert.Equal(added.Id, selected);
+    }
+
+    [Fact]
+    public async Task Should_AddASceneWhereThePaperIsDoubleClicked_When_ItIsDoubleClicked()
+    {
+        // Arrange — the double-click lands on the svg itself: nodes and links keep theirs.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var changed = 0;
+        var cut = RenderCanvas(story, onSelected: id => selected = id, onChanged: () => changed++);
+        await cut.Instance.ResizeAsync(800, 600);
+        await cut.Instance.ZoomAsync(0, 0, deltaY: -100);
+
+        // Act — (600, 240) in the window is (500, 200) on the map at ×1.2.
+        await cut.Find(".canvas-svg").DoubleClickAsync(new MouseEventArgs { OffsetX = 600, OffsetY = 240 });
+
+        // Assert
+        var added = story.Scenes.Single(scene => scene.Text.Length == 0);
+        Assert.Equal("translate(400 168)", NodeFor(cut, added.Id).GetAttribute("transform"));
+        Assert.Equal(added.Id, selected);
+        Assert.Equal(1, changed);
+        Assert.Equal(1, _layout.SaveCount);
+    }
+
+    [Fact]
+    public async Task Should_WireAChoice_When_APortOnAChoiceSceneIsDraggedToAScene()
+    {
+        // Arrange — the fork opens the first column at (40, 40); the deck is placed at (360, 40).
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        SceneId? selected = null;
+        var changed = 0;
+        var cut = RenderCanvas(story, onSelected: id => selected = id, onChanged: () => changed++);
+
+        // Act — from the fork's port (240, 72) to (380, 72), inside the deck.
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        await cut.Instance.UpAsync(240, 100);
+
+        // Assert — a choice named as a prompt, the story saved, and its scene selected to rename it.
+        var choice = Assert.Single(fork.Choices);
+        Assert.Equal("Name this choice", choice.Label);
+        Assert.Equal(deck.Id, choice.TargetSceneId);
+        Assert.Equal(1, changed);
+        Assert.Equal(fork.Id, selected);
+        Assert.Equal(0, _layout.SaveCount);
+        Assert.Empty(cut.FindAll(".canvas-ghost-edge"));
+    }
+
+    [Fact]
+    public async Task Should_SetTheFollowUp_When_APortOnALinearSceneIsDraggedToAScene()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(storm.Id);
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+
+        // Act
+        PortFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        await cut.Instance.UpAsync(240, 100);
+
+        // Assert
+        Assert.Equal(deck.Id, storm.FollowUpSceneId);
+        Assert.Equal(storm.Id, selected);
+    }
+
+    [Fact]
+    public async Task Should_ReplaceTheFollowUp_When_ALinearSceneIsLinkedAgain()
+    {
+        // Arrange — a Linear scene flows into one scene, as the inspector's dropdown has it. The
+        // storm opens at (40, 40), the deck follows at (360, 40), the cave trails at (680, 40).
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        var cave = story.AddScene(SceneKind.Linear, "The cave");
+        story.SetStartScene(storm.Id);
+        story.SetFollowUp(storm.Id, deck.Id);
+        var cut = RenderCanvas(story);
+
+        // Act — from the port (240, 72) to (700, 72), inside the cave.
+        PortFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(560, 100);
+        await cut.Instance.UpAsync(560, 100);
+
+        // Assert
+        Assert.Equal(cave.Id, storm.FollowUpSceneId);
+        Assert.Single(cut.FindAll(".canvas-edge"));
+    }
+
+    [Fact]
+    public async Task Should_NotLink_When_TheDraftIsDroppedOnItsOwnScene()
+    {
+        // Arrange — a link back into its own scene stays an inspector action.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+
+        // Act — from the port (240, 72) back to (140, 72), inside the fork.
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(0, 100);
+        await cut.Instance.UpAsync(0, 100);
+
+        // Assert
+        Assert.Empty(fork.Choices);
+        Assert.Equal(0, changed);
+    }
+
+    [Fact]
+    public async Task Should_NotLink_When_TheDraftIsDroppedOnThePaper()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+
+        // Act
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(160, 400);
+        await cut.Instance.UpAsync(160, 400);
+
+        // Assert
+        Assert.Empty(fork.Choices);
+        Assert.Equal(0, changed);
+        Assert.Empty(cut.FindAll(".canvas-ghost-edge"));
+    }
+
+    [Fact]
+    public async Task Should_DrawTheDraftFromThePort_When_APortIsDraggedOverThePaper()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var cut = RenderCanvas(story);
+
+        // Act
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(160, 400);
+
+        // Assert — the draft follows the pointer, previews a choice, and the ground says a link is drawn.
+        var draft = cut.Find(".canvas-ghost-edge");
+        Assert.Equal(CanvasGeometry.DraftPath(new ScenePosition(40, 40), new ScenePosition(300, 372)), draft.GetAttribute("d"));
+        Assert.Contains("ghost-choice", draft.ClassList);
+        Assert.Contains("canvas-drawing", cut.Find(".canvas").ClassList);
+        Assert.Contains("node-drawing-source", NodeFor(cut, fork.Id).ClassList);
+    }
+
+    [Fact]
+    public async Task Should_SnapTheDraftToTheTarget_When_ItIsOverAScene()
+    {
+        // Arrange — the fork already links to the deck once, so the new link takes the next offset.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        var cut = RenderCanvas(story);
+
+        // Act
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 110);
+
+        // Assert — what is shown is exactly the link that will be made.
+        Assert.Equal(
+            CanvasGeometry.EdgePath(new ScenePosition(40, 40), new ScenePosition(360, 40), parallelIndex: 1),
+            cut.Find(".canvas-ghost-edge").GetAttribute("d"));
+        Assert.Contains("node-drop-target", NodeFor(cut, deck.Id).ClassList);
+        Assert.DoesNotContain("node-drop-target", NodeFor(cut, fork.Id).ClassList);
+    }
+
+    [Fact]
+    public async Task Should_PreviewAFollowUp_When_TheDraftLeavesALinearScene()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        PortFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(160, 400);
+
+        // Assert
+        Assert.Contains("ghost-follow-up", cut.Find(".canvas-ghost-edge").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_AbandonTheLink_When_EscapeIsPressed()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+
+        // Act — the press focused the page, and its keys reach the map.
+        NodeFor(cut, fork.Id).KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        await cut.Instance.UpAsync(240, 100);
+
+        // Assert
+        Assert.Empty(fork.Choices);
+        Assert.Equal(0, changed);
+        Assert.Empty(cut.FindAll(".canvas-ghost-edge"));
+        Assert.DoesNotContain("canvas-drawing", cut.Find(".canvas").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_AbandonTheLink_When_ThePointerIsCancelled()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+
+        // Act — the browser takes the pointer back (a touch turned into a scroll, a window lost focus).
+        await cut.Instance.CancelAsync(240, 100);
+
+        // Assert
+        Assert.Empty(fork.Choices);
+        Assert.Equal(0, changed);
+        Assert.Empty(cut.FindAll(".canvas-ghost-edge"));
+    }
+
+    [Fact]
+    public async Task Should_StillSaveTheMovedNode_When_ThePointerIsCancelledMidDrag()
+    {
+        // Arrange — a cancelled pointer ends a drag where the page was last seen, as in M21.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+
+        // Act
+        await cut.Instance.CancelAsync(130, 120);
+
+        // Assert
+        Assert.Equal(1, _layout.SaveCount);
+        Assert.Equal("translate(70 60)", NodeFor(cut, storm.Id).GetAttribute("transform"));
+    }
+
+    [Fact]
+    public async Task Should_EndTheDraw_When_TheSourceLeavesTheStory()
+    {
+        // Arrange — another tab deletes the scene a link is being drawn from.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(fork.Id);
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        PortFor(cut, fork.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        story.RemoveScene(fork.Id);
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+        await cut.Instance.UpAsync(240, 100);
+
+        // Assert
+        Assert.Equal(0, changed);
+        Assert.DoesNotContain("canvas-drawing", cut.Find(".canvas").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_NotLink_When_TheSourceBecameAnEndingMidDraw()
+    {
+        // Arrange — another tab makes the source an Ending; its port leaves the page and the browser
+        // ends the gesture as a release. Nothing leaves an Ending.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetStartScene(storm.Id);
+        var changed = 0;
+        var cut = RenderCanvas(story, onChanged: () => changed++);
+        PortFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(240, 100);
+        storm.ChangeKind(SceneKind.Ending, EndingOutcome.Victory());
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => cut.Instance.UpAsync(240, 100));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Null(storm.FollowUpSceneId);
+        Assert.Equal(0, changed);
+    }
+
+    [Fact]
+    public void Should_ShowNoPort_When_TheSceneIsAnEnding()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var drowned = story.AddScene(SceneKind.Ending, "You drown", EndingOutcome.Death());
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert
+        Assert.NotNull(NodeFor(cut, fork.Id).QuerySelector(".node-port"));
+        Assert.Null(NodeFor(cut, drowned.Id).QuerySelector(".node-port"));
+    }
+
+    [Fact]
+    public void Should_SelectTheSource_When_ALinkIsClicked()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+
+        // Act
+        cut.Find(".canvas-edge .edge-hit").Click();
+
+        // Assert — page selection stays a scene; the link's scene is the one the inspector opens.
+        Assert.Equal(fork.Id, selected);
+    }
+
+    [Fact]
+    public void Should_SelectTheSource_When_ALinksLabelIsClicked()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+
+        // Act
+        cut.Find(".canvas-edge-labels .edge-label").Click();
+
+        // Assert
+        Assert.Equal(fork.Id, selected);
+    }
+
+    [Fact]
+    public void Should_HighlightTheLink_When_ItIsSelected()
+    {
+        // Arrange — two links leave the fork; only the clicked one turns ribbon.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        story.WireChoice(fork.Id, "Climb down", deck.Id);
+        var cut = RenderCanvas(story);
+
+        // Act — the page passes the selection back, as StoryEditor does.
+        cut.FindAll(".canvas-edge .edge-hit")[1].Click();
+        cut.Render(parameters => parameters.Add(p => p.SelectedSceneId, fork.Id));
+
+        // Assert
+        var links = cut.FindAll(".canvas-edge");
+        Assert.DoesNotContain("edge-selected", links[0].ClassList);
+        Assert.Contains("edge-selected", links[1].ClassList);
+        Assert.Equal("url(#canvas-arrow-selected)", links[1].QuerySelector(".edge-line")?.GetAttribute("marker-end"));
+        Assert.Contains("edge-label-selected", cut.FindAll(".canvas-edge-labels .edge-label")[1].ClassList);
+        Assert.NotNull(cut.Find("#canvas-arrow-selected"));
+    }
+
+    [Fact]
+    public void Should_DropTheLinkHighlight_When_AnotherSceneIsSelected()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        var cut = RenderCanvas(story);
+        cut.Find(".canvas-edge .edge-hit").Click();
+        cut.Render(parameters => parameters.Add(p => p.SelectedSceneId, fork.Id));
+
+        // Act — the navigator picks another scene, then the fork again.
+        cut.Render(parameters => parameters.Add(p => p.SelectedSceneId, deck.Id));
+        cut.Render(parameters => parameters.Add(p => p.SelectedSceneId, fork.Id));
+
+        // Assert — picking the scene again is not picking the link again.
+        Assert.DoesNotContain("edge-selected", cut.Find(".canvas-edge").ClassList);
+    }
+
+    [Fact]
+    public void Should_DropTheLinkHighlight_When_ItsSceneIsClicked()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        var cut = RenderCanvas(story, selected: fork.Id);
+        cut.Find(".canvas-edge .edge-hit").Click();
+
+        // Act
+        NodeFor(cut, fork.Id).Click();
+
+        // Assert
+        Assert.DoesNotContain("edge-selected", cut.Find(".canvas-edge").ClassList);
+    }
+
+    [Fact]
+    public async Task Should_NotSelectTheLink_When_APanStartedOnIt()
+    {
+        // Arrange — a press on a link reaches the paper, and the browser clicks the link on release.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var deck = story.AddScene(SceneKind.Linear, "Below deck");
+        story.WireChoice(fork.Id, "Go below", deck.Id);
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+        cut.Find(".canvas-svg").PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(160, 100);
+        await cut.Instance.UpAsync(160, 100);
+
+        // Act
+        cut.Find(".canvas-edge .edge-hit").Click();
+
+        // Assert
+        Assert.Null(selected);
+    }
+
+    [Fact]
+    public async Task Should_SelectWithEnter_When_ThePageWasJustMovedByTouch()
+    {
+        // Arrange — a touch drag fires no click, so nothing claims the mark it leaves; Enter is a key
+        // press and never goes through the claim (the M21 carried note).
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        SceneId? selected = null;
+        var cut = RenderCanvas(story, onSelected: id => selected = id);
+        NodeFor(cut, storm.Id).PointerDown(Press(100, 100));
+        await cut.Instance.MoveAsync(130, 120);
+        await cut.Instance.UpAsync(130, 120);
+
+        // Act
+        NodeFor(cut, storm.Id).KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        // Assert
+        Assert.Equal(storm.Id, selected);
+    }
+
     private static AngleSharp.Dom.IElement NodeFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
         cut.Find($".canvas-node[data-scene-id='{sceneId.Value}']");
+
+    private static AngleSharp.Dom.IElement PortFor(IRenderedComponent<StoryCanvas> cut, SceneId sceneId) =>
+        cut.Find($".canvas-node[data-scene-id='{sceneId.Value}'] .node-port");
 
     // Seeds the state a prerender would have handed over, serialized the way the framework does.
     // Only the restore half is exercised: PersistStateAsync needs a Renderer, which bUnit does not
@@ -1139,12 +1793,23 @@ public class StoryCanvasTests : BunitContext
             TestContext.Current.CancellationToken);
 
     private IRenderedComponent<StoryCanvas> RenderCanvas(
-        Story story, SceneId? selected = null, Action<SceneId?>? onSelected = null) =>
+        Story story,
+        SceneId? selected = null,
+        Action<SceneId?>? onSelected = null,
+        Action? onChanged = null,
+        Func<Task>? onChangedAsync = null,
+        Action<Story>? onReady = null) =>
         Render<StoryCanvas>(parameters => parameters
             .Add(p => p.Story, story)
             .Add(p => p.Layout, _layout)
             .Add(p => p.SelectedSceneId, selected)
-            .Add(p => p.SelectedSceneIdChanged, onSelected ?? (_ => { })));
+            .Add(p => p.SelectedSceneIdChanged, onSelected ?? (_ => { }))
+            .Add(p => p.OnReady, onReady ?? (_ => { }))
+            .Add(p => p.OnChanged, onChangedAsync ?? (() =>
+            {
+                onChanged?.Invoke();
+                return Task.CompletedTask;
+            })));
 
     private sealed class SeededStore(IDictionary<string, byte[]> state) : IPersistentComponentStateStore
     {
