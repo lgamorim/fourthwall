@@ -314,6 +314,19 @@ public class SceneNodeTests : BunitContext
     }
 
     [Fact]
+    public void Should_NameThePromptForAssistiveTechnology_When_TheSceneHasNoText()
+    {
+        // Arrange — the name a screen reader announces, or a voice command speaks, is the one shown.
+        var node = Node(SceneKind.Linear, string.Empty);
+
+        // Act
+        var cut = RenderNode(node);
+
+        // Assert
+        Assert.Equal("Write this scene, Linear", cut.Find(".canvas-node").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Should_NotPrompt_When_TheSceneHasText()
     {
         // Arrange

@@ -97,11 +97,14 @@ public partial class SceneNode
     // and the target dropdowns, where a scene is picked, keep Scenes.Label's stand-in.
     private bool HasText => !string.IsNullOrWhiteSpace(Node.Scene.Text);
 
+    private const string Prompt = "Write this scene";
+
     private string Label => HasText
         ? Scenes.Label(Node.Scene, Node.Scene.ImagePath is null ? LabelLength : LabelLengthBesideThumbnail)
-        : "Write this scene";
+        : Prompt;
 
-    private string AccessibleName => $"{Scenes.Label(Node.Scene)}, {Node.Scene.Kind}";
+    // The name announced, or spoken by a voice command, is the one shown.
+    private string AccessibleName => $"{(HasText ? Scenes.Label(Node.Scene) : Prompt)}, {Node.Scene.Kind}";
 
     private string StateClasses => string.Join(
         ' ',
