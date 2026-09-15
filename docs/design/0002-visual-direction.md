@@ -588,7 +588,8 @@ holds for every failure.
 
 ## 12. M22 — authoring on the map
 
-Approved by the maintainer with the M22 plan on 2026-09-15, before any M22 code was written.
+Approved by the maintainer with the M22 plan on 2026-09-15, before any M22 code was written. §12.3
+was revised after the screenshot pass; §12.8 records the change against the approved text.
 
 **Thesis.** The pencil map becomes something the creator draws on. A page's right edge is already
 how you leave it (§10); M22 puts a pencil point on that edge, and drawing from it pulls a ribbon
@@ -626,8 +627,8 @@ ordinary pencil link.
 
 ### 12.3 The drop target
 
-The page under the snapped tip carries `node-drop-target`: the desk fill of a hover and a 2px
-ribbon outline, so both ends of the gesture are in ribbon. The source is never a target — a link
+The page under the snapped tip carries `node-drop-target`: a 2px ribbon outline, so both ends of
+the gesture are in ribbon. The source is never a target — a link
 back into its own scene stays an inspector action — so dragging over it neither snaps nor
 outlines.
 
@@ -677,3 +678,29 @@ snap-to-grid, and a rubber band that ignores what kind of link it is. Here: one 
 edge, one word in the toolbar, and a draft that previews the link's kind and snaps to the exact
 link it will make. Remove-one-accessory candidates for the screenshot pass: the source's filled
 port while drawing, and the drop target's ribbon outline if the snap alone reads.
+
+### 12.8 What the screenshot pass changed
+
+Screenshots under `docs/design/screenshots/m22/`, all at 1280px with the dock open.
+
+- **Removed: the drop target's desk fill.** The first build lifted the target with the desk fill
+  under its ribbon outline. The source page is held under the pointer while a link is drawn, so
+  it already carries the hover's desk fill, and the two lifted pages read as one gesture with no
+  direction. The target keeps only the ribbon outline; with the snapped ribbon draft ending at it,
+  the pair says "from here, to there".
+- **Kept: the drop target's outline.** With the fill gone it is the only mark on the receiving
+  page; the snapped arrowhead lands on a left edge that other links into that page reach too, so
+  the arrowhead alone does not single the page out.
+- **Kept: the source's filled port.** In a mouse drag the port stays filled anyway, because the
+  captured pointer keeps it hovered; with a pen or a finger there is no hover, and the filled port
+  is the only mark at the source.
+- **Accepted: a short draft bows.** Near its own port, a draft over paper takes the S-shaped bow
+  that any link doubling back takes (§11.8), since it follows the same curve. Special-casing it
+  would break "what is shown is the link that will be made" the moment it snaps; it straightens as
+  soon as the pointer moves away.
+- **Kept: Add scene as the ink button.** Under the ink header it reads as the toolbar's one story
+  action, not as a second header block.
+- **Noted, not changed:** a scene added or selected on the map opens the inspector below the fold
+  of the dock when the navigator is long, so the dock must be scrolled to the text box. This is the
+  dock's behaviour from M19 for any selection; bringing the inspector into view is left for a later
+  milestone.

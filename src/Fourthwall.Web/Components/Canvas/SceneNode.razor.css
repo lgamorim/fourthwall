@@ -75,9 +75,10 @@
     fill: var(--fw-ribbon);
 }
 
-/* The page under a link being drawn: the hover's lift, outlined in the draft's ribbon (§12.3). */
+/* The page under a link being drawn, outlined in the draft's ribbon (§12.3). No lift: the source,
+   held under the pointer, already carries the hover's desk fill, and two lifted pages read as one
+   gesture with no direction (§12.8). */
 .node-drop-target .node-shape {
-    fill: var(--fw-desk);
     stroke: var(--fw-ribbon);
     stroke-width: 2px;
 }
