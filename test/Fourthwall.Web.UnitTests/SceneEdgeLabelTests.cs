@@ -75,6 +75,36 @@ public class SceneEdgeLabelTests : BunitContext
         Assert.Equal(label, cut.Find(".edge-label > title").TextContent);
     }
 
-    private IRenderedComponent<SvgHost> RenderLabel(CanvasEdge edge) =>
-        Render<SvgHost>(host => host.AddChildContent<SceneEdgeLabel>(parameters => parameters.Add(p => p.Edge, edge)));
+    [Fact]
+    public void Should_TurnRibbon_When_TheLinkIsSelected()
+    {
+        // Arrange
+        var edge = CanvasEdges.Choice("Go");
+
+        // Act
+        var cut = RenderLabel(edge, isSelected: true);
+
+        // Assert
+        Assert.Contains("edge-label-selected", cut.Find(".edge-label").ClassList);
+    }
+
+    [Fact]
+    public void Should_RaiseSelection_When_TheLabelIsClicked()
+    {
+        // Arrange — the label is the largest part of a link to click.
+        var selected = 0;
+        var cut = RenderLabel(CanvasEdges.Choice("Go"), onSelected: () => selected++);
+
+        // Act
+        cut.Find(".edge-label").Click();
+
+        // Assert
+        Assert.Equal(1, selected);
+    }
+
+    private IRenderedComponent<SvgHost> RenderLabel(CanvasEdge edge, bool isSelected = false, Action? onSelected = null) =>
+        Render<SvgHost>(host => host.AddChildContent<SceneEdgeLabel>(parameters => parameters
+            .Add(p => p.Edge, edge)
+            .Add(p => p.IsSelected, isSelected)
+            .Add(p => p.OnSelected, onSelected ?? (() => { }))));
 }
