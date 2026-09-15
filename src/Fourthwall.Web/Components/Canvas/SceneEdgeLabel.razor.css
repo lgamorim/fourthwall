@@ -12,4 +12,10 @@
     stroke-width: 8px;
     stroke-linejoin: round;
     user-select: none;
+    cursor: pointer;
+}
+
+/* The selected link's words turn ribbon with its line (§12.5). */
+.edge-label-selected {
+    fill: var(--fw-ribbon);
 }

@@ -33,9 +33,15 @@
     cursor: grabbing;
 }
 
-/* Nothing on the sheet is text to select while it, or a page on it, is being moved. */
+.canvas-drawing .canvas-svg {
+    cursor: crosshair;
+}
+
+/* Nothing on the sheet is text to select while it, or a page on it, is being moved, or while a
+   link is drawn across it. */
 .canvas-panning,
-.canvas-dragging {
+.canvas-dragging,
+.canvas-drawing {
     user-select: none;
 }
 
@@ -51,6 +57,26 @@
 
 .canvas-arrow path {
     fill: var(--fw-pencil);
+}
+
+.canvas-arrow-selected path,
+.canvas-arrow-draft path {
+    fill: var(--fw-ribbon);
+}
+
+/* The link being drawn, in ribbon, previewing its kind: a choice's line or a follow-up's dots
+   (§12.2). It never takes the pointer, which is captured by the port anyway. */
+.canvas-ghost-edge {
+    fill: none;
+    stroke: var(--fw-ribbon);
+    stroke-width: 1.5px;
+    pointer-events: none;
+}
+
+.ghost-follow-up {
+    stroke-width: 2.5px;
+    stroke-dasharray: 0 6;
+    stroke-linecap: round;
 }
 
 /* Sits in the shared error treatment from app.css; this places it at the top of the map. */
