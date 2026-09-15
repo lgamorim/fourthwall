@@ -651,8 +651,9 @@ outlines.
   and the inspector opens on it.
 - A page with no text reads **Write this scene**, in pencil italic, until text exists: a prompt,
   not a name. Its accessible name says the same ("Write this scene, Linear"), so what a screen
-  reader announces, or a voice command speaks, is what is shown. The inspector's text box asks "What happens in this scene?". The navigator's rows and
-  the target dropdowns keep "(no text)" — a list needs a name to pick, not an instruction.
+  reader announces, or a voice command speaks, is what is shown. The inspector's text box asks
+  "What happens in this scene?". The navigator's rows and the target dropdowns keep "(no text)" —
+  a list needs a name to pick, not an instruction.
 - **A new choice** is labelled **Name this choice**: the domain accepts no blank label, the words
   tell the creator what the label wants, and at 16 characters it shows uncut (§10.3). The link's
   scene is selected after the drop, so its row waits in the dock to be renamed.

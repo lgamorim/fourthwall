@@ -341,6 +341,11 @@ public partial class StoryCanvas : IAsyncDisposable
             _loadError = loadError;
             _saveError = null;
             _positionsStory = story;
+
+            // The page re-renders on this callback, and after a truly asynchronous load that render
+            // re-enters this method before the call below returns. That is expected: the story's
+            // positions are already recorded above, so the nested call takes the loaded path, and
+            // placing and framing the scenes twice changes nothing.
             await OnReady.InvokeAsync(story);
         }
 
