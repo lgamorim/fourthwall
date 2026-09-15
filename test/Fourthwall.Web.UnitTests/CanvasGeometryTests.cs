@@ -40,6 +40,37 @@ public class CanvasGeometryTests
     }
 
     [Fact]
+    public void Should_PutThePortAtTheRightCentre_When_Asked()
+    {
+        // Arrange
+        var node = new ScenePosition(40, 100);
+
+        // Act
+        var port = CanvasGeometry.PortCentre(node);
+
+        // Assert — where every link leaves.
+        Assert.Equal(new ScenePosition(40 + CanvasGeometry.NodeWidth, 100 + (CanvasGeometry.NodeHeight / 2)), port);
+    }
+
+    [Fact]
+    public void Should_EndAtThePoint_When_BuildingADraftPath()
+    {
+        // Arrange — a draft link over paper ends where the pointer has it, on a link's own curve.
+        using var _ = new CulturePin("pt-PT");
+        var from = new ScenePosition(0, 0);
+        var end = new ScenePosition(300.5, 90);
+
+        // Act
+        var path = CanvasGeometry.DraftPath(from, end);
+
+        // Assert
+        Assert.Equal(
+            CanvasGeometry.EdgePath(from, new ScenePosition(300.5, 90 - (CanvasGeometry.NodeHeight / 2)), parallelIndex: 0),
+            path);
+        Assert.EndsWith("300.5,90", path, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_OffsetControlPointsLinearlyWithParallelIndex_When_ParallelIndexDiffers()
     {
         // Asserting only that two paths differ would pass for a bug that moves the wrong

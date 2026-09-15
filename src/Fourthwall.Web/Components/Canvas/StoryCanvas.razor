@@ -61,7 +61,8 @@
                                    Node="node"
                                    IsSelected="node.Scene.Id == SelectedSceneId"
                                    IsDragging="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DraggingNode"
-                                   OnSelected="() => SelectAsync(node.Scene.Id)"
+                                   OnSelected="() => SelectedSceneIdChanged.InvokeAsync(node.Scene.Id)"
+                                   OnClicked="() => SelectAsync(node.Scene.Id)"
                                    OnPointerDown="args => OnNodePointerDown(node.Scene.Id, args)"
                                    OnFocused="() => OnNodeFocused(node.Scene.Id)" />
                     }
