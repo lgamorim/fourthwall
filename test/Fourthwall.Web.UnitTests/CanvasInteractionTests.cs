@@ -455,7 +455,7 @@ public class CanvasInteractionTests
         // Arrange
         var interaction = new CanvasInteraction(_viewport);
 
-        // Act & Assert — null!: the argument guard is what is under test, so a null must reach it.
+        // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
             interaction.PortDown(Scene, NodeAt, 100, 100, hitTest: null!));
     }
@@ -473,7 +473,7 @@ public class CanvasInteractionTests
     [Fact]
     public void Should_Throw_When_ViewportIsNull()
     {
-        // Act & Assert — null!: the argument guard is what is under test, so a null must reach it.
+        // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new CanvasInteraction(null!));
     }
 
