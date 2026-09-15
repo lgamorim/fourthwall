@@ -174,10 +174,10 @@ public partial class StoryCanvas : IAsyncDisposable
             Place(move);
         }
 
-        var dropped = _interaction.PointerUp();
+        var released = _interaction.PointerUp();
         StateHasChanged();
 
-        if (dropped is not null)
+        if (released is NodeMove dropped)
         {
             await SavePositionAsync(dropped);
         }

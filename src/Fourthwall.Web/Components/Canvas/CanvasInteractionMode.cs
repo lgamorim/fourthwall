@@ -25,4 +25,10 @@ public enum CanvasInteractionMode
     /// A node is held past the drag threshold and moves with the pointer.
     /// </summary>
     DraggingNode,
+
+    /// <summary>
+    /// A node's port is held and a draft link follows the pointer; releasing over another scene
+    /// links to it.
+    /// </summary>
+    DrawingEdge,
 }

@@ -156,7 +156,6 @@ public class CanvasInteractionTests
         // Assert
         Assert.Null(result);
         Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
-        Assert.False(interaction.ClaimClickAfterDrag());
     }
 
     [Fact]
@@ -258,6 +257,210 @@ public class CanvasInteractionTests
     }
 
     [Fact]
+    public void Should_ClaimTheClick_When_APanTravelled()
+    {
+        // Arrange — a pan can start on a link, and the browser clicks that link on release; sliding
+        // the map must not select it.
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PointerDown(scene: null, nodePosition: null, 100, 100);
+        interaction.PointerMove(130, 100);
+
+        // Act
+        interaction.PointerUp();
+
+        // Assert
+        Assert.True(interaction.ClaimClickAfterDrag());
+    }
+
+    [Fact]
+    public void Should_NotClaimTheClick_When_APanNeverTravelled()
+    {
+        // Arrange — a press and release on a link without moving is a click on it.
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PointerDown(scene: null, nodePosition: null, 100, 100);
+        interaction.PointerMove(102, 101);
+
+        // Act
+        interaction.PointerUp();
+
+        // Assert
+        Assert.False(interaction.ClaimClickAfterDrag());
+    }
+
+    [Fact]
+    public void Should_DrawALink_When_APortIsPressed()
+    {
+        // Arrange
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+
+        // Act
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+
+        // Assert — the draft starts at the port, over nothing yet.
+        Assert.Equal(CanvasInteractionMode.DrawingEdge, interaction.Mode);
+        Assert.Equal(map.Source, interaction.PressedScene);
+        Assert.Equal(map.Port, interaction.DraftEnd);
+        Assert.Null(interaction.DropTarget);
+    }
+
+    [Fact]
+    public void Should_FollowThePointer_When_ALinkIsDrawn()
+    {
+        // Arrange — at ×1.2 twelve window pixels are ten canvas units, as for a moved node.
+        _viewport.ZoomAt(0, 0, steps: 1);
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+
+        // Act
+        var move = interaction.PointerMove(112, 124);
+
+        // Assert — nothing moves on the map but the draft's end.
+        Assert.Null(move);
+        Assert.NotNull(interaction.DraftEnd);
+        Assert.Equal(map.Port.X + 10, interaction.DraftEnd.Value.X, Tolerance);
+        Assert.Equal(map.Port.Y + 20, interaction.DraftEnd.Value.Y, Tolerance);
+        Assert.Equal("translate(0 0) scale(1.2)", _viewport.Transform);
+    }
+
+    [Fact]
+    public void Should_TrackTheDropTarget_When_TheDraftIsOverAnotherScene()
+    {
+        // Arrange
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+
+        // Act — from the port (240, 72) to (380, 72), inside the target at (360, 40).
+        interaction.PointerMove(240, 100);
+
+        // Assert
+        Assert.Equal(map.Target, interaction.DropTarget);
+    }
+
+    [Fact]
+    public void Should_ReportSourceAndTarget_When_TheDraftIsDroppedOnAScene()
+    {
+        // Arrange
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+        interaction.PointerMove(240, 100);
+
+        // Act
+        var release = interaction.PointerUp();
+
+        // Assert — and a drawn link leaves no click to claim: the port keeps its click to itself.
+        Assert.Equal(new EdgeDrawResult(map.Source, map.Target), release);
+        Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
+        Assert.Null(interaction.PressedScene);
+        Assert.Null(interaction.DraftEnd);
+        Assert.Null(interaction.DropTarget);
+        Assert.False(interaction.ClaimClickAfterDrag());
+    }
+
+    [Fact]
+    public void Should_ReportNothing_When_TheDraftIsDroppedOnThePaper()
+    {
+        // Arrange
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+        interaction.PointerMove(160, 300);
+
+        // Act
+        var release = interaction.PointerUp();
+
+        // Assert
+        Assert.Null(release);
+        Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
+    }
+
+    [Fact]
+    public void Should_ReportNothing_When_TheDraftIsDroppedOnItsOwnScene()
+    {
+        // Arrange — a link back into its own scene stays an inspector action.
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+
+        // Act — from the port (240, 72) back to (140, 72), inside the source.
+        interaction.PointerMove(0, 100);
+        var target = interaction.DropTarget;
+        var release = interaction.PointerUp();
+
+        // Assert
+        Assert.Null(target);
+        Assert.Null(release);
+    }
+
+    [Fact]
+    public void Should_TestTheDropAgain_When_ThePointerIsReleased()
+    {
+        // Arrange — the target can leave the story between the last move and the release.
+        var map = new LinkMap();
+        SceneId? under = map.Target;
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, _ => under);
+        interaction.PointerMove(240, 100);
+        under = null;
+
+        // Act
+        var release = interaction.PointerUp();
+
+        // Assert
+        Assert.Null(release);
+    }
+
+    [Fact]
+    public void Should_EndTheDrawWithoutAResult_When_Cancelled()
+    {
+        // Arrange — Escape, a cancelled pointer, or the source leaving the story.
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+        interaction.PointerMove(240, 100);
+
+        // Act
+        interaction.Cancel();
+
+        // Assert
+        Assert.Equal(CanvasInteractionMode.Idle, interaction.Mode);
+        Assert.Null(interaction.PressedScene);
+        Assert.Null(interaction.DraftEnd);
+        Assert.Null(interaction.DropTarget);
+        Assert.Null(interaction.PointerUp());
+    }
+
+    [Fact]
+    public void Should_IgnoreAPortPress_When_AGestureIsInProgress()
+    {
+        // Arrange
+        var map = new LinkMap();
+        var interaction = new CanvasInteraction(_viewport);
+        interaction.PointerDown(scene: null, nodePosition: null, 100, 100);
+
+        // Act
+        interaction.PortDown(map.Source, map.Port, 100, 100, map.Model.HitTest);
+
+        // Assert
+        Assert.Equal(CanvasInteractionMode.Panning, interaction.Mode);
+        Assert.Null(interaction.DraftEnd);
+    }
+
+    [Fact]
+    public void Should_Throw_When_APortIsPressedWithoutAHitTest()
+    {
+        // Arrange
+        var interaction = new CanvasInteraction(_viewport);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            interaction.PortDown(Scene, NodeAt, 100, 100, hitTest: null!));
+    }
+
+    [Fact]
     public void Should_Throw_When_ANodeIsPressedWithoutItsPosition()
     {
         // Arrange
@@ -272,5 +475,31 @@ public class CanvasInteractionTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new CanvasInteraction(null!));
+    }
+
+    // Two scenes placed side by side, the source at (40, 40) and the target at (360, 40), with the
+    // source's port at its right centre.
+    private sealed class LinkMap
+    {
+        public LinkMap()
+        {
+            var story = new Story("The Wreck");
+            Source = story.AddScene(SceneKind.Choice, "A fork").Id;
+            Target = story.AddScene(SceneKind.Linear, "Below deck").Id;
+            Model = CanvasModel.Build(story, new Dictionary<SceneId, ScenePosition>
+            {
+                [Source] = new(40, 40),
+                [Target] = new(360, 40),
+            });
+            Port = new ScenePosition(40 + CanvasGeometry.NodeWidth, 40 + (CanvasGeometry.NodeHeight / 2));
+        }
+
+        public SceneId Source { get; }
+
+        public SceneId Target { get; }
+
+        public CanvasModel Model { get; }
+
+        public ScenePosition Port { get; }
     }
 }
