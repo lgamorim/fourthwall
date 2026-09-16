@@ -111,6 +111,25 @@ public class SceneFindingsTests
         Assert.False(findings.ContainsKey(Harbour));
     }
 
+    [Fact]
+    public void Should_Throw_When_AFindingNamesNoRule()
+    {
+        // Act & Assert — a scene with no problem has no finding, rather than one that claims a warning.
+        Assert.Throws<ArgumentException>(() => new SceneFindings([], []));
+    }
+
+    [Fact]
+    public void Should_Throw_When_ErrorsIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new SceneFindings(null!, [ValidationRule.BrokenImageReference]));
+    }
+
+    [Fact]
+    public void Should_Throw_When_WarningsIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new SceneFindings([ValidationRule.AllScenesReachable], null!));
+    }
+
     private static ValidationReport Report(params ValidationViolation[] violations) => new(violations);
 
     private static ValidationViolation Violation(

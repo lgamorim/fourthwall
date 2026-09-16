@@ -6,13 +6,41 @@ namespace Fourthwall.Web.Components.Canvas;
 /// <summary>
 /// What a validation report says about one scene: the rules it breaks, by severity, for the mark
 /// its page carries on the map and the name that page is announced by
-/// (docs/design/0002-visual-direction.md §13).
+/// (docs/design/0002-visual-direction.md §13). A finding names at least one rule; a scene the
+/// report does not blame has no finding at all.
 /// </summary>
-/// <param name="Errors">The rules the scene breaks as errors, in report order, each once.</param>
-/// <param name="Warnings">The rules the scene breaks as warnings, in report order, each once.</param>
-public sealed record SceneFindings(IReadOnlyList<ValidationRule> Errors, IReadOnlyList<ValidationRule> Warnings)
+public sealed record SceneFindings
 {
-    private static readonly SceneFindings None = new([], []);
+    /// <summary>
+    /// Initializes a finding.
+    /// </summary>
+    /// <param name="errors">The rules the scene breaks as errors, in report order, each once.</param>
+    /// <param name="warnings">The rules the scene breaks as warnings, in report order, each once.</param>
+    /// <exception cref="ArgumentNullException">Either list is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">Both lists are empty.</exception>
+    public SceneFindings(IReadOnlyList<ValidationRule> errors, IReadOnlyList<ValidationRule> warnings)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(warnings);
+
+        if (errors.Count == 0 && warnings.Count == 0)
+        {
+            throw new ArgumentException("A finding names at least one rule.", nameof(errors));
+        }
+
+        Errors = errors;
+        Warnings = warnings;
+    }
+
+    /// <summary>
+    /// Gets the rules the scene breaks as errors, in report order, each once.
+    /// </summary>
+    public IReadOnlyList<ValidationRule> Errors { get; }
+
+    /// <summary>
+    /// Gets the rules the scene breaks as warnings, in report order, each once.
+    /// </summary>
+    public IReadOnlyList<ValidationRule> Warnings { get; }
 
     /// <summary>
     /// Gets the worst severity: an error outranks any number of warnings.
@@ -37,7 +65,9 @@ public sealed record SceneFindings(IReadOnlyList<ValidationRule> Errors, IReadOn
         {
             foreach (var sceneId in violation.SceneIds)
             {
-                findings[sceneId] = findings.GetValueOrDefault(sceneId, None).With(violation);
+                findings[sceneId] = findings.TryGetValue(sceneId, out var found)
+                    ? With(found.Errors, found.Warnings, violation)
+                    : With([], [], violation);
             }
         }
 
@@ -45,12 +75,14 @@ public sealed record SceneFindings(IReadOnlyList<ValidationRule> Errors, IReadOn
     }
 
     // Exhaustive, like the canvas's kind switches: a severity the editor does not know is a defect.
-    private SceneFindings With(ValidationViolation violation) => violation.Severity switch
-    {
-        ValidationSeverity.Error => this with { Errors = Adding(Errors, violation.Rule) },
-        ValidationSeverity.Warning => this with { Warnings = Adding(Warnings, violation.Rule) },
-        _ => throw new InvalidOperationException($"Unknown validation severity '{violation.Severity}'."),
-    };
+    private static SceneFindings With(
+        IReadOnlyList<ValidationRule> errors, IReadOnlyList<ValidationRule> warnings, ValidationViolation violation) =>
+        violation.Severity switch
+        {
+            ValidationSeverity.Error => new SceneFindings(Adding(errors, violation.Rule), warnings),
+            ValidationSeverity.Warning => new SceneFindings(errors, Adding(warnings, violation.Rule)),
+            _ => throw new InvalidOperationException($"Unknown validation severity '{violation.Severity}'."),
+        };
 
     private static IReadOnlyList<ValidationRule> Adding(IReadOnlyList<ValidationRule> rules, ValidationRule rule) =>
         rules.Contains(rule) ? rules : [.. rules, rule];
