@@ -31,7 +31,8 @@ public class SceneFindingsTests
         // Assert
         Assert.Equal(ValidationSeverity.Error, findings[Harbour].Severity);
         Assert.Equal(ValidationSeverity.Error, findings[Reef].Severity);
-        Assert.Equal([ValidationRule.AllScenesReachable], findings[Reef].Rules);
+        Assert.Equal([ValidationRule.AllScenesReachable], findings[Reef].Errors);
+        Assert.Empty(findings[Reef].Warnings);
     }
 
     [Fact]
@@ -51,18 +52,35 @@ public class SceneFindingsTests
     }
 
     [Fact]
-    public void Should_ListTheRulesInReportOrderOnce_When_ASceneBreaksSeveral()
+    public void Should_ReportAWarning_When_OnlyWarningsNameTheScene()
     {
         // Arrange
-        var report = Report(
-            Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, Reef),
-            Violation(ValidationRule.EverySceneCanReachEnding, ValidationSeverity.Warning, Reef, Reef));
+        var report = Report(Violation(ValidationRule.EverySceneCanReachEnding, ValidationSeverity.Warning, Reef));
 
         // Act
         var finding = SceneFindings.ByScene(report)[Reef];
 
         // Assert
-        Assert.Equal([ValidationRule.AllScenesReachable, ValidationRule.EverySceneCanReachEnding], finding.Rules);
+        Assert.Equal(ValidationSeverity.Warning, finding.Severity);
+        Assert.Equal([ValidationRule.EverySceneCanReachEnding], finding.Warnings);
+    }
+
+    [Fact]
+    public void Should_ListTheRulesBySeverityInReportOrderOnce_When_ASceneBreaksSeveral()
+    {
+        // Arrange — the page's name says which problems need fixing and which need checking.
+        var report = Report(
+            Violation(ValidationRule.OutgoingDegreeMatchesKind, ValidationSeverity.Error, Reef),
+            Violation(ValidationRule.EverySceneCanReachEnding, ValidationSeverity.Warning, Reef, Reef),
+            Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, Reef),
+            Violation(ValidationRule.OutgoingDegreeMatchesKind, ValidationSeverity.Error, Reef));
+
+        // Act
+        var finding = SceneFindings.ByScene(report)[Reef];
+
+        // Assert
+        Assert.Equal([ValidationRule.OutgoingDegreeMatchesKind, ValidationRule.AllScenesReachable], finding.Errors);
+        Assert.Equal([ValidationRule.EverySceneCanReachEnding], finding.Warnings);
     }
 
     [Fact]
