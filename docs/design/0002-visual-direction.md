@@ -714,7 +714,8 @@ Screenshots under `docs/design/screenshots/m22/`, all at 1280px with the dock op
 
 Approved by the maintainer with the M23 plan on 2026-09-16, before any M23 code was written, with
 the three open choices taken as recommended: no centring motion, the words Fix and Check, and a
-validation that starts again clears the map.
+validation that starts again clears the map. §13.3 was revised while building; §13.7 records the
+change against the approved text, and what the screenshot pass kept.
 
 **Thesis.** A reader drawing a gamebook map marks trouble on it: a cross where a way goes wrong, a
 sign where they would look again. M23 draws those two marks on the pencil map, and the validation
@@ -767,9 +768,11 @@ never reads by colour alone (§8), exactly as kind never does.
   links, so a link is blamed by where it starts; the code says so where it folds the report.
 - The line turns to the functional colour and ends in its own arrowhead (`#canvas-arrow-error`,
   `#canvas-arrow-warning`); a follow-up keeps its leader dots.
-- **The mark** sits on the curve's midpoint in a small paper disc — at the top of the arch for a
-  self-loop. A choice's label is lifted above that point (§10.3), so the two never overprint; a
-  follow-up has no label and the mark stands alone. The link itself thus reads without colour.
+- **The mark** sits on the curve a quarter of the way along, by the page the link leaves — the
+  page the report blames — in a small paper disc that breaks the line as a label's halo does; on a
+  self-loop, at the top of the arch. A choice's label sits above the curve's middle (§10.3), so the
+  two do not overprint; a follow-up has no label and the mark stands alone. The link itself thus
+  reads without colour, and presses go through the mark to the line.
 - The label stays pencil. A selected link keeps §12.5's ribbon line and arrowhead; its mark keeps
   the severity.
 - An unused image names no scene and stays in the panel.
@@ -802,3 +805,29 @@ and raise a toast. Here: the start tag's own form hanging from the other edge, t
 with the panel, and two plain words. Remove-one-accessory candidates for the screenshot pass: the
 tab's border, and the marks on links if a fan-out reads busy (link severity would then rest on
 colour and the marked page it leaves, which is a question for the maintainer, not a silent cut).
+
+### 13.7 What building and the screenshot pass changed
+
+Screenshots under `docs/design/screenshots/m23/`, all at 1280×800 with the dock open.
+
+- **Moved: the link's mark**, from the curve's middle to its first quarter (§13.3), before any
+  screenshot. A choice's label is placed from a point that moves with the whole fan-out offset,
+  while the curve's middle moves by three quarters of it, so on the second of two parallel links
+  the mark would have overprinted the label. Nearer the port, the marks of a fan-out would
+  overprint each other instead. On a short link the mark now sits just under the label's middle,
+  clear of it.
+- **Kept: the tab's border.** The warning tint on paper is too faint to give the tab an edge of its
+  own.
+- **Kept: the marks on links.** On the doom loop they do not read busy, and on a dotted follow-up
+  the cross is what says the line is in trouble once the colour is set aside.
+- **Kept: the name and title** with what to fix and what to check. The findings keep each rule's
+  severity rather than one list under the worst, so a warning is never announced as something to
+  fix.
+- **The README frames were reshaped.** Fixing the loop on the first layout sent the hatch's new
+  follow-up straight through the hold's page
+  (`06-fixed-link-through-a-page.png`). The shore moved to a fourth column and the hatch under the
+  hold, the wiring was broken again, and both README frames were taken on that one layout, so they
+  differ only in the fix.
+- **Noted, not changed:** a choice labelled "Signal the keeper" is cut at 16 characters on the map
+  (§10.3); the walkthrough used "Signal the light". And a navigator row now slides the map to its
+  scene, which a script that assumes a still map will notice first: that is §13.4 working.
