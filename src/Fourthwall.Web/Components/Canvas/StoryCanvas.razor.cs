@@ -57,6 +57,14 @@ public partial class StoryCanvas : IAsyncDisposable
     // The link the creator last clicked. Page selection stays a scene; the link keeps its ribbon
     // only while its scene is the selected one.
     private CanvasEdgeKey? _selectedEdge;
+
+    // The report the findings were folded from, so a render with the same report folds nothing.
+    private ValidationReport? _foldedReport;
+    private IReadOnlyDictionary<SceneId, SceneFindings> _findings = new Dictionary<SceneId, SceneFindings>();
+
+    // A scene the page asked to see before the canvas had placed it: one added in the navigator is
+    // selected before the page's re-render reaches here.
+    private SceneId? _pendingCentre;
     private string? _loadError;
     private string? _saveError;
     private PersistingComponentStateSubscription _persisting;
@@ -99,6 +107,13 @@ public partial class StoryCanvas : IAsyncDisposable
     /// </summary>
     [Parameter]
     public EventCallback<Story> OnReady { get; set; }
+
+    /// <summary>
+    /// The validation report the panel shows, or <see langword="null"/> while it shows none. The
+    /// pages and links it blames carry its marks (design note §13).
+    /// </summary>
+    [Parameter]
+    public ValidationReport? Report { get; set; }
 
     [Inject]
     private IStoryGraphFactory GraphFactory { get; set; } = default!;
@@ -280,6 +295,25 @@ public partial class StoryCanvas : IAsyncDisposable
     }
 
     /// <summary>
+    /// Slides the map so a scene's page sits at the window's centre, keeping the zoom: the page asks
+    /// when a scene is picked in the dock (design note §13.4). A scene not placed yet is centred as
+    /// soon as it is; before the window is measured there is no centre, and nothing moves.
+    /// </summary>
+    public void CentreOnScene(SceneId sceneId)
+    {
+        if (!_viewport.IsMeasured)
+        {
+            return;
+        }
+
+        _pendingCentre = sceneId;
+        if (CentrePending())
+        {
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
     /// Returns the map to actual size with the page's origin at the window's top-left corner: the
     /// toolbar's "Actual size".
     /// </summary>
@@ -293,6 +327,12 @@ public partial class StoryCanvas : IAsyncDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!ReferenceEquals(Report, _foldedReport))
+        {
+            _foldedReport = Report;
+            _findings = SceneFindings.ByScene(Report);
+        }
+
         // The selection moved off the clicked link's scene: that link is no longer what is shown.
         if (_selectedEdge is { } selectedEdge && selectedEdge.Source != SelectedSceneId)
         {
@@ -361,6 +401,7 @@ public partial class StoryCanvas : IAsyncDisposable
         // drag or a scene added on the map records one.
         PlaceScenes();
         FrameIfNeeded();
+        CentrePending();
 
         // The held scene, or the one a link is drawn from, can be deleted from another tab mid-
         // gesture; the release that follows has nothing left to place, save, or link.
@@ -407,6 +448,35 @@ public partial class StoryCanvas : IAsyncDisposable
             _viewport.Fit(_model.Bounds, CanvasGeometry.ContentMargin);
         }
     }
+
+    // Centres the scene the page asked for once it is placed. A scene that has left the story is
+    // never going to be, so the request goes with it.
+    private bool CentrePending()
+    {
+        if (_pendingCentre is not { } sceneId)
+        {
+            return false;
+        }
+
+        if (!_placed.TryGetValue(sceneId, out var position))
+        {
+            if (Story.FindScene(sceneId) is null)
+            {
+                _pendingCentre = null;
+            }
+
+            return false;
+        }
+
+        _pendingCentre = null;
+        _viewport.CentreOn(new ScenePosition(
+            position.X + (CanvasGeometry.NodeWidth / 2), position.Y + (CanvasGeometry.NodeHeight / 2)));
+        return true;
+    }
+
+    // Violations name scenes, not links, so a link is blamed by incidence: it takes the severity of
+    // the scene it leaves (design note §13.3).
+    private ValidationSeverity? SeverityOf(CanvasEdge edge) => _findings.GetValueOrDefault(edge.Source)?.Severity;
 
     // Every scene placed afresh around the positions the creator chose, and the model rebuilt from
     // them: after a load, after the page's edits, and after the canvas's own.

@@ -1,5 +1,5 @@
-/* A choice's label over a paper halo, in the layer above every line.
-   Direction: docs/design/0002-visual-direction.md §10.3. */
+/* A choice's label over a paper halo, in the layer above every line, and a problem's mark on the
+   curve. Direction: docs/design/0002-visual-direction.md §10.3 and §13.3. */
 
 .edge-label {
     font-family: var(--fw-font-utility);
@@ -18,4 +18,22 @@
 /* The selected link's words turn ribbon with its line (§12.5). */
 .edge-label-selected {
     fill: var(--fw-ribbon);
+}
+
+/* The mark sits in a paper disc that breaks the line, as the label's halo does; presses go through
+   it to the line beneath. */
+.edge-mark {
+    pointer-events: none;
+}
+
+.edge-mark circle {
+    fill: var(--fw-paper);
+}
+
+.edge-mark-error {
+    color: var(--fw-error);
+}
+
+.edge-mark-warning {
+    color: var(--fw-warning);
 }

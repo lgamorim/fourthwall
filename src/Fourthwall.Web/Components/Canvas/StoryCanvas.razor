@@ -1,7 +1,7 @@
 @* The story as a pencil map: plain paper, pages for scenes, pencil for links
    (docs/design/0002-visual-direction.md §10). The map is a sheet larger than the window: the
    viewport slides and zooms it, and a page can be moved by hand (§11). The creator adds scenes and
-   draws links on it (§12). *@
+   draws links on it (§12), and the pages and links a validation report blames carry its marks (§13). *@
 <div class="canvas @HostStateClass">
     @if (Error is { } error)
     {
@@ -47,6 +47,30 @@
                         markerUnits="userSpaceOnUse" orient="auto">
                     <path d="M 0,0 L 8,4 L 0,8 Z" />
                 </marker>
+                <marker id="canvas-arrow-error" class="canvas-arrow-error"
+                        viewBox="0 0 8 8" refX="8" refY="4"
+                        markerWidth="8" markerHeight="8"
+                        markerUnits="userSpaceOnUse" orient="auto">
+                    <path d="M 0,0 L 8,4 L 0,8 Z" />
+                </marker>
+                <marker id="canvas-arrow-warning" class="canvas-arrow-warning"
+                        viewBox="0 0 8 8" refX="8" refY="4"
+                        markerWidth="8" markerHeight="8"
+                        markerUnits="userSpaceOnUse" orient="auto">
+                    <path d="M 0,0 L 8,4 L 0,8 Z" />
+                </marker>
+
+                @* The two problem marks, shared by the pages' tabs and the links (§13.1): a cross
+                   for an error, a triangle for a warning, drawn like the navigator's kind marks
+                   and coloured by whatever uses them. *@
+                <symbol id="canvas-mark-error" viewBox="0 0 12 12">
+                    <path d="M 2.5,2.5 L 9.5,9.5 M 9.5,2.5 L 2.5,9.5"
+                          fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </symbol>
+                <symbol id="canvas-mark-warning" viewBox="0 0 12 12">
+                    <path d="M 6,1.5 L 11,10.5 L 1,10.5 Z"
+                          fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" />
+                </symbol>
 
                 @* One plate for every thumbnail: userSpaceOnUse resolves inside each node's own
                    translated group. *@
@@ -62,6 +86,7 @@
                         <SceneEdge @key="edge.Key"
                                    Edge="edge"
                                    IsSelected="IsSelectedEdge(edge)"
+                                   Severity="SeverityOf(edge)"
                                    OnSelected="() => ClickEdgeAsync(edge.Key)" />
                     }
                 </g>
@@ -77,6 +102,7 @@
                         <SceneEdgeLabel @key="edge.Key"
                                         Edge="edge"
                                         IsSelected="IsSelectedEdge(edge)"
+                                        Severity="SeverityOf(edge)"
                                         OnSelected="() => ClickEdgeAsync(edge.Key)" />
                     }
                 </g>
@@ -88,6 +114,7 @@
                                    IsSelected="node.Scene.Id == SelectedSceneId"
                                    IsDragging="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DraggingNode"
                                    IsDropTarget="node.Scene.Id == _interaction.DropTarget"
+                                   Findings="_findings.GetValueOrDefault(node.Scene.Id)"
                                    IsDrawingSource="node.Scene.Id == _interaction.PressedScene && _interaction.Mode == CanvasInteractionMode.DrawingEdge"
                                    OnSelected="() => SelectAsync(node.Scene.Id, null)"
                                    OnClicked="() => ClickSceneAsync(node.Scene.Id)"
