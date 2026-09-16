@@ -16,7 +16,7 @@
    @onpointerdown="OnPointerDown"
    @onpointerdown:stopPropagation
    @onfocus="OnFocused">
-    <title>@Node.Scene.Text</title>
+    <title>@Title</title>
 
     <path class="node-shape" d="@CanvasGeometry.NodeOutline(Node.Scene.Kind)" />
 
@@ -41,6 +41,16 @@
         <g class="node-start">
             <rect x="0" y="@StartTagY" width="@StartTagWidth" height="@StartTagHeight" rx="@CornerRadius" />
             <text x="@StartTagTextX" y="@StartTagTextY">Start</text>
+        </g>
+    }
+
+    @* The report's tab hangs from the bottom edge, as the start tag hangs from the top (§13.2). *@
+    @if (Findings is { } findings)
+    {
+        <g class="node-problem" aria-hidden="true">
+            <rect x="0" y="@TabY" width="@TabWidth(findings)" height="@TabHeight" rx="@CornerRadius" />
+            <use href="@MarkHref(findings)" x="@TabMarkX" y="@TabMarkY" width="@TabMarkSize" height="@TabMarkSize" />
+            <text x="@TabTextX" y="@TabTextY">@ProblemWord(findings)</text>
         </g>
     }
 

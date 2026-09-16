@@ -425,6 +425,86 @@ public class SceneNodeTests : BunitContext
         Assert.DoesNotContain("node-dragging", cut.Find(".canvas-node").ClassList);
     }
 
+    [Theory]
+    [InlineData(ValidationSeverity.Error, "node-error", "Fix", "#canvas-mark-error")]
+    [InlineData(ValidationSeverity.Warning, "node-warning", "Check", "#canvas-mark-warning")]
+    public void Should_HangTheProblemsTab_When_TheReportBlamesTheScene(
+        ValidationSeverity severity, string expectedClass, string expectedWord, string expectedMark)
+    {
+        // Arrange
+        var findings = severity == ValidationSeverity.Error
+            ? new SceneFindings([ValidationRule.AllScenesReachable], [])
+            : new SceneFindings([], [ValidationRule.EverySceneCanReachEnding]);
+
+        // Act
+        var cut = RenderNode(Node(SceneKind.Linear, "Adrift on the reef"), findings: findings);
+
+        // Assert — severity reads by the mark and the word, never by colour alone (§13.2).
+        Assert.Contains(expectedClass, cut.Find(".canvas-node").ClassList);
+        var tab = cut.Find(".node-problem");
+        Assert.Equal(expectedMark, tab.QuerySelector("use")!.GetAttribute("href"));
+        Assert.Equal(expectedWord, tab.QuerySelector("text")!.TextContent);
+    }
+
+    [Fact]
+    public void Should_HangNoTab_When_TheReportBlamesNothing()
+    {
+        // Act
+        var cut = RenderNode(Node(SceneKind.Linear, "A storm gathers"));
+
+        // Assert
+        var group = cut.Find(".canvas-node");
+        Assert.DoesNotContain("node-error", group.ClassList);
+        Assert.DoesNotContain("node-warning", group.ClassList);
+        Assert.Empty(cut.FindAll(".node-problem"));
+        Assert.Equal("A storm gathers", cut.Find(".canvas-node > title").TextContent);
+    }
+
+    [Fact]
+    public void Should_HangOneErrorTab_When_TheSceneHasErrorsAndWarnings()
+    {
+        // Arrange
+        var findings = new SceneFindings([ValidationRule.AllScenesReachable], [ValidationRule.EverySceneCanReachEnding]);
+
+        // Act
+        var cut = RenderNode(Node(SceneKind.Linear, "Adrift on the reef"), findings: findings);
+
+        // Assert
+        Assert.Contains("node-error", cut.Find(".canvas-node").ClassList);
+        Assert.DoesNotContain("node-warning", cut.Find(".canvas-node").ClassList);
+        Assert.Equal("Fix", Assert.Single(cut.FindAll(".node-problem text")).TextContent);
+    }
+
+    [Fact]
+    public void Should_NameWhatToFixAndWhatToCheck_When_TheSceneHasProblems()
+    {
+        // Arrange
+        var findings = new SceneFindings(
+            [ValidationRule.AllScenesReachable, ValidationRule.OutgoingDegreeMatchesKind],
+            [ValidationRule.EverySceneCanReachEnding]);
+
+        // Act
+        var cut = RenderNode(Node(SceneKind.Choice, "A fork"), findings: findings);
+
+        // Assert — in the panel's words, for a screen reader and for the pointer's hover.
+        const string Problems = "Fix: Unreachable scenes, Links don't match the kind. Check: Dead ends.";
+        Assert.Equal($"A fork, Choice. {Problems}", cut.Find(".canvas-node").GetAttribute("aria-label"));
+        Assert.Equal($"A fork\n{Problems}", cut.Find(".canvas-node > title").TextContent);
+    }
+
+    [Fact]
+    public void Should_NameOnlyWhatToCheck_When_TheSceneHasOnlyWarnings()
+    {
+        // Arrange
+        var findings = new SceneFindings([], [ValidationRule.BrokenImageReference]);
+
+        // Act
+        var cut = RenderNode(Node(SceneKind.Linear, "Below deck"), findings: findings);
+
+        // Assert
+        Assert.Equal("Below deck, Linear. Check: Missing image.", cut.Find(".canvas-node").GetAttribute("aria-label"));
+    }
+
     private static CanvasNode Node(SceneKind kind, string text)
     {
         var outcome = kind == SceneKind.Ending ? EndingOutcome.Victory() : null;
@@ -437,6 +517,7 @@ public class SceneNodeTests : BunitContext
         bool isDragging = false,
         bool isDropTarget = false,
         bool isDrawingSource = false,
+        SceneFindings? findings = null,
         Action? onSelected = null,
         Action? onClicked = null,
         Action<PointerEventArgs>? onPointerDown = null,
@@ -448,6 +529,7 @@ public class SceneNodeTests : BunitContext
             .Add(p => p.IsDragging, isDragging)
             .Add(p => p.IsDropTarget, isDropTarget)
             .Add(p => p.IsDrawingSource, isDrawingSource)
+            .Add(p => p.Findings, findings)
             .Add(p => p.OnSelected, onSelected ?? (() => { }))
             .Add(p => p.OnClicked, onClicked ?? (() => { }))
             .Add(p => p.OnPointerDown, onPointerDown ?? (_ => { }))

@@ -1,3 +1,4 @@
+using Fourthwall.Application;
 using Fourthwall.Domain;
 using Fourthwall.Web.Components.Editor;
 
@@ -27,6 +28,15 @@ public partial class SceneNode
     private static readonly string StartTagHeight = CanvasGeometry.Invariant(17);
     private static readonly string StartTagTextX = CanvasGeometry.Invariant(26);
     private static readonly string StartTagTextY = CanvasGeometry.Invariant(-5);
+    private static readonly string TabY = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight);
+    private static readonly string TabHeight = CanvasGeometry.Invariant(17);
+    private static readonly string TabMarkX = CanvasGeometry.Invariant(6);
+    private static readonly string TabMarkY = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight + 4);
+    private static readonly string TabMarkSize = CanvasGeometry.Invariant(9);
+    private static readonly string TabTextX = CanvasGeometry.Invariant(19);
+    private static readonly string TabTextY = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight + 12);
+    private static readonly string ErrorTabWidth = CanvasGeometry.Invariant(52);
+    private static readonly string WarningTabWidth = CanvasGeometry.Invariant(68);
     private static readonly string PortX = CanvasGeometry.Invariant(CanvasGeometry.NodeWidth);
     private static readonly string PortY = CanvasGeometry.Invariant(CanvasGeometry.NodeHeight / 2);
     private static readonly string PortRadius = CanvasGeometry.Invariant(CanvasGeometry.PortRadius);
@@ -58,6 +68,13 @@ public partial class SceneNode
     /// </summary>
     [Parameter]
     public bool IsDrawingSource { get; set; }
+
+    /// <summary>
+    /// What the validation report the panel shows says about this scene, or <see langword="null"/>
+    /// when it says nothing — or there is no report.
+    /// </summary>
+    [Parameter]
+    public SceneFindings? Findings { get; set; }
 
     /// <summary>
     /// Raised when Enter or Space selects the node, as a button answers them.
@@ -103,18 +120,54 @@ public partial class SceneNode
         ? Scenes.Label(Node.Scene, Node.Scene.ImagePath is null ? LabelLength : LabelLengthBesideThumbnail)
         : Prompt;
 
-    // The name announced, or spoken by a voice command, is the one shown.
-    private string AccessibleName => $"{(HasText ? Scenes.Label(Node.Scene) : Prompt)}, {Node.Scene.Kind}";
+    // The name announced, or spoken by a voice command, is the one shown; the report's problems
+    // follow it in the panel's words, since the tab's mark and colour say nothing to a screen reader.
+    private string AccessibleName =>
+        $"{(HasText ? Scenes.Label(Node.Scene) : Prompt)}, {Node.Scene.Kind}{(Findings is { } findings ? $". {Problems(findings)}" : null)}";
+
+    // The hover shows the whole text, and then what the report says about it.
+    private string Title => Findings is { } findings ? $"{Node.Scene.Text}\n{Problems(findings)}" : Node.Scene.Text;
 
     private string StateClasses => string.Join(
         ' ',
         new[]
         {
+            SeverityClass,
             IsSelected ? "node-selected" : null,
             IsDragging ? "node-dragging" : null,
             IsDropTarget ? "node-drop-target" : null,
             IsDrawingSource ? "node-drawing-source" : null,
         }.OfType<string>());
+
+    private string? SeverityClass => Findings?.Severity switch
+    {
+        null => null,
+        ValidationSeverity.Error => "node-error",
+        _ => "node-warning",
+    };
+
+    // An error makes the story invalid, so it needs fixing; a warning only looks unintended, so it
+    // needs checking (design note §13.2). The creator never reads "error" or "warning".
+    private static string ProblemWord(SceneFindings findings) =>
+        findings.Severity == ValidationSeverity.Error ? "Fix" : "Check";
+
+    private static string MarkHref(SceneFindings findings) =>
+        findings.Severity == ValidationSeverity.Error ? "#canvas-mark-error" : "#canvas-mark-warning";
+
+    // SVG text has no measured width here, so each word's tab is sized for it.
+    private static string TabWidth(SceneFindings findings) =>
+        findings.Severity == ValidationSeverity.Error ? ErrorTabWidth : WarningTabWidth;
+
+    private static string Problems(SceneFindings findings) => string.Join(
+        ' ',
+        new[]
+        {
+            findings.Errors.Count > 0 ? $"Fix: {RuleNames(findings.Errors)}." : null,
+            findings.Warnings.Count > 0 ? $"Check: {RuleNames(findings.Warnings)}." : null,
+        }.OfType<string>());
+
+    private static string RuleNames(IEnumerable<ValidationRule> rules) =>
+        string.Join(", ", rules.Select(ValidationRules.Label));
 
     // The class picks nothing the outline has not already drawn; it lets the stylesheet and a
     // reader of the markup tell kinds apart. Exhaustive, like SceneList's: a kind the editor does
