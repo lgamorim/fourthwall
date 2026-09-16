@@ -20,13 +20,13 @@
 
   <!-- Package version for `dotnet pack`. Prerelease suffix during a phase's
        active development; the phase-closing commit drops it to the clean X.Y.0.
-       Phase 4 (Interactive Canvas) is in progress on the 0.4.0-preview line, and
-       the preview number advances once per milestone in that milestone's first
-       commit (preview.7 is M23: validation overlays on the map and the phase
-       close). The closing commit drops the suffix to 0.4.0 and is tagged
-       v0.4.0, so the tag always matches the version it marks exactly. -->
+       Phase 4 (Interactive Canvas) is complete: this commit closes it at 0.4.0
+       and is tagged v0.4.0, so the tag matches the version it marks exactly.
+       Phase 5's first commit starts the 0.5.0-preview line at preview.1, and the
+       preview number advances once per milestone in that milestone's first
+       commit. -->
   <PropertyGroup>
-    <Version>0.4.0-preview.7</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
 
 </Project>
