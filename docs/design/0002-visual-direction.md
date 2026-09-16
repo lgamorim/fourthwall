@@ -224,8 +224,9 @@ maintain. M20's node gets the same ribbon as an SVG `<path>` in the same colour.
   device for "a section starts here".
 - **Severity rows** (validation, hints, errors) keep the left-rule-plus-tint treatment the app
   already has, now from tokens: error rows in `--fw-error` on its tint, warnings in `--fw-warning`
-  on its tint. A row's colour is always paired with its rule name in bold utility, so severity never
-  reads by colour alone.
+  on its tint. A row's colour is paired with its rule name in bold utility, which says what is
+  wrong; from M23 a mark before the name says how serious it is (§13.1), so severity never reads by
+  colour alone.
 - **Start tag.** The start scene's tag is ink on paper (inverted) — the one row that is the
   beginning is the one row with an ink tag.
 - No numbered markers. Scenes carry no number in the domain; gamebook section numbers would be
@@ -725,7 +726,9 @@ never reads by colour alone (§8), exactly as kind never does.
 ### 13.1 The two marks
 
 - **Error: a cross** (✕). **Warning: a solid triangle** (▲). Both on a 12×12 box, drawn like §5's
-  kind marks: the cross as a 1.8px round stroke, the triangle filled.
+  kind marks: the cross as a 1.8px round stroke, the triangle filled. They are drawn at 9px on a
+  page's tab and on a link (so the cross's stroke renders at about 1.35px), and at 0.8em in the
+  panel, the size of the navigator's kind marks.
 - On the map they are drawn once, as `<symbol>`s in the canvas's `<defs>`, and coloured by
   `currentColor`. In the panel the same shapes are CSS masks before each row's bold rule name, so
   a row's severity reads by mark and colour where it read by colour alone until now — this is how
@@ -816,6 +819,9 @@ Screenshots under `docs/design/screenshots/m23/`, all at 1280×800 with the dock
   the mark would have overprinted the label. Nearer the port, the marks of a fan-out would
   overprint each other instead. On a short link the mark now sits just under the label's middle,
   clear of it.
+- **Recorded: the marks' size.** The approved text gave the marks' 12×12 drawing box but not the
+  size they are drawn at; §13.1 now says 9px on the map and 0.8em in the panel (decided in the
+  review of the M23 PR).
 - **Kept: the tab's border.** The warning tint on paper is too faint to give the tab an edge of its
   own.
 - **Kept: the marks on links.** On the doom loop they do not read busy, and on a dotted follow-up
