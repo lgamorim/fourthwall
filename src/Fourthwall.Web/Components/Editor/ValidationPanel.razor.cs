@@ -21,6 +21,14 @@ public partial class ValidationPanel : IDisposable
     [Parameter]
     public EventCallback<SceneId?> OnSceneSelected { get; set; }
 
+    /// <summary>
+    /// Raised with the report the panel now shows: the new one when a validation completes, and
+    /// <see langword="null"/> when it stops showing one — a validation starting again, or the story
+    /// changing. The canvas marks the scenes it blames, so the map never shows what the panel does not.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ValidationReport?> OnReportChanged { get; set; }
+
     // default!: the framework assigns every [Inject] property before any member of the component
     // runs, so these are never observed null.
     [Inject]
@@ -43,7 +51,7 @@ public partial class ValidationPanel : IDisposable
     private async Task ValidateAsync()
     {
         _failure = null;
-        _report = null;
+        await ShowReportAsync(null);
 
         if (Workspace.Current is not { } story || Workspace.Assets is not { } assets)
         {
@@ -62,7 +70,7 @@ public partial class ValidationPanel : IDisposable
             // to avoid.
             if (revision == _storyRevision)
             {
-                _report = report;
+                await ShowReportAsync(report);
             }
         }
         catch (Exception exception) when (UserFacingFailures.Includes(exception))
@@ -81,14 +89,26 @@ public partial class ValidationPanel : IDisposable
 
     private Task SelectAsync(SceneId sceneId) => OnSceneSelected.InvokeAsync(sceneId);
 
-    private void OnWorkspaceChanged(object? sender, EventArgs e) => InvokeAsync(() =>
+    // Tells the page only when what is shown changes, so an edit with no report up costs nothing.
+    private async Task ShowReportAsync(ValidationReport? report)
+    {
+        if (ReferenceEquals(report, _report))
+        {
+            return;
+        }
+
+        _report = report;
+        await OnReportChanged.InvokeAsync(report);
+    }
+
+    private void OnWorkspaceChanged(object? sender, EventArgs e) => InvokeAsync(async () =>
     {
         // The story has been edited or replaced: a report describing what it used to be would
         // quietly mislead, so it goes rather than lingering as though it still applied. The
         // revision bump also disowns any validation still in flight.
         _storyRevision++;
-        _report = null;
         _failure = null;
+        await ShowReportAsync(null);
         StateHasChanged();
     });
 }

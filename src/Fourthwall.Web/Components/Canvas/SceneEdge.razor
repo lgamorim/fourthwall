@@ -1,13 +1,14 @@
 @* A link's line on the pencil map: a pencil curve for a choice, the same curve in leader dots for a
    follow-up (docs/design/0002-visual-direction.md §10.3), in ribbon while selected (§12.5). Its
    label is SceneEdgeLabel, drawn in a layer above every line. A double-click on a link is the
-   link's, not the paper's: it adds no scene. *@
+   link's, not the paper's: it adds no scene. A link leaving a scene the report blames takes its
+   severity (§13.3). *@
 <g class="@GroupClass" @onclick="OnSelected" @ondblclick:stopPropagation>
     @if (IsChoice)
     {
         <title>@Edge.Label</title>
     }
 
-    <path class="edge-line" d="@Edge.PathData" marker-end="@(IsSelected ? "url(#canvas-arrow-selected)" : "url(#canvas-arrow)")" />
+    <path class="edge-line" d="@Edge.PathData" marker-end="@Marker" />
     <path class="edge-hit" d="@Edge.PathData" />
 </g>

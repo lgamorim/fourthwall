@@ -221,6 +221,78 @@ public class ValidationPanelTests : BunitContext
     }
 
     [Fact]
+    public async Task Should_RaiseTheReport_When_ValidationCompletes()
+    {
+        // Arrange — the canvas marks the scenes a report blames, so the page needs the report too.
+        var story = await OpenStoryAsync();
+        var scene = story.AddScene(SceneKind.Linear, "A storm gathers");
+        _validation.Report = new ValidationReport(
+            [Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, "1 scene cannot be reached.", scene.Id)]);
+        var raised = new List<ValidationReport?>();
+        var cut = RenderPanel(raised);
+
+        // Act
+        cut.Find("#validate").Click();
+
+        // Assert
+        Assert.Same(_validation.Report, Assert.Single(raised));
+    }
+
+    [Fact]
+    public async Task Should_RaiseNull_When_TheStoryChanges()
+    {
+        // Arrange
+        await OpenStoryAsync();
+        var raised = new List<ValidationReport?>();
+        var cut = RenderPanel(raised);
+        cut.Find("#validate").Click();
+
+        // Act
+        await _workspace.SaveAsync(TestContext.Current.CancellationToken);
+
+        // Assert — the map must not keep marks the panel has discarded.
+        cut.WaitForAssertion(() => Assert.Equal([_validation.Report, null], raised));
+    }
+
+    [Fact]
+    public async Task Should_RaiseNull_When_ValidationStartsAgain()
+    {
+        // Arrange
+        await OpenStoryAsync();
+        var raised = new List<ValidationReport?>();
+        var cut = RenderPanel(raised);
+        cut.Find("#validate").Click();
+        _validation.Gate = new TaskCompletionSource();
+
+        // Act — the second run is held open, so what the panel shows meanwhile can be seen.
+        cut.Find("#validate").Click();
+
+        // Assert — the panel says "Validating…" with no rows, and the map shows no marks either.
+        Assert.Equal([_validation.Report, null], raised);
+        _validation.Gate.SetResult();
+    }
+
+    [Fact]
+    public async Task Should_NotRaiseTheReport_When_TheStoryChangedWhileValidating()
+    {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await OpenStoryAsync();
+        _validation.Gate = new TaskCompletionSource();
+        var raised = new List<ValidationReport?>();
+        var cut = RenderPanel(raised);
+        cut.Find("#validate").Click();
+
+        // Act
+        await _workspace.SaveAsync(cancellationToken);
+        _validation.Gate.SetResult();
+
+        // Assert — a report of the story as it used to be reaches neither the panel nor the map.
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find(".validation-idle")));
+        Assert.Empty(raised);
+    }
+
+    [Fact]
     public void Should_ShowNothing_When_NoStoryIsOpen()
     {
         // Arrange & Act
@@ -233,6 +305,10 @@ public class ValidationPanelTests : BunitContext
     private static ValidationViolation Violation(
         ValidationRule rule, ValidationSeverity severity, string message, params SceneId[] sceneIds) =>
         new(rule, severity, message, sceneIds);
+
+    private IRenderedComponent<ValidationPanel> RenderPanel(List<ValidationReport?> raised) =>
+        Render<ValidationPanel>(parameters => parameters
+            .Add(p => p.OnReportChanged, report => raised.Add(report)));
 
     private Task<Story> OpenStoryAsync() =>
         _workspace.CreateAsync(@"C:\stories\wreck", "The Wreck", TestContext.Current.CancellationToken);

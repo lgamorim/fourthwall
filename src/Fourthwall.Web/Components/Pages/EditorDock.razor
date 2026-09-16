@@ -1,7 +1,7 @@
 @* The editor's dock: the story-level check above the detail of whichever scene is selected. The
    page projects it into the layout's dock outlet; see StoryEditor.razor.cs for why it is a
    component of its own. *@
-<ValidationPanel OnSceneSelected="OnSceneSelected" />
+<ValidationPanel OnSceneSelected="OnSceneSelected" OnReportChanged="OnReportChanged" />
 
 <section class="navigator" aria-label="Scenes">
     <h2>Scenes</h2>

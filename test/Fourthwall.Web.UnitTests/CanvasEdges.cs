@@ -18,6 +18,6 @@ internal static class CanvasEdges
         return new CanvasEdge(
             new CanvasEdgeKey(source, choiceIndex), source, SceneId.New(), label,
             ParallelIndex: 0, IsSelfLoop: false, PathData: "M 240,72 C 300,72 300,72 360,72",
-            LabelX: "300", LabelY: "62");
+            LabelX: "300", LabelY: "62", MarkX: "270", MarkY: "72");
     }
 }

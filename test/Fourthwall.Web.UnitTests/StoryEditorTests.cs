@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+
 using Fourthwall.Application;
 using Fourthwall.Domain;
 using Fourthwall.Infrastructure;
@@ -585,6 +588,143 @@ public class StoryEditorTests : BunitContext
 
         // Assert — the invitation points at it, so it must work.
         Assert.False(cut.Find("#canvas-add-scene").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Should_BadgeTheCanvas_When_ValidationRuns()
+    {
+        // Arrange
+        var orphan = await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+
+        // Act
+        cut.Find("#validate").Click();
+
+        // Assert
+        Assert.Contains("node-error", NodeFor(cut, orphan.Id).ClassList);
+    }
+
+    [Fact]
+    public async Task Should_ClearTheBadges_When_TheStoryIsEdited()
+    {
+        // Arrange
+        var orphan = await OpenStoryWithAReportNamingASceneAsync();
+        var cut = RenderEditor();
+        cut.Find("#validate").Click();
+
+        // Act — any saved edit makes the report describe a story that no longer exists.
+        cut.Find("#story-title").Change("The Wreck of the Hesperus");
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            Assert.DoesNotContain("node-error", NodeFor(cut, orphan.Id).ClassList);
+            Assert.Empty(cut.FindAll(".node-problem"));
+        });
+    }
+
+    [Fact]
+    public async Task Should_CentreTheNode_When_AValidationChipIsClicked()
+    {
+        // Arrange
+        var (_, reef) = await OpenStoryWithTwoFarScenesAsync();
+        _validation.Report = new ValidationReport(
+        [
+            new ValidationViolation(
+                ValidationRule.AllScenesReachable, ValidationSeverity.Error, "1 scene cannot be reached.", [reef.Id]),
+        ]);
+        var cut = await RenderMeasuredEditorAsync();
+        cut.Find("#validate").Click();
+
+        // Act
+        cut.Find(".validation-scene").Click();
+
+        // Assert
+        AssertCentred(cut, reef.Id);
+    }
+
+    [Fact]
+    public async Task Should_CentreTheNode_When_ANavigatorRowIsChosen()
+    {
+        // Arrange
+        var (_, reef) = await OpenStoryWithTwoFarScenesAsync();
+        var cut = await RenderMeasuredEditorAsync();
+
+        // Act
+        cut.Find($".scene-row[data-scene-id='{reef.Id.Value}'] .scene-select").Click();
+
+        // Assert
+        AssertCentred(cut, reef.Id);
+    }
+
+    [Fact]
+    public async Task Should_CentreTheNewScene_When_ItIsAddedFromTheNavigator()
+    {
+        // Arrange
+        await OpenStoryWithTwoFarScenesAsync();
+        var cut = await RenderMeasuredEditorAsync();
+        cut.Find("#scene-create-text").Change("Below deck");
+
+        // Act
+        cut.Find("#scene-create-submit").Click();
+
+        // Assert
+        var story = _workspace.Current;
+        Assert.NotNull(story);
+        var added = story.Scenes.Single(scene => scene.Text == "Below deck");
+        AssertCentred(cut, added.Id);
+    }
+
+    [Fact]
+    public async Task Should_NotMoveTheMap_When_ANodeIsClickedOnTheCanvas()
+    {
+        // Arrange — the creator is pointing at the map; it must not slide under the pointer.
+        var (storm, _) = await OpenStoryWithTwoFarScenesAsync();
+        var cut = await RenderMeasuredEditorAsync();
+        var before = cut.Find(".canvas-world").GetAttribute("transform");
+
+        // Act
+        NodeFor(cut, storm.Id).Click();
+
+        // Assert
+        Assert.Contains("node-selected", NodeFor(cut, storm.Id).ClassList);
+        Assert.Equal(before, cut.Find(".canvas-world").GetAttribute("transform"));
+    }
+
+    private static void AssertCentred(IRenderedComponent<DockHost> cut, SceneId sceneId)
+    {
+        var node = Numbers(NodeFor(cut, sceneId).GetAttribute("transform"));
+        var world = Numbers(cut.Find(".canvas-world").GetAttribute("transform"));
+        Assert.Equal(400, world[0] + ((node[0] + (CanvasGeometry.NodeWidth / 2)) * world[2]), precision: 1);
+        Assert.Equal(300, world[1] + ((node[1] + (CanvasGeometry.NodeHeight / 2)) * world[2]), precision: 1);
+
+        static double[] Numbers(string? transform) =>
+            [.. Regex.Matches(transform ?? string.Empty, @"-?\d+(\.\d+)?")
+                .Select(match => double.Parse(match.Value, CultureInfo.InvariantCulture))];
+    }
+
+    // Two scenes far enough apart that the map opens framed around both, with neither centred.
+    private async Task<(Scene Storm, Scene Reef)> OpenStoryWithTwoFarScenesAsync()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var story = await OpenStoryAsync();
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        await _workspace.LayoutStore.SaveAsync(
+            new Dictionary<SceneId, ScenePosition>
+            {
+                [storm.Id] = new(0, 0),
+                [reef.Id] = new(1000, 500),
+            },
+            cancellationToken);
+        return (storm, reef);
+    }
+
+    private async Task<IRenderedComponent<DockHost>> RenderMeasuredEditorAsync()
+    {
+        var cut = RenderEditor();
+        await cut.FindComponent<StoryCanvas>().Instance.ResizeAsync(800, 600);
+        return cut;
     }
 
     private static async Task DragNodeAsync(IRenderedComponent<DockHost> cut, SceneId sceneId)

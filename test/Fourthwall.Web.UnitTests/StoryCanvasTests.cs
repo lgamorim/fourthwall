@@ -4,7 +4,9 @@ using Fourthwall.Infrastructure;
 using Fourthwall.Web.Components.Canvas;
 using Fourthwall.Web.Composition;
 
+using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Infrastructure;
@@ -731,6 +733,215 @@ public class StoryCanvasTests : BunitContext
         // Assert — the new story opens the way any story opens, not through the old one's zoom.
         Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
     }
+
+    [Theory]
+    [InlineData(ValidationSeverity.Error, "node-error")]
+    [InlineData(ValidationSeverity.Warning, "node-warning")]
+    public void Should_BadgeTheNode_When_TheReportBlamesItsScene(ValidationSeverity severity, string expectedClass)
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        var report = Report(Violation(ValidationRule.AllScenesReachable, severity, reef.Id));
+
+        // Act
+        var cut = RenderCanvas(story, report: report);
+
+        // Assert
+        Assert.Contains(expectedClass, NodeFor(cut, reef.Id).ClassList);
+        Assert.Single(cut.FindAll(".node-problem"));
+        Assert.DoesNotContain(expectedClass, NodeFor(cut, storm.Id).ClassList);
+    }
+
+    [Fact]
+    public void Should_PreferTheError_When_TheReportBlamesASceneForBoth()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        var report = Report(
+            Violation(ValidationRule.EverySceneCanReachEnding, ValidationSeverity.Warning, reef.Id),
+            Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, reef.Id));
+
+        // Act
+        var cut = RenderCanvas(story, report: report);
+
+        // Assert
+        var node = NodeFor(cut, reef.Id);
+        Assert.Contains("node-error", node.ClassList);
+        Assert.DoesNotContain("node-warning", node.ClassList);
+    }
+
+    [Fact]
+    public void Should_MarkTheLinksLeavingABlamedScene_When_TheReportIsShown()
+    {
+        // Arrange — the reef flows on to the shore, and the fork leads into the reef.
+        var story = new Story("The Wreck");
+        var fork = story.AddScene(SceneKind.Choice, "A fork");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        var shore = story.AddScene(SceneKind.Linear, "The shore");
+        story.WireChoice(fork.Id, "Swim", reef.Id);
+        story.SetFollowUp(reef.Id, shore.Id);
+        var report = Report(Violation(ValidationRule.EverySceneCanReachEnding, ValidationSeverity.Warning, reef.Id));
+
+        // Act
+        var cut = RenderCanvas(story, report: report);
+
+        // Assert — blame goes by where a link starts: the reef's follow-up, not the fork's choice into it.
+        var marked = Assert.Single(cut.FindAll(".canvas-edge.edge-warning"));
+        Assert.Contains("edge-follow-up", marked.ClassList);
+        Assert.Equal(
+            "url(#canvas-arrow-warning)", cut.Find(".canvas-edge.edge-warning .edge-line").GetAttribute("marker-end"));
+        Assert.Single(cut.FindAll(".edge-mark-warning"));
+        Assert.Empty(cut.FindAll(".canvas-edge.edge-error"));
+    }
+
+    [Fact]
+    public void Should_ClearTheBadges_When_TheReportGoes()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        story.SetFollowUp(reef.Id, story.AddScene(SceneKind.Linear, "The shore").Id);
+        var cut = RenderCanvas(
+            story, report: Report(Violation(ValidationRule.AllScenesReachable, ValidationSeverity.Error, reef.Id)));
+
+        // Act
+        cut.Render(parameters => parameters.Add(p => p.Report, null));
+
+        // Assert
+        Assert.Empty(cut.FindAll(".node-error"));
+        Assert.Empty(cut.FindAll(".node-problem"));
+        Assert.Empty(cut.FindAll(".edge-error"));
+        Assert.Empty(cut.FindAll(".edge-mark"));
+    }
+
+    [Fact]
+    public void Should_BadgeNothing_When_TheReportOnlyFindsAnUnusedImage()
+    {
+        // Arrange — an unused image names no scene and stays in the panel.
+        var story = new Story("The Wreck");
+        story.SetFollowUp(
+            story.AddScene(SceneKind.Linear, "A storm gathers").Id, story.AddScene(SceneKind.Linear, "The shore").Id);
+        var report = Report(Violation(ValidationRule.OrphanAsset, ValidationSeverity.Warning));
+
+        // Act
+        var cut = RenderCanvas(story, report: report);
+
+        // Assert
+        Assert.Empty(cut.FindAll(".node-warning"));
+        Assert.Empty(cut.FindAll(".node-problem"));
+        Assert.Empty(cut.FindAll(".edge-warning"));
+        Assert.Empty(cut.FindAll(".edge-mark"));
+    }
+
+    [Fact]
+    public void Should_DefineTheMarksAndArrowheads_When_Rendered()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+
+        // Act
+        var cut = RenderCanvas(story);
+
+        // Assert — the pages and links refer to these by id.
+        Assert.NotNull(cut.Find("defs symbol#canvas-mark-error"));
+        Assert.NotNull(cut.Find("defs symbol#canvas-mark-warning"));
+        Assert.NotNull(cut.Find("defs marker#canvas-arrow-error"));
+        Assert.NotNull(cut.Find("defs marker#canvas-arrow-warning"));
+    }
+
+    [Fact]
+    public async Task Should_CentreTheScene_When_Asked()
+    {
+        // Arrange — two scenes far apart, framed below actual size on open.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var reef = story.AddScene(SceneKind.Linear, "Adrift on the reef");
+        await SavePositionAsync(_layout, storm.Id, new ScenePosition(0, 0));
+        await SavePositionAsync(_layout, reef.Id, new ScenePosition(1000, 500));
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(() => cut.Instance.CentreOnScene(reef.Id));
+
+        // Assert — the page's centre (1100, 532) at the window's centre, at the framed zoom.
+        Assert.Equal("translate(-260 -19.2) scale(0.6)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_CentreTheScene_When_ItIsPlacedAfterBeingAsked()
+    {
+        // Arrange — a scene added in the navigator is selected before the canvas has placed it.
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+        var added = story.AddScene(SceneKind.Linear, "Below deck");
+
+        // Act
+        await cut.InvokeAsync(() => cut.Instance.CentreOnScene(added.Id));
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+
+        // Assert
+        var (x, y) = ScreenCentreOf(cut, added.Id);
+        Assert.Equal(400, x, precision: 1);
+        Assert.Equal(300, y, precision: 1);
+    }
+
+    [Fact]
+    public async Task Should_LeaveTheView_When_AskedToCentreASceneThatIsGone()
+    {
+        // Arrange
+        var story = new Story("The Wreck");
+        story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+        await cut.Instance.ResizeAsync(800, 600);
+
+        // Act
+        await cut.InvokeAsync(() => cut.Instance.CentreOnScene(SceneId.New()));
+        cut.Render(parameters => parameters.Add(p => p.Story, story));
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    [Fact]
+    public async Task Should_LeaveTheView_When_AskedToCentreBeforeTheWindowIsMeasured()
+    {
+        // Arrange — with no size yet there is no centre to put the scene at.
+        var story = new Story("The Wreck");
+        var storm = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var cut = RenderCanvas(story);
+
+        // Act
+        await cut.InvokeAsync(() => cut.Instance.CentreOnScene(storm.Id));
+
+        // Assert
+        Assert.Equal("translate(0 0) scale(1)", WorldTransform(cut));
+    }
+
+    private static (double X, double Y) ScreenCentreOf(IRenderedComponent<StoryCanvas> cut, SceneId sceneId)
+    {
+        var node = Numbers(NodeFor(cut, sceneId).GetAttribute("transform"));
+        var world = Numbers(WorldTransform(cut));
+        return (
+            world[0] + ((node[0] + (CanvasGeometry.NodeWidth / 2)) * world[2]),
+            world[1] + ((node[1] + (CanvasGeometry.NodeHeight / 2)) * world[2]));
+
+        static double[] Numbers(string? transform) =>
+            [.. Regex.Matches(transform ?? string.Empty, @"-?\d+(\.\d+)?")
+                .Select(match => double.Parse(match.Value, CultureInfo.InvariantCulture))];
+    }
+
+    private static ValidationReport Report(params ValidationViolation[] violations) => new(violations);
+
+    private static ValidationViolation Violation(
+        ValidationRule rule, ValidationSeverity severity, params SceneId[] sceneIds) =>
+        new(rule, severity, "Something is wrong.", sceneIds);
 
     private static string? WorldTransform(IRenderedComponent<StoryCanvas> cut) =>
         cut.Find(".canvas-world").GetAttribute("transform");
@@ -1798,9 +2009,11 @@ public class StoryCanvasTests : BunitContext
         Action<SceneId?>? onSelected = null,
         Action? onChanged = null,
         Func<Task>? onChangedAsync = null,
-        Action<Story>? onReady = null) =>
+        Action<Story>? onReady = null,
+        ValidationReport? report = null) =>
         Render<StoryCanvas>(parameters => parameters
             .Add(p => p.Story, story)
+            .Add(p => p.Report, report)
             .Add(p => p.Layout, _layout)
             .Add(p => p.SelectedSceneId, selected)
             .Add(p => p.SelectedSceneIdChanged, onSelected ?? (_ => { }))

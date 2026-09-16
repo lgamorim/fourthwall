@@ -224,8 +224,9 @@ maintain. M20's node gets the same ribbon as an SVG `<path>` in the same colour.
   device for "a section starts here".
 - **Severity rows** (validation, hints, errors) keep the left-rule-plus-tint treatment the app
   already has, now from tokens: error rows in `--fw-error` on its tint, warnings in `--fw-warning`
-  on its tint. A row's colour is always paired with its rule name in bold utility, so severity never
-  reads by colour alone.
+  on its tint. A row's colour is paired with its rule name in bold utility, which says what is
+  wrong; from M23 a mark before the name says how serious it is (§13.1), so severity never reads by
+  colour alone.
 - **Start tag.** The start scene's tag is ink on paper (inverted) — the one row that is the
   beginning is the one row with an ink tag.
 - No numbered markers. Scenes carry no number in the domain; gamebook section numbers would be
@@ -709,3 +710,130 @@ Screenshots under `docs/design/screenshots/m22/`, all at 1280px with the dock op
   of the dock when the navigator is long, so the dock must be scrolled to the text box. This is the
   dock's behaviour from M19 for any selection; bringing the inspector into view is left for a later
   milestone.
+
+## 13. M23 — problems on the map
+
+Approved by the maintainer with the M23 plan on 2026-09-16, before any M23 code was written, with
+the three open choices taken as recommended: no centring motion, the words Fix and Check, and a
+validation that starts again clears the map. §13.3 was revised while building; §13.7 records the
+change against the approved text, and what the screenshot pass kept.
+
+**Thesis.** A reader drawing a gamebook map marks trouble on it: a cross where a way goes wrong, a
+sign where they would look again. M23 draws those two marks on the pencil map, and the validation
+panel's rows carry the same two, so the dock and the map say "problem" in one vocabulary. Severity
+never reads by colour alone (§8), exactly as kind never does.
+
+### 13.1 The two marks
+
+- **Error: a cross** (✕). **Warning: a solid triangle** (▲). Both on a 12×12 box, drawn like §5's
+  kind marks: the cross as a 1.8px round stroke, the triangle filled. They are drawn at 9px on a
+  page's tab and on a link (so the cross's stroke renders at about 1.35px), and at 0.8em in the
+  panel, the size of the navigator's kind marks.
+- On the map they are drawn once, as `<symbol>`s in the canvas's `<defs>`, and coloured by
+  `currentColor`. In the panel the same shapes are CSS masks before each row's bold rule name, so
+  a row's severity reads by mark and colour where it read by colour alone until now — this is how
+  §9's "consistent with the panel rows" is met.
+
+### 13.2 A page with a problem
+
+```
+  ┌▼─────────────────────────┐
+  │  Adrift on the reef       >◯      fill: the functional tint, the panel row's ground
+  │  LINEAR                  /        outline, label, and caption unchanged
+  └──────────────────────────┘
+  └✕ FIX─┘                            the tab, hanging from the bottom edge at the left
+  └▲ CHECK──┘                         (a warning's)
+```
+
+- **The tab** hangs from the page's bottom edge at the left, mirroring the start tag on the top
+  edge: the mark and one word in utility caps, `--fw-text-xs`, in the functional colour on its
+  tint inside a 1px border of the same colour. It is not inverted — the start tag stays the one
+  inverted tag in the app (§5). The bottom edge is the free one: the top holds the start tag at the
+  left and the self-loops' feet at the right (§10.3), and a tab 17px deep leaves 6px to a start tag
+  on the row below.
+- **The words are the creator's:** *Fix* for an error — it makes the story invalid — and *Check*
+  for a warning — something looks unintended (§7). The panel never shows "error" or "warning", and
+  the map does not either.
+- **The page's fill turns to the tint**, so the story's trouble reads at a glance even framed by
+  Show whole story, where the tab is a few pixels tall.
+- **One tab per page:** the worst severity among the violations that name the scene.
+- **Name and title.** The page's accessible name and its hover title add the rules, in the panel's
+  words: "Adrift on the reef, Linear. Fix: Unreachable scenes." — or "Check: Dead ends."
+- **With the other states.** Selection draws the ribbon and the 2px ink outline and never touches
+  the fill, so a selected page keeps its tint and its tab; the ribbon hangs inside the top-left
+  corner and the tab outside the bottom-left, and they never meet. Hover and dragging still lift
+  the fill to the desk — being held is the more immediate news — and the tab keeps the severity
+  meanwhile. The drop target's ribbon outline is unchanged.
+
+### 13.3 A link with a problem
+
+- Every link leaving a page with a problem takes that page's severity. Violations name scenes, not
+  links, so a link is blamed by where it starts; the code says so where it folds the report.
+- The line turns to the functional colour and ends in its own arrowhead (`#canvas-arrow-error`,
+  `#canvas-arrow-warning`); a follow-up keeps its leader dots.
+- **The mark** sits on the curve a quarter of the way along, by the page the link leaves — the
+  page the report blames — in a small paper disc that breaks the line as a label's halo does; on a
+  self-loop, at the top of the arch. A choice's label sits above the curve's middle (§10.3), so the
+  two do not overprint; a follow-up has no label and the mark stands alone. The link itself thus
+  reads without colour, and presses go through the mark to the line.
+- The label stays pencil. A selected link keeps §12.5's ribbon line and arrowhead; its mark keeps
+  the severity.
+- An unused image names no scene and stays in the panel.
+
+### 13.4 Centring on a scene
+
+- A validation chip or a navigator row — a scene just added from the navigator included — centres
+  its page in the window at the current zoom.
+- It centres **always**, not only when the page is out of view as keyboard focus does (§11.5):
+  there a click also focuses and must not move the map under the pointer; here the pointer is in
+  the dock, and the creator has asked to see that scene.
+- A selection made on the map never moves the map.
+- **No motion.** The map jumps, as §11.6 decided for every view change — like turning to a page —
+  so reduced motion needs nothing new. The ribbon on the page just selected marks where the eye
+  lands. A glide was considered and left out: it would move the world transform from an SVG
+  attribute to CSS and need cancelling on the next press.
+
+### 13.5 The README's screenshots
+
+Two frames of one story, a small shipwreck gamebook with a few illustrated scenes: after Validate,
+with an unreachable scene and a doom loop marked and the unreachable scene selected, its row in the
+dock; and after fixing the wiring on the map, validated clean. Each is the whole window at 1280×800
+CSS pixels, device scale 1, dock open, header included, no browser chrome, stored as
+`docs/design/screenshots/m23/readme-*.png` and linked from the README by relative path.
+
+### 13.6 Critique
+
+Any graph editor would ring a failing node in a red glow, pin a pill with a count to its corner,
+and raise a toast. Here: the start tag's own form hanging from the other edge, two marks shared
+with the panel, and two plain words. Remove-one-accessory candidates for the screenshot pass: the
+tab's border, and the marks on links if a fan-out reads busy (link severity would then rest on
+colour and the marked page it leaves, which is a question for the maintainer, not a silent cut).
+
+### 13.7 What building and the screenshot pass changed
+
+Screenshots under `docs/design/screenshots/m23/`, all at 1280×800 with the dock open.
+
+- **Moved: the link's mark**, from the curve's middle to its first quarter (§13.3), before any
+  screenshot. A choice's label is placed from a point that moves with the whole fan-out offset,
+  while the curve's middle moves by three quarters of it, so on the second of two parallel links
+  the mark would have overprinted the label. Nearer the port, the marks of a fan-out would
+  overprint each other instead. On a short link the mark now sits just under the label's middle,
+  clear of it.
+- **Recorded: the marks' size.** The approved text gave the marks' 12×12 drawing box but not the
+  size they are drawn at; §13.1 now says 9px on the map and 0.8em in the panel (decided in the
+  review of the M23 PR).
+- **Kept: the tab's border.** The warning tint on paper is too faint to give the tab an edge of its
+  own.
+- **Kept: the marks on links.** On the doom loop they do not read busy, and on a dotted follow-up
+  the cross is what says the line is in trouble once the colour is set aside.
+- **Kept: the name and title** with what to fix and what to check. The findings keep each rule's
+  severity rather than one list under the worst, so a warning is never announced as something to
+  fix.
+- **The README frames were reshaped.** Fixing the loop on the first layout sent the hatch's new
+  follow-up straight through the hold's page
+  (`06-fixed-link-through-a-page.png`). The shore moved to a fourth column and the hatch under the
+  hold, the wiring was broken again, and both README frames were taken on that one layout, so they
+  differ only in the fix.
+- **Noted, not changed:** a choice labelled "Signal the keeper" is cut at 16 characters on the map
+  (§10.3); the walkthrough used "Signal the light". And a navigator row now slides the map to its
+  scene, which a script that assumes a still map will notice first: that is §13.4 working.

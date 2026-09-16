@@ -85,6 +85,39 @@ public class CanvasModelTests
     }
 
     [Fact]
+    public void Should_PlaceTheMarkOnTheCurve_When_BuildingALink()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var from = story.AddScene(SceneKind.Linear, "A storm gathers");
+        var to = story.AddScene(SceneKind.Linear, "Below deck");
+        story.SetFollowUp(from.Id, to.Id);
+        var positions = PositionEachSceneInOrder(story);
+
+        // Act
+        var edge = Assert.Single(CanvasModel.Build(story, positions).Edges);
+
+        // Assert
+        Assert.Equal(CanvasGeometry.MarkPoint(positions[from.Id], positions[to.Id], 0), (edge.MarkX, edge.MarkY));
+    }
+
+    [Fact]
+    public void Should_PlaceTheMarkOnTheArch_When_BuildingASelfLoop()
+    {
+        // Arrange
+        var story = new Story("Story");
+        var loop = story.AddScene(SceneKind.Choice, "A round room");
+        story.WireChoice(loop.Id, "Keep walking", loop.Id);
+        var positions = PositionEachSceneInOrder(story);
+
+        // Act
+        var edge = Assert.Single(CanvasModel.Build(story, positions).Edges);
+
+        // Assert
+        Assert.Equal(CanvasGeometry.SelfLoopMarkPoint(positions[loop.Id], 0), (edge.MarkX, edge.MarkY));
+    }
+
+    [Fact]
     public void Should_HitTestTheTopmostNode_When_NodesOverlap()
     {
         // Scenes.Ordered sorts "A scene" before "B scene"; CanvasModel keeps that order in Nodes,

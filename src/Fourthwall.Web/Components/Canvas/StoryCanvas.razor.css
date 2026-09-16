@@ -59,6 +59,14 @@
     fill: var(--fw-pencil);
 }
 
+.canvas-arrow-error path {
+    fill: var(--fw-error);
+}
+
+.canvas-arrow-warning path {
+    fill: var(--fw-warning);
+}
+
 .canvas-arrow-selected path,
 .canvas-arrow-draft path {
     fill: var(--fw-ribbon);

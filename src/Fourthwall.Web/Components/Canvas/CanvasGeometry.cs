@@ -250,6 +250,33 @@ public static class CanvasGeometry
     }
 
     /// <summary>
+    /// Where a problem's mark sits on an edge, pre-formatted for SVG markup: on the curve a quarter
+    /// of the way along, by the scene the link leaves — the scene the report blames — and clear of
+    /// the label, which sits above the curve's middle (docs/design/0002-visual-direction.md §13.3).
+    /// </summary>
+    public static (string X, string Y) MarkPoint(ScenePosition from, ScenePosition to, int parallelIndex)
+    {
+        var curve = EdgeCurve(from, to, parallelIndex);
+
+        return (
+            Invariant(FirstQuarter(curve.StartX, curve.ControlOneX, curve.ControlTwoX, curve.EndX)),
+            Invariant(FirstQuarter(curve.StartY, curve.ControlOneY, curve.ControlTwoY, curve.EndY)));
+    }
+
+    /// <summary>
+    /// Where a problem's mark sits on a self-loop, pre-formatted for SVG markup: at the top of the
+    /// arch, left of the label that starts beside it.
+    /// </summary>
+    public static (string X, string Y) SelfLoopMarkPoint(ScenePosition node, int parallelIndex)
+    {
+        var (startX, endX) = SelfLoopFeet(node, parallelIndex);
+
+        // Symmetric control points put the apex midway between the feet, three quarters of the way
+        // up to the controls, as SelfLoopLabelPoint reasons too.
+        return (Invariant((startX + endX) / 2), Invariant(node.Y - (SelfLoopRise(parallelIndex) * 0.75)));
+    }
+
+    /// <summary>
     /// How far above its node's top edge a self-loop's control points rise, so the drawing can be
     /// bounded to hold it; each further loop on the same scene rises higher.
     /// </summary>
@@ -321,6 +348,10 @@ public static class CanvasGeometry
         yield return (-b + root) / (2 * a);
         yield return (-b - root) / (2 * a);
     }
+
+    // One axis of a cubic Bézier at t = 1/4: its points weighted 27, 27, 9, and 1 sixty-fourths.
+    private static double FirstQuarter(double p0, double p1, double p2, double p3) =>
+        ((27 * p0) + (27 * p1) + (9 * p2) + p3) / 64;
 
     private static (double StartX, double EndX) SelfLoopFeet(ScenePosition node, int parallelIndex)
     {

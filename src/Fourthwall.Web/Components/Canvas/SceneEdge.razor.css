@@ -1,5 +1,6 @@
-/* A link's line: a pencil curve for a choice, leader dots for a follow-up, ribbon while selected.
-   Direction: docs/design/0002-visual-direction.md §10.3 and §12.5. */
+/* A link's line: a pencil curve for a choice, leader dots for a follow-up, ribbon while selected,
+   the functional colour while its scene has a problem.
+   Direction: docs/design/0002-visual-direction.md §10.3, §12.5, and §13.3. */
 
 .canvas-edge {
     cursor: pointer;
@@ -22,6 +23,15 @@
     stroke-width: 2.5px;
     stroke-dasharray: 0 6;
     stroke-linecap: round;
+}
+
+/* Declared before the selected line, which wins: the link's mark keeps the severity. */
+.edge-error .edge-line {
+    stroke: var(--fw-error);
+}
+
+.edge-warning .edge-line {
+    stroke: var(--fw-warning);
 }
 
 .edge-selected .edge-line {

@@ -1,6 +1,7 @@
 /* A scene node: a page drawn in ink, its right edge the shape of its kind, the ribbon when it is
    the selected scene. Direction: docs/design/0002-visual-direction.md §10.1–10.2; the page can be
-   picked or moved, and the cursor says both (§11.3). */
+   picked or moved, and the cursor says both (§11.3); a page the report blames carries its tab
+   (§13.2). */
 
 .canvas-node {
     cursor: move;
@@ -20,6 +21,16 @@
     stroke: var(--fw-ink);
     stroke-width: 1px;
     transition: fill var(--fw-motion);
+}
+
+/* A page the report blames takes the ground of the panel's row for its worst problem. Declared
+   before the hover lift, which wins while the page is pointed at or held (§13.2). */
+.node-error .node-shape {
+    fill: var(--fw-error-tint);
+}
+
+.node-warning .node-shape {
+    fill: var(--fw-warning-tint);
 }
 
 /* The hover lift, held for as long as the page is being moved (§11.2). */
@@ -69,6 +80,43 @@
     text-anchor: middle;
     text-transform: uppercase;
     fill: var(--fw-paper);
+}
+
+/* The report's tab: the start tag's form, hanging from the bottom edge, in the functional colour
+   on its tint. Its mark and word read without the colour (§13.2). */
+.node-problem {
+    pointer-events: none;
+}
+
+.node-problem rect {
+    stroke-width: 1px;
+}
+
+.node-error .node-problem {
+    color: var(--fw-error);
+}
+
+.node-error .node-problem rect {
+    fill: var(--fw-error-tint);
+    stroke: var(--fw-error);
+}
+
+.node-warning .node-problem {
+    color: var(--fw-warning);
+}
+
+.node-warning .node-problem rect {
+    fill: var(--fw-warning-tint);
+    stroke: var(--fw-warning);
+}
+
+.node-problem text {
+    font-family: var(--fw-font-utility);
+    font-size: var(--fw-text-xs);
+    font-weight: 700;
+    letter-spacing: var(--fw-tracking-caps);
+    text-transform: uppercase;
+    fill: currentColor;
 }
 
 .node-ribbon {

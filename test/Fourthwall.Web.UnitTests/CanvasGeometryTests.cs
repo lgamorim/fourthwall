@@ -184,6 +184,56 @@ public class CanvasGeometryTests
     }
 
     [Fact]
+    public void Should_PutTheMarkOnTheFirstQuarterOfTheCurve_When_ALinkLeavesAScene()
+    {
+        // Arrange — a link down one row: from the right centre (200, 32) to the left centre
+        // (308, 136), with 100-unit handles. A cubic's point at t = 1/4 weighs its four points
+        // 27, 27, 9, and 1 sixty-fourths.
+        var from = new ScenePosition(0, 0);
+        var to = new ScenePosition(308, 104);
+
+        // Act
+        var (x, y) = CanvasGeometry.MarkPoint(from, to, parallelIndex: 0);
+
+        // Assert — on the curve, by the page the link leaves, clear of the label at its middle.
+        Assert.Equal("245", x);
+        Assert.Equal("48.25", y);
+    }
+
+    [Fact]
+    public void Should_FormatMarkPointInvariantly_When_CurrentCultureUsesCommaDecimals()
+    {
+        // Arrange — the second of two parallel links: its handles sit 28 units lower, and its
+        // first quarter 15.75 lower than the first link's.
+        using var _ = new CulturePin("pt-PT");
+        var from = new ScenePosition(0.5, 0);
+        var to = new ScenePosition(308.5, 0);
+
+        // Act
+        var (x, y) = CanvasGeometry.MarkPoint(from, to, parallelIndex: 1);
+
+        // Assert
+        Assert.Equal("245.5", x);
+        Assert.Equal("47.75", y);
+    }
+
+    [Fact]
+    public void Should_PutTheMarkAtTheTopOfTheArch_When_ALinkLoopsBack()
+    {
+        // Arrange
+        using var _ = new CulturePin("pt-PT");
+        var node = new ScenePosition(10.5, 5.5);
+
+        // Act
+        var (x, y) = CanvasGeometry.SelfLoopMarkPoint(node, parallelIndex: 0);
+
+        // Assert — between the loop's feet, three quarters of the way up to its control points,
+        // left of the label that starts beside the loop.
+        Assert.Equal("146.5", x);
+        Assert.Equal("-24.5", y);
+    }
+
+    [Fact]
     public void Should_PointTheRightEdge_When_OutliningALinearScene()
     {
         // Arrange
