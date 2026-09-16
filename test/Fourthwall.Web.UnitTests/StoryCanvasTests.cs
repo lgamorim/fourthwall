@@ -791,7 +791,8 @@ public class StoryCanvasTests : BunitContext
         // Assert — blame goes by where a link starts: the reef's follow-up, not the fork's choice into it.
         var marked = Assert.Single(cut.FindAll(".canvas-edge.edge-warning"));
         Assert.Contains("edge-follow-up", marked.ClassList);
-        Assert.Equal("url(#canvas-arrow-warning)", marked.QuerySelector(".edge-line")!.GetAttribute("marker-end"));
+        Assert.Equal(
+            "url(#canvas-arrow-warning)", cut.Find(".canvas-edge.edge-warning .edge-line").GetAttribute("marker-end"));
         Assert.Single(cut.FindAll(".edge-mark-warning"));
         Assert.Empty(cut.FindAll(".canvas-edge.edge-error"));
     }

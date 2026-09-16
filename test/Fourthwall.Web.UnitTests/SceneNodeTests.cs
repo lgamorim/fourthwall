@@ -441,9 +441,8 @@ public class SceneNodeTests : BunitContext
 
         // Assert — severity reads by the mark and the word, never by colour alone (§13.2).
         Assert.Contains(expectedClass, cut.Find(".canvas-node").ClassList);
-        var tab = cut.Find(".node-problem");
-        Assert.Equal(expectedMark, tab.QuerySelector("use")!.GetAttribute("href"));
-        Assert.Equal(expectedWord, tab.QuerySelector("text")!.TextContent);
+        Assert.Equal(expectedMark, cut.Find(".node-problem use").GetAttribute("href"));
+        Assert.Equal(expectedWord, cut.Find(".node-problem text").TextContent);
     }
 
     [Fact]

@@ -669,7 +669,9 @@ public class StoryEditorTests : BunitContext
         cut.Find("#scene-create-submit").Click();
 
         // Assert
-        var added = _workspace.Current!.Scenes.Single(scene => scene.Text == "Below deck");
+        var story = _workspace.Current;
+        Assert.NotNull(story);
+        var added = story.Scenes.Single(scene => scene.Text == "Below deck");
         AssertCentred(cut, added.Id);
     }
 

@@ -119,7 +119,7 @@ public class SceneEdgeLabelTests : BunitContext
         var mark = cut.Find(".edge-mark");
         Assert.Contains(expectedClass, mark.ClassList);
         Assert.Equal($"translate({edge.MarkX} {edge.MarkY})", mark.GetAttribute("transform"));
-        Assert.Equal(expectedMark, mark.QuerySelector("use")!.GetAttribute("href"));
+        Assert.Equal(expectedMark, cut.Find(".edge-mark use").GetAttribute("href"));
         Assert.Empty(cut.FindAll(".edge-label"));
     }
 
