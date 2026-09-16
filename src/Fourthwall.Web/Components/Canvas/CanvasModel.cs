@@ -165,7 +165,12 @@ public sealed class CanvasModel
             ? CanvasGeometry.SelfLoopLabelPoint(fromPosition, parallelIndex)
             : CanvasGeometry.LabelPoint(fromPosition, toPosition, parallelIndex);
 
-        return new CanvasEdge(key, source, target, label, parallelIndex, isSelfLoop, pathData, labelX, labelY);
+        var (markX, markY) = isSelfLoop
+            ? CanvasGeometry.SelfLoopMarkPoint(fromPosition, parallelIndex)
+            : CanvasGeometry.MarkPoint(fromPosition, toPosition, parallelIndex);
+
+        return new CanvasEdge(
+            key, source, target, label, parallelIndex, isSelfLoop, pathData, labelX, labelY, markX, markY);
     }
 
     private static ScenePosition RequirePosition(

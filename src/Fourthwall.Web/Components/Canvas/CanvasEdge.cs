@@ -18,6 +18,8 @@ namespace Fourthwall.Web.Components.Canvas;
 /// <param name="PathData">The SVG path data for this edge's curve, formatted independently of the current culture.</param>
 /// <param name="LabelX">The label's x-coordinate, formatted independently of the current culture.</param>
 /// <param name="LabelY">The label's y-coordinate, formatted independently of the current culture.</param>
+/// <param name="MarkX">Where a problem's mark sits on the curve, formatted independently of the current culture.</param>
+/// <param name="MarkY">Where a problem's mark sits on the curve, formatted independently of the current culture.</param>
 public sealed record CanvasEdge(
     CanvasEdgeKey Key,
     SceneId Source,
@@ -27,4 +29,6 @@ public sealed record CanvasEdge(
     bool IsSelfLoop,
     string PathData,
     string LabelX,
-    string LabelY);
+    string LabelY,
+    string MarkX,
+    string MarkY);
