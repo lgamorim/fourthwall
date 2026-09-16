@@ -709,3 +709,96 @@ Screenshots under `docs/design/screenshots/m22/`, all at 1280px with the dock op
   of the dock when the navigator is long, so the dock must be scrolled to the text box. This is the
   dock's behaviour from M19 for any selection; bringing the inspector into view is left for a later
   milestone.
+
+## 13. M23 — problems on the map
+
+Approved by the maintainer with the M23 plan on 2026-09-16, before any M23 code was written, with
+the three open choices taken as recommended: no centring motion, the words Fix and Check, and a
+validation that starts again clears the map.
+
+**Thesis.** A reader drawing a gamebook map marks trouble on it: a cross where a way goes wrong, a
+sign where they would look again. M23 draws those two marks on the pencil map, and the validation
+panel's rows carry the same two, so the dock and the map say "problem" in one vocabulary. Severity
+never reads by colour alone (§8), exactly as kind never does.
+
+### 13.1 The two marks
+
+- **Error: a cross** (✕). **Warning: a solid triangle** (▲). Both on a 12×12 box, drawn like §5's
+  kind marks: the cross as a 1.8px round stroke, the triangle filled.
+- On the map they are drawn once, as `<symbol>`s in the canvas's `<defs>`, and coloured by
+  `currentColor`. In the panel the same shapes are CSS masks before each row's bold rule name, so
+  a row's severity reads by mark and colour where it read by colour alone until now — this is how
+  §9's "consistent with the panel rows" is met.
+
+### 13.2 A page with a problem
+
+```
+  ┌▼─────────────────────────┐
+  │  Adrift on the reef       >◯      fill: the functional tint, the panel row's ground
+  │  LINEAR                  /        outline, label, and caption unchanged
+  └──────────────────────────┘
+  └✕ FIX─┘                            the tab, hanging from the bottom edge at the left
+  └▲ CHECK──┘                         (a warning's)
+```
+
+- **The tab** hangs from the page's bottom edge at the left, mirroring the start tag on the top
+  edge: the mark and one word in utility caps, `--fw-text-xs`, in the functional colour on its
+  tint inside a 1px border of the same colour. It is not inverted — the start tag stays the one
+  inverted tag in the app (§5). The bottom edge is the free one: the top holds the start tag at the
+  left and the self-loops' feet at the right (§10.3), and a tab 17px deep leaves 6px to a start tag
+  on the row below.
+- **The words are the creator's:** *Fix* for an error — it makes the story invalid — and *Check*
+  for a warning — something looks unintended (§7). The panel never shows "error" or "warning", and
+  the map does not either.
+- **The page's fill turns to the tint**, so the story's trouble reads at a glance even framed by
+  Show whole story, where the tab is a few pixels tall.
+- **One tab per page:** the worst severity among the violations that name the scene.
+- **Name and title.** The page's accessible name and its hover title add the rules, in the panel's
+  words: "Adrift on the reef, Linear. Fix: Unreachable scenes." — or "Check: Dead ends."
+- **With the other states.** Selection draws the ribbon and the 2px ink outline and never touches
+  the fill, so a selected page keeps its tint and its tab; the ribbon hangs inside the top-left
+  corner and the tab outside the bottom-left, and they never meet. Hover and dragging still lift
+  the fill to the desk — being held is the more immediate news — and the tab keeps the severity
+  meanwhile. The drop target's ribbon outline is unchanged.
+
+### 13.3 A link with a problem
+
+- Every link leaving a page with a problem takes that page's severity. Violations name scenes, not
+  links, so a link is blamed by where it starts; the code says so where it folds the report.
+- The line turns to the functional colour and ends in its own arrowhead (`#canvas-arrow-error`,
+  `#canvas-arrow-warning`); a follow-up keeps its leader dots.
+- **The mark** sits on the curve's midpoint in a small paper disc — at the top of the arch for a
+  self-loop. A choice's label is lifted above that point (§10.3), so the two never overprint; a
+  follow-up has no label and the mark stands alone. The link itself thus reads without colour.
+- The label stays pencil. A selected link keeps §12.5's ribbon line and arrowhead; its mark keeps
+  the severity.
+- An unused image names no scene and stays in the panel.
+
+### 13.4 Centring on a scene
+
+- A validation chip or a navigator row — a scene just added from the navigator included — centres
+  its page in the window at the current zoom.
+- It centres **always**, not only when the page is out of view as keyboard focus does (§11.5):
+  there a click also focuses and must not move the map under the pointer; here the pointer is in
+  the dock, and the creator has asked to see that scene.
+- A selection made on the map never moves the map.
+- **No motion.** The map jumps, as §11.6 decided for every view change — like turning to a page —
+  so reduced motion needs nothing new. The ribbon on the page just selected marks where the eye
+  lands. A glide was considered and left out: it would move the world transform from an SVG
+  attribute to CSS and need cancelling on the next press.
+
+### 13.5 The README's screenshots
+
+Two frames of one story, a small shipwreck gamebook with a few illustrated scenes: after Validate,
+with an unreachable scene and a doom loop marked and the unreachable scene selected, its row in the
+dock; and after fixing the wiring on the map, validated clean. Each is the whole window at 1280×800
+CSS pixels, device scale 1, dock open, header included, no browser chrome, stored as
+`docs/design/screenshots/m23/readme-*.png` and linked from the README by relative path.
+
+### 13.6 Critique
+
+Any graph editor would ring a failing node in a red glow, pin a pill with a count to its corner,
+and raise a toast. Here: the start tag's own form hanging from the other edge, two marks shared
+with the panel, and two plain words. Remove-one-accessory candidates for the screenshot pass: the
+tab's border, and the marks on links if a fan-out reads busy (link severity would then rest on
+colour and the marked page it leaves, which is a question for the maintainer, not a silent cut).
