@@ -1,3 +1,4 @@
+using Fourthwall.Application;
 using Fourthwall.Domain;
 
 using Microsoft.AspNetCore.Components;
@@ -21,6 +22,13 @@ public partial class EditorDock
     /// </summary>
     [Parameter]
     public EventCallback<SceneId?> OnSceneSelected { get; set; }
+
+    /// <summary>
+    /// Raised with the validation report the panel now shows, or <see langword="null"/>, so the page
+    /// can mark the map with it.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ValidationReport?> OnReportChanged { get; set; }
 
     /// <summary>
     /// Raised after a mutation the story should be saved for. The page owns saving.

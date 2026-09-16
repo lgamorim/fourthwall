@@ -15,6 +15,9 @@ public partial class StoryEditor : IDisposable
     private StoryCanvas? _canvas;
     private SceneId? _selectedSceneId;
 
+    // The report the validation panel shows, mirrored so the canvas can mark what it blames.
+    private ValidationReport? _report;
+
     // The story whose map the canvas has drawn from its saved positions. "Add scene" waits for it,
     // and a story opened later waits for its own.
     private Story? _mapReadyFor;
@@ -74,12 +77,28 @@ public partial class StoryEditor : IDisposable
         builder.AddComponentParameter(1, nameof(EditorDock.Story), story);
         builder.AddComponentParameter(2, nameof(EditorDock.SelectedSceneId), _selectedSceneId);
         builder.AddComponentParameter(
-            3, nameof(EditorDock.OnSceneSelected), EventCallback.Factory.Create<SceneId?>(this, OnSceneSelected));
+            3, nameof(EditorDock.OnSceneSelected), EventCallback.Factory.Create<SceneId?>(this, OnDockSceneSelected));
         builder.AddComponentParameter(4, nameof(EditorDock.OnChanged), EventCallback.Factory.Create(this, SaveAsync));
+        builder.AddComponentParameter(
+            5, nameof(EditorDock.OnReportChanged), EventCallback.Factory.Create<ValidationReport?>(this, OnReportChanged));
         builder.CloseComponent();
     }
 
     private void OnSceneSelected(SceneId? sceneId) => _selectedSceneId = sceneId;
+
+    // A scene picked in the dock — a validation chip, a navigator row, a scene just added there — is
+    // brought to the middle of the map (design note §13.4). One picked on the map is already where
+    // the creator is looking, so that selection goes through OnSceneSelected alone.
+    private void OnDockSceneSelected(SceneId? sceneId)
+    {
+        OnSceneSelected(sceneId);
+        if (sceneId is { } id)
+        {
+            _canvas?.CentreOnScene(id);
+        }
+    }
+
+    private void OnReportChanged(ValidationReport? report) => _report = report;
 
     private void OnMapReady(Story story) => _mapReadyFor = story;
 
