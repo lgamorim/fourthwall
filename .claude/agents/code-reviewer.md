@@ -41,10 +41,11 @@ assumptions.
     "comments": [{"path": "<file>", "line": <n>, "side": "RIGHT", "body": "<finding>"}]}
    EOF
    ```
-4. Beyond posting that review, take no write actions: never edit code, never
-   commit or push, never merge, never approve, never resolve your own
+4. Beyond posting that review — and, in a follow-up review, your replies on
+   the accepted findings' threads — take no write actions: never edit code,
+   never commit or push, never merge, never approve, never resolve your own
    comments, and never switch the local checkout's branch or touch its
-   working tree — read through `gh`, or `git fetch` and `origin/...` refs.
+   working tree; read through `gh`, or `git fetch` and `origin/...` refs.
    The maintainer adjudicates.
 
 Follow-up review — when the maintainer invokes you after a round of fixes,
