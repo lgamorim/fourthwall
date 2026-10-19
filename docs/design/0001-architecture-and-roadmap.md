@@ -35,7 +35,7 @@ Where Fourthwall's tool differentiates:
 
 - **.NET 10 / C# only.** One runtime, one language across every layer. The UI is Blazor, locally hosted — no Electron, no JS framework.
 - **Graph1x owns the graph.** All scene interconnection — structure, traversal, reachability, cycle detection — goes through Graph1x (v1.0.1). No hand-rolled graph code.
-- **sqlbound + Dapper own data access.** Typed, compile-time-verified SQL via sqlbound where queries are static; Dapper (via `SqlSession`) where they must be composed at runtime. No EF Core, no other ORM.
+- **sqlbound owns data access.** Typed, compile-time-verified SQL via sqlbound's `[SqlQuery]`/`[SqlExecute]` where queries are static; sqlbound's `SqlSession` over plain ADO.NET where they must be composed at runtime. No EF Core, no other ORM.
 - **SQLite is the storage engine.** A story is a folder: one SQLite database plus an `assets/` directory of scene images referenced by relative path.
 - **No other first-party repos.** Graph1x and sqlbound are the only lgamorim libraries this project consumes.
 - **Non-goal: the game runtime.** Playing the story with real game rules (state, inventory, combat resolution) is a separate future project. The tool ships a read-only preview walkthrough, nothing more.
@@ -81,7 +81,7 @@ Clean architecture; dependencies point inward. Infrastructure is wired in only a
 │  Fourthwall.Web            Blazor UI: canvas, forms,         │
 │                            validation panel, preview          │
 ├─────────────────────────────────────────────────────────────┤
-│  Fourthwall.Infrastructure Graph1x adapter · sqlbound/Dapper  │
+│  Fourthwall.Infrastructure Graph1x adapter · sqlbound         │
 │                            repositories · SQLite · migrations │
 │                            · image asset store                │
 ├─────────────────────────────────────────────────────────────┤
@@ -109,7 +109,7 @@ Use cases (create story, add/edit/remove scene, wire choice, attach image, valid
 
 **D3 — Graph1x behind `IStoryGraph`, general directed graph.** Infrastructure adapts Graph1x's directed graph (not the DAG variant — cycles are legal, §4.2) and its BFS/reachability/cycle algorithms to the `IStoryGraph` abstraction. Graph1x types never cross the Application boundary; the adapter translates scene ids in, analysis results out. Graph1x's DOT/Mermaid serialization is exposed as an export use case for free.
 
-**D4 — sqlbound + Dapper over SQLite.** Static queries use `[SqlQuery]`/`[SqlExecute]` and get compile-time verification against the real schema; runtime-composed queries (search, filtered lists) go through `SqlSession`/Dapper. Schema evolution uses sqlbound's SQL-file migrations with checksums. Known limit accepted: sqlbound's SQLite provider verifies columns only (no parameter typing) — the integration test suite carries the weight the verifier can't (§7, §8).
+**D4 — sqlbound over SQLite.** Static queries use `[SqlQuery]`/`[SqlExecute]` and get compile-time verification against the real schema; runtime-composed queries (search, filtered lists) go through sqlbound's `SqlSession`, which runs SQL on the open `DbConnection` over plain ADO.NET — no Dapper or other micro-ORM. Schema evolution uses sqlbound's SQL-file migrations with checksums. Known limit accepted: sqlbound's SQLite provider verifies columns only (no parameter typing) — the integration test suite carries the weight the verifier can't (§7, §8).
 
 **D5 — Images are files, the database stores paths.** Attaching an image copies it into the story's `assets/` folder (content-hashed filename to dodge collisions and staleness); the scene row stores the relative path plus display metadata. Keeps the database small and the story folder inspectable; the tool never edits images, only ingests and previews them.
 
@@ -137,7 +137,7 @@ A **phase** is a versioned slice of this roadmap (one minor version: Phase 1 →
 **Phase 2 — Persistence** (`0.2.x`; ~2–3 days agentic, ~2–3 weeks manual)
 
 - SQLite schema and sqlbound migrations: stories, scenes, choices, extension slot, editor layout tables.
-- Repository implementations via sqlbound typed queries (Dapper `SqlSession` where composition demands it).
+- Repository implementations via sqlbound typed queries (sqlbound's `SqlSession` where composition demands it).
 - Story package handling: create/open a story folder, `IAssetStore` copying images into `assets/` with content-hashed names, asset-integrity validation (§4.2 rule 6).
 - Integration test project exercising the real SQLite provider end to end.
 
@@ -207,7 +207,7 @@ fourthwall/
 ├─ src/
 │  ├─ Fourthwall.Domain/            # Story, Scene, Choice, SceneKind — zero dependencies
 │  ├─ Fourthwall.Application/       # use cases, IStoryGraph, IStoryRepository, IStoryValidator, IAssetStore
-│  ├─ Fourthwall.Infrastructure/    # Graph1x adapter, sqlbound/Dapper repos, SQLite, migrations, asset store
+│  ├─ Fourthwall.Infrastructure/    # Graph1x adapter, sqlbound repos, SQLite, migrations, asset store
 │  └─ Fourthwall.Web/               # Blazor UI: canvas, inspector, validation panel, preview
 └─ test/
    ├─ Fourthwall.Domain.UnitTests/

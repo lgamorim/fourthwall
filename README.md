@@ -16,7 +16,7 @@ A finished story is a self-contained folder — a SQLite database plus its image
 
 - **.NET 10 / C#** end to end; the UI is **Blazor**, locally hosted.
 - **[Graph1x](https://github.com/lgamorim/graph1x)** powers everything graph: structure, traversal, reachability, cycle analysis.
-- **[sqlbound](https://github.com/lgamorim/sqlbound)** + **Dapper** over **SQLite** for compile-time-verified, typed data access and SQL-file migrations.
+- **[sqlbound](https://github.com/lgamorim/sqlbound)** over **SQLite** for compile-time-verified, typed data access and SQL-file migrations.
 - Clean architecture: Domain ← Application ← Infrastructure/Web, dependencies always pointing inward.
 
 ## Documentation
