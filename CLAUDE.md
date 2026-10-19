@@ -52,7 +52,7 @@ Clean architecture: Domain ← Application ← Infrastructure/Web.
 
 - **Domain** — pure story model (`Story`, `Scene`, `Choice`, `SceneKind`) and its hard invariants. No external dependencies.
 - **Application** — use cases and the abstractions the outer layers implement (`IStoryGraph`, `IStoryRepository`, `IStoryValidator`). Depends only on Domain.
-- **Infrastructure** — adapters at the edges: Graph1x behind `IStoryGraph`, sqlbound (source-gen typed SQL) + Dapper behind the repository interfaces. SQLite is the chosen database: all relational persistence and SQL-file migrations target it, and no other provider is supported. Graph1x and sqlbound types never leak past this layer.
+- **Infrastructure** — adapters at the edges: Graph1x behind `IStoryGraph`, sqlbound (source-gen typed SQL) behind the repository interfaces. SQLite is the chosen database: all relational persistence and SQL-file migrations target it, and no other provider is supported. Graph1x and sqlbound types never leak past this layer.
 - **Web** — Blazor (locally hosted, interactive server rendering) UI. Depends on Application; Infrastructure is wired in only via DI at the composition root.
 
 ## Workflow: phases, milestones, versioning
@@ -84,7 +84,7 @@ A separate review agent reads each PR fresh, with no implementer context, and le
 
 - **Strict TDD**: failing test before any production code, `dotnet test` before declaring anything done.
 - **Never open a PR or commit to `master` without being asked**; milestone plans need user approval before execution.
-- **Only two first-party dependencies**: Graph1x (all graph structure/analysis — never hand-roll graph code) and sqlbound + Dapper over SQLite (no EF Core). Both are adapters in Infrastructure; their types must never leak past that layer.
+- **Only two first-party dependencies**: Graph1x (all graph structure/analysis — never hand-roll graph code) and sqlbound over SQLite (no EF Core). Both are adapters in Infrastructure; their types must never leak past that layer.
 - **sqlbound's SQLite provider verifies columns only** — integration tests are the compensating control for anything its compile-time verification can't catch.
 - **A story on disk is a folder** (`story.db` + `assets/` images referenced by relative path); editor-only tables are namespaced `editor_*`.
 - **`dotnet format` is the naming gate, not the build**: `EnforceCodeStyleInBuild` does not surface `IDE1006` naming violations as build errors in this SDK, so a green build alone does not prove naming compliance.

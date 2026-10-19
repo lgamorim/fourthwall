@@ -13,7 +13,7 @@
     <PackageVersion Include="Graph1x" Version="1.0.1" />
   </ItemGroup>
 
-  <!-- Persistence stack (Phase 2), Infrastructure-only: SqlBound + Dapper over
+  <!-- Persistence stack (Phase 2), Infrastructure-only: SqlBound over
        Microsoft.Data.Sqlite, behind IStoryRepository / IAssetStore. First
        referenced in M7; declared here now as the Phase 2 dependency baseline.
        These versions are inert until a project references them. SqlBound is a
@@ -23,7 +23,6 @@
     <PackageVersion Include="SqlBound.Generators" Version="1.0.0-rc.1" />
     <PackageVersion Include="SqlBound.Migrations" Version="1.0.0-rc.1" />
     <PackageVersion Include="SqlBound.Sqlite" Version="1.0.0-rc.1" />
-    <PackageVersion Include="Dapper" Version="2.1.79" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
   </ItemGroup>
 
